@@ -215,7 +215,7 @@ export function generateTastingConfirmationEmailHTML(
   proposedTastingTime: string,
   tastingToken: string,
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+  const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000").replace(/\/+$/, "")
   const confirmUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=confirm`
   const rescheduleUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=reschedule`
 

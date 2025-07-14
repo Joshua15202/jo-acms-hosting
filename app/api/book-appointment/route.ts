@@ -403,7 +403,8 @@ export async function POST(request: NextRequest) {
 
     // Send tasting confirmation email to the user's registered email
     try {
-      const confirmationUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/tasting/confirm?token=${tastingToken}&email=${encodeURIComponent(email)}`
+      const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000").replace(/\/+$/, "")
+      const confirmationUrl = `${baseUrl}/tasting/confirm?token=${tastingToken}&email=${encodeURIComponent(email)}`
 
       const emailContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
