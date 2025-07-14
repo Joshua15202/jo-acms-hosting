@@ -1254,7 +1254,7 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                     {paymentData.paymentMethod === "gcash" && (
                       <>
                         <p>
-                          <strong>GCash Number:</strong> 0917-854-3221
+                          <strong>GCash Number:</strong> 0921-218-3558
                         </p>
                         <Button variant="outline" size="sm" onClick={() => setShowQrCode(!showQrCode)} className="mt-2">
                           {showQrCode ? "Hide QR Code" : "Generate QR Code"}
