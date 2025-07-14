@@ -1237,12 +1237,6 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                         Bank Transfer
                       </div>
                     </SelectItem>
-                    <SelectItem value="cash">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Cash
-                      </div>
-                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1267,7 +1261,7 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                         </Button>
                         {showQrCode && (
                           <div className="mt-4 flex flex-col items-center">
-                            <img src="randomqr.png" alt="GCash QR Code" className="w-48 h-48 border rounded-lg p-2" />
+                            <img src="qrcodeko.jpg" alt="GCash QR Code" className="w-48 h-48 border rounded-lg p-2" />
                             <p className="text-xs text-gray-500 mt-2">
                               (This is a placeholder QR code. In a real app, a dynamic QR code would be generated.)
                             </p>
