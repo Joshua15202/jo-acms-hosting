@@ -2,6 +2,8 @@ import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/app/actions/auth-actions"
 import ProfileClient from "@/components/profile-client"
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProfilePage() {
   console.log("=== PROFILE PAGE START ===")
 
