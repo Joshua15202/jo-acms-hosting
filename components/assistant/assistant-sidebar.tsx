@@ -31,7 +31,7 @@ export function AssistantSidebar() {
         <SidebarHeader className="py-4">
           <div className="flex items-center px-2">
             <div className="flex flex-col space-y-1 px-2">
-              <h2 className="text-lg font-semibold">Jo-AIMS</h2>
+              <h2 className="text-lg font-semibold">Jo-ACMS</h2>
               <p className="text-xs text-muted-foreground">Assistant Portal</p>
             </div>
           </div>

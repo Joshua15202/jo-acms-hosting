@@ -55,7 +55,7 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
           <Package className="h-4 w-4" />
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-gray-900">Jo-AIMS</span>
+          <span className="text-sm font-semibold text-gray-900">Jo-ACMS</span>
           <span className="text-xs text-gray-500">Admin Panel</span>
         </div>
       </div>

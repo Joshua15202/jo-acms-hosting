@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions | Jo-AIMS",
+  title: "Terms & Conditions | Jo-ACMS",
   description: "Billing arrangement, cancellation and amendment policy for Jo Pacheco Wedding & Event Catering",
 }
 

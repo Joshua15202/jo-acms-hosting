@@ -28,7 +28,7 @@ export default function AdminNavbar({ user }: AdminNavbarProps) {
   return (
     <header className="h-16 border-b bg-white px-6 flex items-center justify-between">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Jo-AIMS Admin Dashboard</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Jo-ACMS Admin Dashboard</h1>
       </div>
 
       <div className="flex items-center space-x-4">

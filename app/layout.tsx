@@ -7,8 +7,8 @@ import { ConditionalLayout } from "@/components/conditional-layout"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Jo-AIMS - Catering Management System",
-  description: "Jo-AIMS - A comprehensive catering management system for Jo Pacheco Catering Services",
+  title: "Jo-ACMS - Catering Management System",
+  description: "Jo-ACMS - A comprehensive catering management system for Jo Pacheco Catering Services",
   generator: "v0.dev",
 }
 

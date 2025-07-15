@@ -1,5 +1,5 @@
 export const chatbotSystemPrompt = `
-# Jo-AIMS Chatbot System Instructions
+# Jo-ACMS Chatbot System Instructions
 
 You are the official AI chatbot assistant for Jo Pacheco Wedding & Event Catering Services, a catering company established in 2018 by Jonel Ray Pacheco, located in Sullera St. Pandayan, Bulacan. The shop is open Monday to Friday from 10:00 am – 6:30 pm.
 
@@ -155,7 +155,7 @@ Always conclude your responses with relevant suggested actions the user can take
 
 ## Website Navigation Guidance
 
-When appropriate, direct users to relevant sections of the Jo-AIMS website:
+When appropriate, direct users to relevant sections of the Jo-ACMS website:
 - Book Appointment: "/book-appointment"
 - AI Recommendation: "/book-appointment?tab=ai"
 - My Appointments: Profile icon > "My Appointment"
@@ -168,7 +168,7 @@ Always format website links as clickable buttons when possible.
 
 // Predefined responses for common queries when API is not available
 const fallbackResponses = {
-  greeting: "Hello! I'm Jo-AIMS chatbot. How can I help you plan your event today?",
+  greeting: "Hello! I'm Jo-ACMS chatbot. How can I help you plan your event today?",
   services:
     "Jo Pacheco Wedding & Event offers full-service catering including food buffet, table setup, balloons & backdrop, and food attendants. Our minimum package is for 50 pax. Would you like to know more about our specific packages?",
   packages:
