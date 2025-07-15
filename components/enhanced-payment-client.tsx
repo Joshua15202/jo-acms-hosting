@@ -1243,7 +1243,12 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
 
               {/* Payment Information based on method */}
               {(paymentData.paymentMethod === "gcash" || paymentData.paymentMethod === "bank_transfer") && (
-                <div className="space-y-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div
+                  className={`space-y-2 p-4 rounded-lg 
+                    ${paymentData.paymentMethod === "gcash" ? "bg-blue-100 border-blue-800" : ""} 
+                    ${paymentData.paymentMethod === "bank_transfer" ? "bg-green-100 border-green-800" : ""} 
+                    border`}
+                >
                   <h5 className="font-semibold text-gray-700">
                     Payment Details for {paymentData.paymentMethod === "gcash" ? "GCash" : "Bank Transfer"}
                   </h5>

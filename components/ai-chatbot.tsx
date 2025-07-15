@@ -86,7 +86,7 @@ export default function JoPachecoChathead() {
                     <Heart className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Jo Pacheco Events</CardTitle>
+                    <CardTitle className="text-lg">Jo Pacheco Chatbot</CardTitle>
                     <p className="text-rose-100 text-sm">Wedding & Event Planning</p>
                   </div>
                 </div>
