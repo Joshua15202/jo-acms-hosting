@@ -4,13 +4,17 @@ export interface PricingRules {
   serviceFees: {
     [guestCount: string]: number
   }
-  // ADDED: Wedding package pricing
+  // Wedding package pricing
   weddingPackages: {
+    [guestCount: string]: number
+  }
+  // NEW: Debut package pricing
+  debutPackages: {
     [guestCount: string]: number
   }
 }
 
-// Service fees and NEW wedding package prices - ALL SERVICE FEES SET TO ₱11,500
+// Service fees, wedding package prices, and NEW debut package prices
 export const PRICING_RULES: PricingRules = {
   serviceFees: {
     "50": 11500, // 50 guests: ₱11,500
@@ -19,13 +23,21 @@ export const PRICING_RULES: PricingRules = {
     "150": 16500, // 150 guests: ₱16,500
     "200": 22000, // 200 guests: ₱22,000
   },
-  // ADDED: Wedding package pricing based on user request
+  // Wedding package pricing
   weddingPackages: {
     "50": 56500,
     "100": 63000,
     "150": 74500,
     "200": 86000,
     "300": 109000,
+  },
+  // NEW: Debut package pricing
+  debutPackages: {
+    "50": 21500,
+    "80": 26400,
+    "100": 28000,
+    "150": 36500,
+    "200": 36000,
   },
 }
 
@@ -45,6 +57,8 @@ export interface PricingBreakdown {
   guestCount: number
   isWeddingPackage?: boolean
   weddingPackagePrice?: number
+  isDebutPackage?: boolean
+  debutPackagePrice?: number
   totalAmount?: number
   downPayment?: number
 }
@@ -585,7 +599,7 @@ export async function calculatePackagePricing(
   eventType?: string,
 ): Promise<PricingBreakdown> {
   try {
-    const { serviceFees, weddingPackages } = PRICING_RULES
+    const { serviceFees, weddingPackages, debutPackages } = PRICING_RULES
 
     // Validate inputs
     if (!guestCount || guestCount <= 0) {
@@ -690,16 +704,21 @@ export async function calculatePackagePricing(
     // Calculate subtotal for menu items
     const menuSubtotal = mainCoursesTotal + pastaTotal + dessertTotal + beverageTotal
 
-    // Determine service fee or wedding package price
+    // Determine service fee, wedding package price, or debut package price
     const isWeddingEvent = eventType === "wedding"
+    const isDebutEvent = eventType === "debut"
     let finalServiceFee = 0
     let selectedItems: MenuItem[] = []
 
     if (isWeddingEvent) {
       finalServiceFee = weddingPackages[guestCount.toString()] || 0
       selectedItems = FALLBACK_MENU_ITEMS.filter((item) => MAIN_COURSE_CATEGORIES.includes(item.category.toLowerCase()))
+    } else if (isDebutEvent) {
+      // NEW: Use debut package pricing for debut events
+      finalServiceFee = debutPackages[guestCount.toString()] || 21500 // Default to ₱21,500 for 50 pax
+      selectedItems = FALLBACK_MENU_ITEMS.filter((item) => MAIN_COURSE_CATEGORIES.includes(item.category.toLowerCase()))
     } else {
-      // FIXED: Use fixed service fee from PRICING_RULES instead of percentage
+      // Regular catering service fee
       finalServiceFee = serviceFees[guestCount.toString()] || 11500 // Default to ₱11,500
       selectedItems = [
         ...mainCoursesBreakdown.map((item) => ({
@@ -744,6 +763,8 @@ export async function calculatePackagePricing(
       pricePerGuest,
       selectedItems,
       guestCount,
+      isWeddingEvent,
+      isDebutEvent,
     })
 
     return {
@@ -755,6 +776,8 @@ export async function calculatePackagePricing(
       guestCount,
       isWeddingPackage: isWeddingEvent,
       weddingPackagePrice: isWeddingEvent ? finalServiceFee : 0,
+      isDebutPackage: isDebutEvent,
+      debutPackagePrice: isDebutEvent ? finalServiceFee : 0,
       totalAmount: totalAmount || 0,
       downPayment: Math.round((totalAmount || 0) * 0.5),
     }
@@ -785,7 +808,7 @@ export function calculatePackagePricingWithMenuItems(
   menuItems: { [category: string]: MenuItem[] },
   eventType?: string,
 ): PricingBreakdown {
-  const { serviceFees, weddingPackages } = PRICING_RULES
+  const { serviceFees, weddingPackages, debutPackages } = PRICING_RULES
 
   console.log("Server-side pricing calculation for:", { guestCount, menuSelections, eventType })
 
@@ -912,16 +935,21 @@ export function calculatePackagePricingWithMenuItems(
   // Calculate subtotal for menu items
   const menuSubtotal = mainCoursesTotal + pastaTotal + dessertTotal + beverageTotal
 
-  // Determine service fee or wedding package price
+  // Determine service fee, wedding package price, or debut package price
   const isWeddingEvent = eventType === "wedding"
+  const isDebutEvent = eventType === "debut"
   let finalServiceFee = 0
   let selectedItems: MenuItem[] = []
 
   if (isWeddingEvent) {
     finalServiceFee = weddingPackages[guestCount.toString()] || 0
     selectedItems = FALLBACK_MENU_ITEMS.filter((item) => MAIN_COURSE_CATEGORIES.includes(item.category.toLowerCase()))
+  } else if (isDebutEvent) {
+    // NEW: Use debut package pricing for debut events
+    finalServiceFee = debutPackages[guestCount.toString()] || 21500 // Default to ₱21,500 for 50 pax
+    selectedItems = FALLBACK_MENU_ITEMS.filter((item) => MAIN_COURSE_CATEGORIES.includes(item.category.toLowerCase()))
   } else {
-    // FIXED: Use fixed service fee from PRICING_RULES instead of percentage
+    // Regular catering service fee
     finalServiceFee = serviceFees[guestCount.toString()] || 11500 // Default to ₱11,500
     selectedItems = [
       ...mainCoursesBreakdown.map((item) => ({
@@ -964,6 +992,8 @@ export function calculatePackagePricingWithMenuItems(
     subtotal: menuSubtotal,
     totalAmount,
     pricePerGuest,
+    isWeddingEvent,
+    isDebutEvent,
   })
 
   return {
@@ -973,6 +1003,10 @@ export function calculatePackagePricingWithMenuItems(
     pricePerGuest: pricePerGuest || 0,
     menuItems: selectedItems,
     guestCount,
+    isWeddingPackage: isWeddingEvent,
+    weddingPackagePrice: isWeddingEvent ? finalServiceFee : 0,
+    isDebutPackage: isDebutEvent,
+    debutPackagePrice: isDebutEvent ? finalServiceFee : 0,
     totalAmount: totalAmount || 0,
     downPayment: Math.round((totalAmount || 0) * 0.5),
   }
@@ -983,6 +1017,13 @@ export function calculatePackagePricingWithMenuItems(
  */
 export function getServiceFee(guestCount: number): number {
   return PRICING_RULES.serviceFees[guestCount.toString()] || 11500 // Default to ₱11,500
+}
+
+/**
+ * Get debut package fee for a specific guest count
+ */
+export function getDebutPackageFee(guestCount: number): number {
+  return PRICING_RULES.debutPackages[guestCount.toString()] || 21500 // Default to ₱21,500 for 50 pax
 }
 
 /**
@@ -1011,7 +1052,15 @@ export function getPricingBreakdownText(breakdown: PricingBreakdown): string {
   }
 
   text += `\nSubtotal: ${formatCurrency(breakdown.subtotal)}\n`
-  text += `Service Fee: ${formatCurrency(breakdown.serviceFee)}\n`
+
+  if (breakdown.isWeddingPackage) {
+    text += `Wedding Package Fee: ${formatCurrency(breakdown.serviceFee)}\n`
+  } else if (breakdown.isDebutPackage) {
+    text += `Debut Package Fee: ${formatCurrency(breakdown.serviceFee)}\n`
+  } else {
+    text += `Service Fee: ${formatCurrency(breakdown.serviceFee)}\n`
+  }
+
   text += `Total Amount: ${formatCurrency(breakdown.total)}\n`
   text += `Price Per Guest: ${formatCurrency(breakdown.pricePerGuest)}\n`
 
@@ -1049,4 +1098,41 @@ export function getCategoryDisplayName(category: string): string {
   }
 
   return categoryMap[category.toLowerCase()] || category
+}
+
+// Helper function to get package inclusions text
+export function getPackageInclusionsText(eventType?: string): string {
+  if (eventType === "wedding") {
+    return `Wedding Package Inclusions:
+- Rice & Drinks
+- Full Skirted Buffet Table w/ Faux Floral Centerpiece
+- Guest Chairs & Tables with Complete Linens & Themed Centerpiece
+- 2 (10) Presidential Tables with mix of Artificial & floral runners + Complete Table setup & Glasswares + Crystal Chairs
+- Couple's Table w/ Fresh Floral centerpiece & Couple's Couch
+- Cake Cylinder Plinth
+- White Carpet Aisle
+- Waiters & Food Attendant in Complete Uniform
+- Semi Customized Backdrop Styling with full faux Flower design, Couples Couch + 6x6 Round Flatform Stage with decor + Thematic Tunnel Entrance`
+  } else if (eventType === "debut") {
+    return `Debut Package Inclusions:
+- Rice & Drinks
+- Buffet Table with Complete Set-up
+- Tables & Chairs with Complete Linens & Covers
+- Themed Table Centerpiece
+- Basic Backdrop Styling (Free: Letter Cut)
+- Waiters & Food Attendant in complete Uniforms
+- 4 Hours Service Time
+- Free Fresh 18 Red Roses & 18 Candles`
+  } else {
+    return `Service Fee Inclusions:
+- Steamed Rice
+- Purified Mineral Water
+- 1 Choice of Drink
+- Elegant Buffet Table
+- Guest Chairs & Tables
+- With Complete Setup
+- Table Centerpiece
+- Friendly Waiters & Food Attendant
+- 4 Hours Service`
+  }
 }

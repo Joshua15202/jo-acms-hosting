@@ -53,9 +53,9 @@ type PaymentTransaction = {
     payment_status: string
     // Menu details
     pasta_selection?: string
-    drink_selection?: string
+    beverage_selection?: string
     dessert_selection?: string
-    selected_menu_items?: any[]
+    selected_menu?: any[]
     // Event styling
     event_theme?: string
     color_motif?: string
@@ -692,10 +692,10 @@ export default function PaymentManagement() {
                         <p className="text-sm">{selectedTransaction.tbl_comprehensive_appointments.pasta_selection}</p>
                       </div>
                     )}
-                    {selectedTransaction.tbl_comprehensive_appointments.drink_selection && (
+                    {selectedTransaction.tbl_comprehensive_appointments.beverage_selection && (
                       <div>
                         <span className="font-medium">Drink:</span>
-                        <p className="text-sm">{selectedTransaction.tbl_comprehensive_appointments.drink_selection}</p>
+                        <p className="text-sm">{selectedTransaction.tbl_comprehensive_appointments.beverage_selection}</p>
                       </div>
                     )}
                     {selectedTransaction.tbl_comprehensive_appointments.dessert_selection && (
@@ -708,11 +708,11 @@ export default function PaymentManagement() {
                     )}
                   </div>
 
-                  {selectedTransaction.tbl_comprehensive_appointments.selected_menu_items && (
+                  {selectedTransaction.tbl_comprehensive_appointments.selected_menu && (
                     <div className="mt-4">
                       <span className="font-medium">Additional Menu Items:</span>
                       <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        {parseMenuItems(selectedTransaction.tbl_comprehensive_appointments.selected_menu_items).map(
+                        {parseMenuItems(selectedTransaction.tbl_comprehensive_appointments.selected_menu).map(
                           (item: any, index: number) => (
                             <div key={index} className="p-2 bg-gray-50 rounded text-sm">
                               <span className="font-medium">{item.name}</span>

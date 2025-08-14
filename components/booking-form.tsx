@@ -1676,6 +1676,34 @@ function BookingFormContent({
                           <span className="font-semibold text-rose-600">{formatCurrency(pricingData.subtotal)}</span>
                         </div>
                       </div>
+                    ) : pricingData.isDebutPackage ? (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Debut Package Fee:</span>
+                          <span className="font-semibold text-rose-600">
+                            {formatCurrency(pricingData.debutPackagePrice)}
+                          </span>
+                        </div>
+                        <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-lg border border-rose-200 dark:border-rose-800">
+                          <div className="font-medium text-rose-800 dark:text-rose-200 mb-2">
+                            Debut Package Includes:
+                          </div>
+                          <ul className="text-sm text-rose-700 dark:text-rose-300 space-y-1 list-disc list-inside">
+                            <li>Rice & Drinks</li>
+                            <li>Buffet Table with Complete Set-up</li>
+                            <li>Tables & Chairs with Complete Linens & Covers</li>
+                            <li>Themed Table Centerpiece</li>
+                            <li>Basic Backdrop Styling (Free: Letter Cut)</li>
+                            <li>Waiters & Food Attendant in complete Uniforms</li>
+                            <li>4 Hours Service Time</li>
+                            <li className="font-bold">Free Fresh 18 Red Roses & 18 Candles</li>
+                          </ul>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Menu Selections Total:</span>
+                          <span className="font-semibold text-rose-600">{formatCurrency(pricingData.subtotal)}</span>
+                        </div>
+                      </div>
                     ) : (
                       <>
                         <div className="flex justify-between items-center">

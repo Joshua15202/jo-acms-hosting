@@ -39,7 +39,7 @@ type Appointment = {
   status: string
   payment_status?: "unpaid" | "pending_payment" | "partially_paid" | "fully_paid" | "refunded"
   created_at: string
-  selected_menu_items?: any[]
+  selected_menu?: any[]
   contact_first_name: string
   contact_last_name: string
   contact_email: string

@@ -36,9 +36,14 @@ import {
   FileText,
   Utensils,
   Palette,
+  Bug,
+  AlertTriangle,
+  UserPlus,
+  TestTube,
+  Search,
 } from "lucide-react"
 import { format } from "date-fns"
-import type { User } from "@/app/actions/auth-actions"
+import type { User as AuthUser } from "@/app/actions/auth-actions"
 import { useToast } from "@/hooks/use-toast"
 
 type Appointment = {
@@ -73,7 +78,7 @@ type PaymentTransaction = {
   payment_method: string
   reference_number: string
   notes?: string
-  status: "verified"
+  status: "verified" | "pending_verification" | "rejected"
   created_at: string
   updated_at: string
   tbl_comprehensive_appointments: {
@@ -114,7 +119,34 @@ type PaymentFormData = {
 }
 
 interface EnhancedPaymentClientProps {
-  user: User
+  user: AuthUser
+}
+
+interface PaymentHistoryItem {
+  id: string
+  appointmentId: string
+  amount: number
+  paymentMethod: string
+  paymentReference: string
+  status: string
+  createdAt: string
+  appointment: {
+    id: string
+    contactName: string
+    eventType: string
+    eventDate: string
+    guestCount: number
+    totalAmount: number
+    status: string
+    theme?: string
+    beverageSelection?: string
+  }
+}
+
+interface AppUser {
+  id: string
+  email: string
+  name: string
 }
 
 export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientProps) {
@@ -122,6 +154,8 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
   const [paymentHistory, setPaymentHistory] = useState<PaymentTransaction[]>([])
   const [debugInfo, setDebugInfo] = useState<any>(null)
   const [historyDebugInfo, setHistoryDebugInfo] = useState<any>(null)
+  const [detailedDebugInfo, setDetailedDebugInfo] = useState<any>(null)
+  const [tokenDebugInfo, setTokenDebugInfo] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
@@ -141,15 +175,293 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
   })
   const [submitting, setSubmitting] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
-  const [showQrCode, setShowQrCode] = useState(false) // New state for QR code visibility
+  const [showQrCode, setShowQrCode] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
+
+  const fetchDetailedDebugInfo = async () => {
+    try {
+      console.log("=== FETCHING DETAILED PAYMENT HISTORY DEBUG INFO ===")
+      const response = await fetch("/api/debug-payment-history-detailed", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      console.log("Detailed debug response status:", response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Detailed payment history debug info:", data)
+        setDetailedDebugInfo(data)
+
+        // If manual join worked but regular join didn't, use manual join results
+        if (data.manualJoinResults && data.manualJoinResults.length > 0 && paymentHistory.length === 0) {
+          console.log("Using manual join results as fallback")
+          setPaymentHistory(data.manualJoinResults)
+          toast({
+            title: "Payment History Loaded (Fallback)",
+            description: `Found ${data.manualJoinResults.length} payment records using fallback method`,
+          })
+        }
+
+        return data
+      } else {
+        console.error("Failed to fetch detailed debug info:", response.status)
+        return null
+      }
+    } catch (error) {
+      console.error("Error fetching detailed debug info:", error)
+      return null
+    }
+  }
+
+  // Add this new function after fetchDetailedDebugInfo
+  const checkUserExistence = async () => {
+    try {
+      console.log("=== CHECKING USER EXISTENCE ===")
+      const response = await fetch("/api/debug-user-existence", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      console.log("User existence response status:", response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("User existence debug info:", data)
+
+        if (data.debug?.userCreationResult?.success) {
+          toast({
+            title: "User Created",
+            description: "Your user account was created. Please refresh to see your data.",
+          })
+
+          // Refresh all data after user creation
+          setTimeout(() => {
+            fetchPaymentReadyAppointments()
+            fetchDebugInfo()
+            fetchPaymentHistory()
+            fetchHistoryDebugInfo()
+            fetchDetailedDebugInfo()
+          }, 1000)
+        } else if (!data.debug?.userExistsInUsers) {
+          toast({
+            title: "User Not Found",
+            description: "Your user account doesn't exist in the database. This may be a registration issue.",
+            variant: "destructive",
+          })
+        } else {
+          toast({
+            title: "User Exists",
+            description: "Your user account exists in the database.",
+          })
+        }
+
+        return data
+      } else {
+        console.error("Failed to check user existence:", response.status)
+        return null
+      }
+    } catch (error) {
+      console.error("Error checking user existence:", error)
+      return null
+    }
+  }
+
+  // Add manual user creation function
+  const createUserManually = async () => {
+    try {
+      console.log("=== CREATING USER MANUALLY ===")
+      const response = await fetch("/api/create-user-manually", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      console.log("Manual user creation response status:", response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Manual user creation result:", data)
+
+        if (data.success) {
+          toast({
+            title: "User Created Successfully!",
+            description: "Your user account has been created. Refreshing data...",
+          })
+
+          // Refresh all data after user creation
+          setTimeout(() => {
+            fetchPaymentReadyAppointments()
+            fetchDebugInfo()
+            fetchPaymentHistory()
+            fetchHistoryDebugInfo()
+            fetchDetailedDebugInfo()
+          }, 1000)
+        } else {
+          toast({
+            title: "User Creation Failed",
+            description: data.error || "Failed to create user account",
+            variant: "destructive",
+          })
+        }
+
+        return data
+      } else {
+        console.error("Failed to create user manually:", response.status)
+        const errorData = await response.json()
+        toast({
+          title: "User Creation Failed",
+          description: errorData.error || "Failed to create user account",
+          variant: "destructive",
+        })
+        return null
+      }
+    } catch (error) {
+      console.error("Error creating user manually:", error)
+      toast({
+        title: "Network Error",
+        description: "Could not connect to user creation service",
+        variant: "destructive",
+      })
+      return null
+    }
+  }
+
+  // Add test payment transaction creation function
+  const createTestPaymentTransaction = async () => {
+    try {
+      console.log("=== CREATING TEST PAYMENT TRANSACTION ===")
+      const response = await fetch("/api/create-test-payment-transaction", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      console.log("Test payment transaction response status:", response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Test payment transaction result:", data)
+
+        if (data.success) {
+          toast({
+            title: "Test Data Created Successfully!",
+            description: `Created ${data.data.appointments.length} appointments and ${data.data.transactions.length} transactions. Refreshing data...`,
+          })
+
+          // Refresh all data after test data creation
+          setTimeout(() => {
+            fetchPaymentReadyAppointments()
+            fetchDebugInfo()
+            fetchPaymentHistory()
+            fetchHistoryDebugInfo()
+            fetchDetailedDebugInfo()
+          }, 1000)
+        } else {
+          toast({
+            title: "Test Data Creation Failed",
+            description: data.error || "Failed to create test payment data",
+            variant: "destructive",
+          })
+        }
+
+        return data
+      } else {
+        console.error("Failed to create test payment transaction:", response.status)
+        const errorData = await response.json()
+        toast({
+          title: "Test Data Creation Failed",
+          description: errorData.error || "Failed to create test payment data",
+          variant: "destructive",
+        })
+        return null
+      }
+    } catch (error) {
+      console.error("Error creating test payment transaction:", error)
+      toast({
+        title: "Network Error",
+        description: "Could not connect to test data creation service",
+        variant: "destructive",
+      })
+      return null
+    }
+  }
+
+  // Add token debug function
+  const debugTokenUserMismatch = async () => {
+    try {
+      console.log("=== DEBUGGING TOKEN USER MISMATCH ===")
+      const response = await fetch("/api/debug-token-user-mismatch", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      console.log("Token debug response status:", response.status)
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log("Token debug info:", data)
+        setTokenDebugInfo(data)
+
+        if (data.debug?.userFromTokenExists) {
+          toast({
+            title: "Token User Found",
+            description: `Token user exists: ${data.debug.userFromTokenDetails?.email}`,
+          })
+        } else {
+          toast({
+            title: "Token User Mismatch",
+            description: "The user from your token doesn't exist in the database",
+            variant: "destructive",
+          })
+        }
+
+        return data
+      } else {
+        console.error("Failed to debug token user mismatch:", response.status)
+        const errorData = await response.json()
+        toast({
+          title: "Debug Failed",
+          description: errorData.error || "Failed to debug token user mismatch",
+          variant: "destructive",
+        })
+        return null
+      }
+    } catch (error) {
+      console.error("Error debugging token user mismatch:", error)
+      toast({
+        title: "Network Error",
+        description: "Could not connect to debug service",
+        variant: "destructive",
+      })
+      return null
+    }
+  }
 
   useEffect(() => {
     fetchPaymentReadyAppointments()
     fetchDebugInfo()
     fetchPaymentHistory()
     fetchHistoryDebugInfo()
+
+    // Also fetch detailed debug info
+    if (showDebug) {
+      fetchDetailedDebugInfo()
+    }
   }, [])
 
   const fetchDebugInfo = async () => {
@@ -206,14 +518,57 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
       })
 
       console.log("Payment history API response status:", response.status)
+      console.log("Payment history API response headers:", Object.fromEntries(response.headers.entries()))
 
       if (response.ok) {
         const data = await response.json()
-        console.log("Payment history data:", data)
+        console.log("Payment history API response data:", data)
+        console.log("Transactions found:", data.transactions?.length || 0)
+
+        // Log each transaction for debugging
+        if (data.transactions && data.transactions.length > 0) {
+          data.transactions.forEach((txn: PaymentTransaction, index: number) => {
+            console.log(`Transaction ${index + 1}:`, {
+              id: txn.id.slice(0, 8),
+              amount: txn.amount,
+              payment_type: txn.payment_type,
+              status: txn.status,
+              appointment_id: txn.appointment_id,
+              has_appointment_data: !!txn.tbl_comprehensive_appointments,
+              appointment_event_type: txn.tbl_comprehensive_appointments?.event_type,
+              appointment_payment_status: txn.tbl_comprehensive_appointments?.payment_status,
+            })
+          })
+        }
+
         setPaymentHistory(data.transactions || [])
 
         if (data.debug) {
           console.log("Payment history debug data:", data.debug)
+        }
+
+        // Show success message if we found transactions
+        if (data.transactions && data.transactions.length > 0) {
+          toast({
+            title: "Payment History Loaded",
+            description: `Found ${data.transactions.length} verified payment records`,
+          })
+        } else {
+          console.log("No verified payment transactions found")
+
+          // Check if it's because there are no transactions at all or just no verified ones
+          if (data.debug?.totalTransactionsForUser === 0) {
+            toast({
+              title: "No Payment Data",
+              description: "No payment transactions found for your account",
+              variant: "destructive",
+            })
+          } else {
+            toast({
+              title: "No Verified Payments",
+              description: `Found ${data.debug?.totalTransactionsForUser || 0} transactions, but none are verified yet`,
+            })
+          }
         }
       } else {
         console.error("Failed to fetch payment history:", response.status, response.statusText)
@@ -377,7 +732,7 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
       proofImage: null,
     })
     setPreviewImage(null)
-    setShowQrCode(false) // Reset QR code visibility
+    setShowQrCode(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -389,22 +744,302 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
     setReceiptDialogOpen(true)
   }
 
-  const handleDownloadReceipt = (transaction: PaymentTransaction) => {
-    const receiptContent = generateReceiptContent(transaction)
-    const blob = new Blob([receiptContent], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `Receipt-${transaction.tbl_comprehensive_appointments.event_type}-${transaction.id.slice(0, 8)}.txt`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+  const handleDownloadReceipt = async (transaction: PaymentTransaction) => {
+    try {
+      const appointment = transaction.tbl_comprehensive_appointments
+      const contactName = `${appointment.contact_first_name} ${appointment.contact_last_name}`.trim()
 
-    toast({
-      title: "Receipt Downloaded",
-      description: "Your receipt has been downloaded successfully.",
-    })
+      // Create canvas
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        throw new Error("Could not get canvas context")
+      }
+
+      // Set canvas size (A4-like proportions)
+      canvas.width = 800
+      canvas.height = 1000
+
+      // Set background
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Helper function to draw text with word wrapping
+      const drawText = (text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+        const words = text.split(" ")
+        let line = ""
+        let currentY = y
+
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + " "
+          const metrics = ctx.measureText(testLine)
+          const testWidth = metrics.width
+
+          if (testWidth > maxWidth && n > 0) {
+            ctx.fillText(line, x, currentY)
+            line = words[n] + " "
+            currentY += lineHeight
+          } else {
+            line = testLine
+          }
+        }
+        ctx.fillText(line, x, currentY)
+        return currentY + lineHeight
+      }
+
+      let currentY = 40
+
+      // Header
+      ctx.fillStyle = "#1f2937"
+      ctx.font = "bold 28px Arial"
+      ctx.textAlign = "center"
+      ctx.fillText("Jo Pacheco Catering Services", canvas.width / 2, currentY)
+      currentY += 35
+
+      ctx.font = "20px Arial"
+      ctx.fillStyle = "#6b7280"
+      ctx.fillText("Payment Receipt", canvas.width / 2, currentY)
+      currentY += 25
+
+      ctx.font = "14px Arial"
+      ctx.fillStyle = "#9ca3af"
+      ctx.fillText(`Receipt ID: ${transaction.id}`, canvas.width / 2, currentY)
+      currentY += 20
+      ctx.fillText(
+        `Date: ${format(new Date(transaction.created_at), "MMMM d, yyyy 'at' h:mm a")}`,
+        canvas.width / 2,
+        currentY,
+      )
+      currentY += 50
+
+      // Draw line
+      ctx.strokeStyle = "#e5e7eb"
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(40, currentY)
+      ctx.lineTo(canvas.width - 40, currentY)
+      ctx.stroke()
+      currentY += 40
+
+      // Customer Information Section
+      ctx.textAlign = "left"
+      ctx.fillStyle = "#dc2626"
+      ctx.font = "bold 18px Arial"
+      ctx.fillText("Customer Information", 40, currentY)
+      currentY += 30
+
+      ctx.fillStyle = "#000000"
+      ctx.font = "14px Arial"
+      ctx.fillText(`Name: ${contactName}`, 40, currentY)
+      currentY += 20
+      ctx.fillText(`Email: ${appointment.contact_email}`, 40, currentY)
+      currentY += 20
+      ctx.fillText(`Phone: ${appointment.contact_phone || "Not provided"}`, 40, currentY)
+      currentY += 40
+
+      // Event Details Section
+      ctx.fillStyle = "#dc2626"
+      ctx.font = "bold 18px Arial"
+      ctx.fillText("Event Details", 40, currentY)
+      currentY += 30
+
+      ctx.fillStyle = "#000000"
+      ctx.font = "14px Arial"
+      ctx.fillText(
+        `Event Type: ${appointment.event_type.charAt(0).toUpperCase() + appointment.event_type.slice(1)}`,
+        40,
+        currentY,
+      )
+      currentY += 20
+      ctx.fillText(`Date: ${formatEventDate(appointment.event_date)}`, 40, currentY)
+      currentY += 20
+      ctx.fillText(`Time: ${appointment.event_time}`, 40, currentY)
+      currentY += 20
+      ctx.fillText(`Venue: ${appointment.venue_address || "To be confirmed"}`, 40, currentY)
+      currentY += 20
+      ctx.fillText(`Guest Count: ${appointment.guest_count} guests`, 40, currentY)
+      currentY += 20
+
+      if (appointment.theme) {
+        ctx.fillText(`Theme: ${appointment.theme}`, 40, currentY)
+        currentY += 20
+      }
+
+      if (appointment.color_motif) {
+        ctx.fillText(`Color Motif: ${appointment.color_motif}`, 40, currentY)
+        currentY += 20
+      }
+
+      currentY += 20
+
+      // Menu Selection (if available)
+      if (
+        appointment.pasta_selection ||
+        appointment.beverage_selection ||
+        appointment.dessert_selection ||
+        appointment.selected_menu
+      ) {
+        ctx.fillStyle = "#dc2626"
+        ctx.font = "bold 18px Arial"
+        ctx.fillText("Menu Selection", 40, currentY)
+        currentY += 30
+
+        ctx.fillStyle = "#000000"
+        ctx.font = "14px Arial"
+
+        if (appointment.pasta_selection) {
+          ctx.fillText(`• Pasta: ${appointment.pasta_selection}`, 40, currentY)
+          currentY += 20
+        }
+
+        if (appointment.beverage_selection) {
+          ctx.fillText(`• Beverage: ${appointment.beverage_selection}`, 40, currentY)
+          currentY += 20
+        }
+
+        if (appointment.dessert_selection) {
+          ctx.fillText(`• Dessert: ${appointment.dessert_selection}`, 40, currentY)
+          currentY += 20
+        }
+
+        if (appointment.selected_menu) {
+          const menuItems = parseMenuItems(appointment.selected_menu)
+          menuItems.forEach((item: any) => {
+            ctx.fillText(`• ${item.name || item}`, 40, currentY)
+            currentY += 20
+          })
+        }
+
+        if (appointment.special_requests) {
+          currentY += 10
+          ctx.font = "bold 14px Arial"
+          ctx.fillText("Special Requests:", 40, currentY)
+          currentY += 20
+          ctx.font = "14px Arial"
+          ctx.fillStyle = "#6b7280"
+          currentY = drawText(appointment.special_requests, 40, currentY, canvas.width - 80, 20)
+          ctx.fillStyle = "#000000"
+        }
+
+        currentY += 20
+      }
+
+      // Payment Details Section (with background)
+      ctx.fillStyle = "#f9fafb"
+      ctx.fillRect(40, currentY, canvas.width - 80, 200)
+
+      currentY += 30
+      ctx.fillStyle = "#dc2626"
+      ctx.font = "bold 18px Arial"
+      ctx.fillText("Payment Details", 60, currentY)
+      currentY += 40
+
+      ctx.font = "14px Arial"
+      ctx.fillStyle = "#000000"
+      ctx.fillText(
+        `Payment Type: ${
+          transaction.payment_type === "down_payment"
+            ? "Down Payment"
+            : transaction.payment_type === "remaining_balance"
+              ? "Remaining Balance"
+              : "Full Payment"
+        }`,
+        60,
+        currentY,
+      )
+      currentY += 25
+
+      ctx.font = "bold 18px Arial"
+      ctx.fillStyle = "#059669"
+      ctx.fillText(`Total Package Amount: ${formatCurrency(appointment.total_package_amount || 0)}`, 60, currentY)
+      currentY += 25
+
+      ctx.font = "bold 16px Arial"
+      ctx.fillStyle = "#dc2626"
+      ctx.fillText(`Amount Paid (This Transaction): ${formatCurrency(transaction.amount)}`, 60, currentY)
+      currentY += 30
+
+      ctx.font = "14px Arial"
+      ctx.fillStyle = "#000000"
+      ctx.fillText(`Payment Method: ${transaction.payment_method.toUpperCase()}`, 60, currentY)
+      currentY += 20
+      ctx.fillText(`Reference Number: ${transaction.reference_number}`, 60, currentY)
+      currentY += 20
+      ctx.fillText(`Payment Date: ${format(new Date(transaction.created_at), "MMMM d, yyyy")}`, 60, currentY)
+      currentY += 20
+      ctx.fillText(`Total Package: ${formatCurrency(appointment.total_package_amount || 0)}`, 60, currentY)
+      currentY += 20
+      ctx.fillText(`Payment Status: ${appointment.payment_status.replace("_", " ").toUpperCase()}`, 60, currentY)
+      currentY += 40
+
+      // Notes (if available)
+      if (transaction.notes) {
+        ctx.fillStyle = "#dc2626"
+        ctx.font = "bold 18px Arial"
+        ctx.fillText("Notes", 40, currentY)
+        currentY += 30
+
+        ctx.fillStyle = "#6b7280"
+        ctx.font = "italic 14px Arial"
+        currentY = drawText(transaction.notes, 40, currentY, canvas.width - 80, 20)
+        currentY += 20
+      }
+
+      // Footer
+      currentY += 30
+      ctx.strokeStyle = "#e5e7eb"
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(40, currentY)
+      ctx.lineTo(canvas.width - 40, currentY)
+      ctx.stroke()
+      currentY += 30
+
+      ctx.textAlign = "center"
+      ctx.fillStyle = "#1f2937"
+      ctx.font = "bold 16px Arial"
+      ctx.fillText("Thank you for choosing Jo Pacheco Catering Services!", canvas.width / 2, currentY)
+      currentY += 25
+
+      ctx.font = "14px Arial"
+      ctx.fillStyle = "#6b7280"
+      ctx.fillText("For inquiries, please contact us at your convenience.", canvas.width / 2, currentY)
+      currentY += 20
+
+      ctx.font = "12px Arial"
+      ctx.fillStyle = "#9ca3af"
+      ctx.fillText(`Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}`, canvas.width / 2, currentY)
+
+      // Convert canvas to blob and download
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement("a")
+            a.href = url
+            a.download = `Receipt-${appointment.event_type}-${transaction.id.slice(0, 8)}.png`
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            URL.revokeObjectURL(url)
+
+            toast({
+              title: "Receipt Downloaded",
+              description: "Your receipt image has been downloaded successfully.",
+            })
+          }
+        },
+        "image/png",
+        1.0,
+      )
+    } catch (error) {
+      console.error("Error generating receipt image:", error)
+      toast({
+        title: "Download Failed",
+        description: "Could not generate receipt image. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const generateReceiptContent = (transaction: PaymentTransaction): string => {
@@ -440,7 +1075,7 @@ Color Motif: ${appointment.color_motif || "Not specified"}
 
 ───────────────────────────────────────────────────────
                     MENU SELECTION
-───────────────────────────────────────────────────────
+───────────────────────────────────────
 ${appointment.pasta_selection ? `Pasta: ${appointment.pasta_selection}` : ""}
 ${appointment.beverage_selection ? `Beverage: ${appointment.beverage_selection}` : ""}
 ${appointment.dessert_selection ? `Dessert: ${appointment.dessert_selection}` : ""}
@@ -603,12 +1238,23 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(amount)
+    return new Intl.NumberFormat("en-PH", {
+      style: "currency",
+      currency: "PHP",
+    }).format(amount)
   }
 
   const formatEventDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "EEEE, MMMM d, yyyy")
+    } catch {
+      return dateString
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), "MMM d, yyyy 'at' h:mm a")
     } catch {
       return dateString
     }
@@ -733,7 +1379,10 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
           <p className="mt-4 text-gray-500 md:text-xl">Complete payments for your confirmed catering appointments.</p>
         </div>
         <div className="flex gap-2">
-          {/* ADD THE REFRESH BUTTON HERE */}
+          <Button variant="outline" onClick={() => setShowDebug(!showDebug)}>
+            <Bug className="mr-2 h-4 w-4" />
+            {showDebug ? "Hide" : "Show"} Debug
+          </Button>
           <Button
             variant="outline"
             onClick={() => {
@@ -741,14 +1390,313 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
               fetchDebugInfo()
               fetchPaymentHistory()
               fetchHistoryDebugInfo()
+              if (showDebug) {
+                fetchDetailedDebugInfo()
+              }
             }}
             disabled={loading}
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh Payments
+            Refresh
           </Button>
+          {showDebug && (
+            <Button variant="outline" onClick={fetchDetailedDebugInfo} className="bg-blue-50 border-blue-200">
+              <Bug className="mr-2 h-4 w-4" />
+              Detailed Debug
+            </Button>
+          )}
+          {showDebug && (
+            <Button variant="outline" onClick={checkUserExistence} className="bg-red-50 border-red-200">
+              <AlertTriangle className="mr-2 h-4 w-4" />
+              Check User
+            </Button>
+          )}
+          {showDebug && (
+            <Button variant="outline" onClick={createUserManually} className="bg-green-50 border-green-200">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Create User
+            </Button>
+          )}
+          {showDebug && (
+            <Button variant="outline" onClick={createTestPaymentTransaction} className="bg-purple-50 border-purple-200">
+              <TestTube className="mr-2 h-4 w-4" />
+              Create Test Data
+            </Button>
+          )}
+          {showDebug && (
+            <Button variant="outline" onClick={debugTokenUserMismatch} className="bg-yellow-50 border-yellow-200">
+              <Search className="mr-2 h-4 w-4" />
+              Debug Token
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Enhanced Debug Information */}
+      {showDebug && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h3 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
+            <Bug className="h-4 w-4" />
+            Debug Information
+          </h3>
+          <div className="text-sm text-blue-700 space-y-2">
+            <p>
+              <strong>User ID:</strong> {user.id}
+            </p>
+            <p>
+              <strong>Appointments shown in Payment Center:</strong> {appointments.length}
+            </p>
+            <p>
+              <strong>Payment history records:</strong> {paymentHistory.length}
+            </p>
+            <p>
+              <strong>Last refresh:</strong> {new Date().toLocaleTimeString()}
+            </p>
+
+            {/* Token Debug Information */}
+            {tokenDebugInfo && (
+              <div className="mt-4 p-3 bg-yellow-50 rounded border border-yellow-200">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <Search className="h-4 w-4" />
+                  Token Debug Analysis:
+                </h4>
+                <div className="text-xs space-y-1">
+                  <p>
+                    <strong>Token User ID:</strong> {tokenDebugInfo.debug?.userIdFromToken}
+                  </p>
+                  <p>
+                    <strong>Token User Exists:</strong> {tokenDebugInfo.debug?.userFromTokenExists ? "Yes" : "No"}
+                  </p>
+                  {tokenDebugInfo.debug?.userFromTokenDetails && (
+                    <p>
+                      <strong>Token User Email:</strong> {tokenDebugInfo.debug.userFromTokenDetails.email}
+                    </p>
+                  )}
+                  <p>
+                    <strong>All Users Count:</strong> {tokenDebugInfo.debug?.allUsers?.length || 0}
+                  </p>
+                  <p>
+                    <strong>All Appointments Count:</strong> {tokenDebugInfo.debug?.allAppointments?.length || 0}
+                  </p>
+                  <p>
+                    <strong>All Transactions Count:</strong> {tokenDebugInfo.debug?.allTransactions?.length || 0}
+                  </p>
+
+                  {tokenDebugInfo.debug?.allUsers && tokenDebugInfo.debug.allUsers.length > 0 && (
+                    <div className="mt-2">
+                      <strong>System Users:</strong>
+                      <div className="max-h-32 overflow-y-auto bg-white p-2 rounded mt-1">
+                        {tokenDebugInfo.debug.allUsers.map((user: any, index: number) => (
+                          <div key={index} className="text-xs border-b pb-1 mb-1">
+                            <p>
+                              ID: {user.id} | Email: {user.email} | Name: {user.name}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {tokenDebugInfo.debug?.allAppointments && tokenDebugInfo.debug.allAppointments.length > 0 && (
+                    <div className="mt-2">
+                      <strong>System Appointments:</strong>
+                      <div className="max-h-32 overflow-y-auto bg-white p-2 rounded mt-1">
+                        {tokenDebugInfo.debug.allAppointments.map((apt: any, index: number) => (
+                          <div key={index} className="text-xs border-b pb-1 mb-1">
+                            <p>
+                              ID: {apt.id} | User: {apt.user_id} | Event: {apt.event_type} | Payment:{" "}
+                              {apt.payment_status}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {tokenDebugInfo.debug?.allTransactions && tokenDebugInfo.debug.allTransactions.length > 0 && (
+                    <div className="mt-2">
+                      <strong>System Transactions:</strong>
+                      <div className="max-h-32 overflow-y-auto bg-white p-2 rounded mt-1">
+                        {tokenDebugInfo.debug.allTransactions.map((txn: any, index: number) => (
+                          <div key={index} className="text-xs border-b pb-1 mb-1">
+                            <p>
+                              ID: {txn.id} | User: {txn.user_id} | Amount: {txn.amount} | Status: {txn.status}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Detailed Debug Information */}
+            {detailedDebugInfo && (
+              <div className="mt-4 p-3 bg-white rounded border">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Detailed Debug Analysis:
+                </h4>
+                <div className="text-xs space-y-1">
+                  <p>
+                    <strong>User exists in database:</strong> {detailedDebugInfo.debug?.userExists ? "Yes" : "No"}
+                  </p>
+                  <p>
+                    <strong>User's transactions count:</strong> {detailedDebugInfo.debug?.allTransactionsCount || 0}
+                  </p>
+                  <p>
+                    <strong>User's appointments count:</strong> {detailedDebugInfo.debug?.allAppointmentsCount || 0}
+                  </p>
+                  <p>
+                    <strong>User's verified transactions:</strong>{" "}
+                    {detailedDebugInfo.debug?.verifiedTransactionsCount || 0}
+                  </p>
+                  <p>
+                    <strong>System has transactions:</strong> {detailedDebugInfo.debug?.systemHasTransactions || 0}
+                  </p>
+                  <p>
+                    <strong>System has appointments:</strong> {detailedDebugInfo.debug?.systemHasAppointments || 0}
+                  </p>
+                  <p>
+                    <strong>Join query worked:</strong> {detailedDebugInfo.debug?.joinQueryWorked ? "Yes" : "No"}
+                  </p>
+                  {detailedDebugInfo.debug?.joinError && (
+                    <p className="text-red-600">
+                      <strong>Join error:</strong> {detailedDebugInfo.debug.joinError}
+                    </p>
+                  )}
+                  <p>
+                    <strong>Manual join count:</strong> {detailedDebugInfo.debug?.manualJoinCount || 0}
+                  </p>
+
+                  {detailedDebugInfo.debug?.userData && (
+                    <div className="mt-2 p-2 bg-gray-50 rounded">
+                      <strong>User data:</strong>
+                      <p>Email: {detailedDebugInfo.debug.userData.email}</p>
+                      <p>
+                        Name: {detailedDebugInfo.debug.userData.first_name} {detailedDebugInfo.debug.userData.last_name}
+                      </p>
+                    </div>
+                  )}
+
+                  {detailedDebugInfo.debug?.allTransactions && detailedDebugInfo.debug.allTransactions.length > 0 && (
+                    <div className="mt-2">
+                      <strong>User's transactions:</strong>
+                      <div className="max-h-32 overflow-y-auto bg-gray-50 p-2 rounded mt-1">
+                        {detailedDebugInfo.debug.allTransactions.map((txn: any, index: number) => (
+                          <div key={index} className="text-xs border-b pb-1 mb-1">
+                            <p>
+                              ID: {txn.id} | Status: {txn.status} | Type: {txn.payment_type} | Amount: {txn.amount}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {detailedDebugInfo.debug?.allAppointments && detailedDebugInfo.debug.allAppointments.length > 0 && (
+                    <div className="mt-2">
+                      <strong>User's appointments:</strong>
+                      <div className="max-h-32 overflow-y-auto bg-gray-50 p-2 rounded mt-1">
+                        {detailedDebugInfo.debug.allAppointments.map((apt: any, index: number) => (
+                          <div key={index} className="text-xs border-b pb-1 mb-1">
+                            <p>
+                              ID: {apt.id} | Event: {apt.event_type} | Payment Status: {apt.payment_status}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {detailedDebugInfo.debug?.sampleSystemTransactions &&
+                    detailedDebugInfo.debug.sampleSystemTransactions.length > 0 && (
+                      <div className="mt-2">
+                        <strong>Sample system transactions:</strong>
+                        <div className="max-h-32 overflow-y-auto bg-gray-50 p-2 rounded mt-1">
+                          {detailedDebugInfo.debug.sampleSystemTransactions.map((txn: any, index: number) => (
+                            <div key={index} className="text-xs border-b pb-1 mb-1">
+                              <p>
+                                ID: {txn.id} | User: {txn.user_id} | Status: {txn.status} | Amount: {txn.amount}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {detailedDebugInfo.debug?.sampleSystemAppointments &&
+                    detailedDebugInfo.debug.sampleSystemAppointments.length > 0 && (
+                      <div className="mt-2">
+                        <strong>Sample system appointments:</strong>
+                        <div className="max-h-32 overflow-y-auto bg-gray-50 p-2 rounded mt-1">
+                          {detailedDebugInfo.debug.sampleSystemAppointments.map((apt: any, index: number) => (
+                            <div key={index} className="text-xs border-b pb-1 mb-1">
+                              <p>
+                                ID: {apt.id} | User: {apt.user_id} | Event: {apt.event_type} | Payment:{" "}
+                                {apt.payment_status}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              </div>
+            )}
+
+            {historyDebugInfo && (
+              <div className="mt-4 p-3 bg-white rounded border">
+                <h4 className="font-medium mb-2">Payment History Debug:</h4>
+                <div className="text-xs space-y-1">
+                  <p>
+                    <strong>Total appointments:</strong> {historyDebugInfo.debug?.totalAppointments || 0}
+                  </p>
+                  <p>
+                    <strong>Fully paid appointments:</strong> {historyDebugInfo.debug?.fullyPaidAppointmentsCount || 0}
+                  </p>
+                  <p>
+                    <strong>User transactions count:</strong> {historyDebugInfo.debug?.userTransactionsCount || 0}
+                  </p>
+                  <p>
+                    <strong>Transactions by appointment IDs:</strong>{" "}
+                    {historyDebugInfo.debug?.transactionsByAppointmentIdsCount || 0}
+                  </p>
+                  <p>
+                    <strong>Verified transactions count:</strong>{" "}
+                    {historyDebugInfo.debug?.verifiedTransactionsCount || 0}
+                  </p>
+                  <p>
+                    <strong>Join query worked:</strong> {historyDebugInfo.debug?.joinQueryWorked ? "Yes" : "No"}
+                  </p>
+                  {historyDebugInfo.debug?.joinError && (
+                    <p className="text-red-600">
+                      <strong>Join error:</strong> {historyDebugInfo.debug.joinError}
+                    </p>
+                  )}
+                  <p>
+                    <strong>Unique payment statuses:</strong>{" "}
+                    {historyDebugInfo.debug?.uniquePaymentStatuses?.join(", ") || "None"}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {debugInfo && (
+              <div className="mt-4 p-3 bg-white rounded border">
+                <h4 className="font-medium mb-2">Appointments Debug API Response:</h4>
+                <p>
+                  <strong>Total appointments in DB:</strong> {debugInfo.totalAppointments}
+                </p>
+                <p>
+                  <strong>Should show in payment center:</strong> {debugInfo.appointmentsForPayment}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
@@ -947,13 +1895,9 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                   You don't have any appointments ready for payment at this time, or all your payments are complete.
                   Payments become available after your food tasting is completed.
                 </p>
-                <div className="flex justify-center gap-2">
-                  {" "}
-                  {/* Added this div for buttons */}
-                  <Button asChild variant="outline">
-                    <a href="/my-appointments">View My Appointments</a>
-                  </Button>
-                </div>
+                <Button asChild variant="outline">
+                  <a href="/my-appointments">View My Appointments</a>
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -967,6 +1911,29 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
             </div>
           ) : paymentHistory.length > 0 ? (
             <div className="grid gap-6">
+              {/* Show debug info at the top if enabled */}
+              {showDebug && (
+                <Card className="bg-green-50 border-green-200">
+                  <CardContent className="p-4">
+                    <h4 className="font-medium text-green-900 mb-2">Payment History Debug</h4>
+                    <div className="text-sm text-green-700 space-y-1">
+                      <p>
+                        <strong>Verified transactions loaded:</strong> {paymentHistory.length}
+                      </p>
+                      <p>
+                        <strong>Transaction IDs:</strong> {paymentHistory.map((t) => t.id.slice(0, 8)).join(", ")}
+                      </p>
+                      <p>
+                        <strong>Payment types:</strong> {paymentHistory.map((t) => t.payment_type).join(", ")}
+                      </p>
+                      <p>
+                        <strong>Amounts:</strong> {paymentHistory.map((t) => formatCurrency(t.amount)).join(", ")}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {paymentHistory.map((transaction) => (
                 <Card key={transaction.id} className="overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 border-b">
@@ -976,9 +1943,17 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                         {transaction.tbl_comprehensive_appointments.event_type} Event Payment
                       </CardTitle>
                       <div className="flex items-center gap-2">
-                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                        <Badge
+                          className={`${
+                            transaction.status === "verified"
+                              ? "bg-green-100 text-green-800 border-green-200"
+                              : transaction.status === "pending_verification"
+                                ? "bg-orange-100 text-orange-800 border-orange-200"
+                                : "bg-red-100 text-red-800 border-red-200"
+                          }`}
+                        >
                           <CheckCircle className="h-3 w-3 mr-1" />
-                          Verified
+                          {transaction.status.replace("_", " ").toUpperCase()}
                         </Badge>
                         {getPaymentTypeBadge(transaction.payment_type)}
                       </div>
@@ -1058,12 +2033,18 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                         </h4>
                         <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                           <div className="flex justify-between items-center">
-                            <span className="font-medium text-gray-700">Amount Paid:</span>
+                            <span className="font-medium text-gray-700">Total Package Amount:</span>
                             <span className="text-xl font-bold text-green-600">
-                              {formatCurrency(transaction.amount)}
+                              {formatCurrency(transaction.tbl_comprehensive_appointments.total_package_amount || 0)}
                             </span>
                           </div>
                           <div className="border-t pt-3 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">Amount Paid (This Transaction):</span>
+                              <span className="text-lg font-semibold text-red-600">
+                                {formatCurrency(transaction.amount)}
+                              </span>
+                            </div>
                             <div className="flex justify-between items-center">
                               <span className="font-medium">Payment Method:</span>
                               <span className="text-sm">{transaction.payment_method.toUpperCase()}</span>
@@ -1218,7 +2199,7 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                   value={paymentData.paymentMethod}
                   onValueChange={(value) => {
                     setPaymentData((prev) => ({ ...prev, paymentMethod: value }))
-                    setShowQrCode(false) // Hide QR code when method changes
+                    setShowQrCode(false)
                   }}
                 >
                   <SelectTrigger>
@@ -1266,7 +2247,11 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                         </Button>
                         {showQrCode && (
                           <div className="mt-4 flex flex-col items-center">
-                            <img src="qrcodeko.jpg" alt="GCash QR Code" className="w-48 h-48 border rounded-lg p-2" />
+                            <img
+                              src="/placeholder.svg?height=192&width=192&text=GCash+QR+Code"
+                              alt="GCash QR Code"
+                              className="w-48 h-48 border rounded-lg p-2"
+                            />
                             <p className="text-xs text-gray-500 mt-2">
                               (This is a placeholder QR code. In a real app, a dynamic QR code would be generated.)
                             </p>
@@ -1522,7 +2507,7 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
 
                 <div className="mt-6 border-t pt-4 text-center text-xs text-gray-500">
                   <p>Thank you for choosing Jo Pacheco Catering Services!</p>
-                  <p>Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}</p>
+                  <p>Generated on: {format(new Date(), "MMMM d, yyyy 'at' h:mm a")}</p>
                 </div>
               </div>
             </div>

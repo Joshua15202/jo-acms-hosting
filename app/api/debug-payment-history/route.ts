@@ -8,143 +8,159 @@ export async function GET(request: Request) {
     console.log("=== DEBUG PAYMENT HISTORY API CALLED ===")
 
     const cookieStore = await cookies()
-
-    // Try multiple session cookie names
     const sessionToken =
       cookieStore.get("session-id")?.value ||
       cookieStore.get("user-session")?.value ||
       cookieStore.get("auth-token")?.value
 
-    console.log("Available cookies for debug:", {
-      "session-id": cookieStore.get("session-id")?.value ? "exists" : "missing",
-      "user-session": cookieStore.get("user-session")?.value ? "exists" : "missing",
-      "auth-token": cookieStore.get("auth-token")?.value ? "exists" : "missing",
-    })
-
     if (!sessionToken) {
-      console.log("No session token found for debug")
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Not authenticated",
-          debug: {
-            cookiesFound: Object.keys(cookieStore.getAll()).length,
-            availableCookies: Object.keys(cookieStore.getAll()),
-          },
-        },
-        { status: 401 },
-      )
+      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
     }
 
     let userId: string
     try {
       const tokenData = await verifyToken(sessionToken)
       userId = tokenData.userId
-      console.log("Debug - User ID from token:", userId)
+      console.log("User ID from token:", userId)
     } catch (error) {
-      console.error("Debug - Token verification failed:", error)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid session",
-          debug: {
-            tokenLength: sessionToken.length,
-            tokenStart: sessionToken.substring(0, 10),
-            verificationError: error instanceof Error ? error.message : "Unknown error",
-          },
-        },
-        { status: 401 },
-      )
+      console.error("Token verification failed:", error)
+      return NextResponse.json({ success: false, error: "Invalid session" }, { status: 401 })
     }
 
-    // Get all payment transactions for this user
-    const { data: userTransactions, error: userTransError } = await supabaseAdmin
-      .from("tbl_payment_transactions")
-      .select("*")
-      .eq("user_id", userId)
-
-    console.log("Debug - User transactions:", userTransactions?.length || 0)
-
-    // Get verified transactions
-    const { data: verifiedTransactions, error: verifiedError } = await supabaseAdmin
-      .from("tbl_payment_transactions")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("status", "verified")
-
-    console.log("Debug - Verified transactions:", verifiedTransactions?.length || 0)
-
-    // Get all appointments for this user
-    const { data: userAppointments, error: appointmentsError } = await supabaseAdmin
+    // 1. Check all appointments for this user
+    console.log("=== CHECKING ALL APPOINTMENTS FOR USER ===")
+    const { data: allAppointments, error: appointmentsError } = await supabaseAdmin
       .from("tbl_comprehensive_appointments")
       .select("*")
       .eq("user_id", userId)
 
-    console.log("Debug - User appointments:", userAppointments?.length || 0)
+    console.log("All appointments for user:", {
+      data: allAppointments,
+      error: appointmentsError,
+      count: allAppointments?.length || 0,
+    })
 
-    // Get fully paid appointments
+    // 2. Check fully paid appointments specifically
     const { data: fullyPaidAppointments, error: fullyPaidError } = await supabaseAdmin
       .from("tbl_comprehensive_appointments")
       .select("*")
       .eq("user_id", userId)
       .eq("payment_status", "fully_paid")
 
-    console.log("Debug - Fully paid appointments:", fullyPaidAppointments?.length || 0)
+    console.log("Fully paid appointments:", {
+      data: fullyPaidAppointments,
+      error: fullyPaidError,
+      count: fullyPaidAppointments?.length || 0,
+    })
 
-    // Get unique payment statuses
-    const uniquePaymentStatuses = [...new Set(userAppointments?.map((apt) => apt.payment_status) || [])]
+    // 3. Check all payment transactions for this user
+    const { data: userTransactions, error: userTransactionsError } = await supabaseAdmin
+      .from("tbl_payment_transactions")
+      .select("*")
+      .eq("user_id", userId)
 
-    // Get unique transaction statuses
-    const uniqueTransactionStatuses = [...new Set(userTransactions?.map((trans) => trans.status) || [])]
+    console.log("All user transactions:", {
+      data: userTransactions,
+      error: userTransactionsError,
+      count: userTransactions?.length || 0,
+    })
+
+    // 4. If we have fully paid appointments, check for transactions by appointment IDs
+    let transactionsByAppointmentIds: any[] = []
+    if (fullyPaidAppointments && fullyPaidAppointments.length > 0) {
+      const appointmentIds = fullyPaidAppointments.map((apt) => apt.id)
+      console.log("Checking transactions for appointment IDs:", appointmentIds)
+
+      const { data: txnsByAptIds, error: txnsByAptIdsError } = await supabaseAdmin
+        .from("tbl_payment_transactions")
+        .select("*")
+        .in("appointment_id", appointmentIds)
+
+      transactionsByAppointmentIds = txnsByAptIds || []
+      console.log("Transactions by appointment IDs:", {
+        data: transactionsByAppointmentIds,
+        error: txnsByAptIdsError,
+        count: transactionsByAppointmentIds.length,
+      })
+    }
+
+    // 5. Check verified transactions specifically
+    const { data: verifiedTransactions, error: verifiedError } = await supabaseAdmin
+      .from("tbl_payment_transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "verified")
+
+    console.log("Verified transactions for user:", {
+      data: verifiedTransactions,
+      error: verifiedError,
+      count: verifiedTransactions?.length || 0,
+    })
+
+    // 6. Try the join query to see if it works
+    let joinQueryWorked = false
+    let joinError = null
+    let joinedTransactions: any[] = []
+
+    try {
+      const { data: joinedData, error: joinErr } = await supabaseAdmin
+        .from("tbl_payment_transactions")
+        .select(`
+          *,
+          tbl_comprehensive_appointments!inner (*)
+        `)
+        .eq("user_id", userId)
+
+      joinQueryWorked = !joinErr
+      joinError = joinErr?.message || null
+      joinedTransactions = joinedData || []
+      console.log("Join query result:", {
+        worked: joinQueryWorked,
+        error: joinError,
+        data: joinedTransactions,
+        count: joinedTransactions.length,
+      })
+    } catch (error: any) {
+      joinError = error.message
+      console.log("Join query failed:", error)
+    }
+
+    // 7. Get unique payment statuses from all appointments
+    const uniquePaymentStatuses = [...new Set(allAppointments?.map((apt) => apt.payment_status).filter(Boolean) || [])]
+
+    // 8. Check if there are any transactions with mismatched appointment_payment_status
+    let mismatchedTransactions: any[] = []
+    if (transactionsByAppointmentIds.length > 0 && fullyPaidAppointments && fullyPaidAppointments.length > 0) {
+      mismatchedTransactions = transactionsByAppointmentIds.filter((txn) => {
+        const appointment = fullyPaidAppointments.find((apt) => apt.id === txn.appointment_id)
+        return appointment && appointment.payment_status !== txn.appointment_payment_status
+      })
+      console.log("Mismatched transactions (appointment_payment_status vs actual):", mismatchedTransactions)
+    }
 
     return NextResponse.json({
       success: true,
       debug: {
         userId,
-        userTransactionsCount: userTransactions?.length || 0,
-        verifiedTransactionsCount: verifiedTransactions?.length || 0,
-        userAppointmentsCount: userAppointments?.length || 0,
+        totalAppointments: allAppointments?.length || 0,
         fullyPaidAppointmentsCount: fullyPaidAppointments?.length || 0,
+        userTransactionsCount: userTransactions?.length || 0,
+        transactionsByAppointmentIdsCount: transactionsByAppointmentIds.length,
+        verifiedTransactionsCount: verifiedTransactions?.length || 0,
+        joinQueryWorked,
+        joinError,
         uniquePaymentStatuses,
-        uniqueTransactionStatuses,
-        userTransactions:
-          userTransactions?.map((t) => ({
-            id: t.id,
-            appointment_id: t.appointment_id,
-            amount: t.amount,
-            payment_type: t.payment_type,
-            payment_method: t.payment_method,
-            status: t.status,
-            created_at: t.created_at,
-          })) || [],
-        fullyPaidAppointments:
-          fullyPaidAppointments?.map((apt) => ({
-            id: apt.id,
-            event_type: apt.event_type,
-            payment_status: apt.payment_status,
-            status: apt.status,
-            updated_at: apt.updated_at,
-          })) || [],
-        errors: {
-          userTransError: userTransError?.message,
-          verifiedError: verifiedError?.message,
-          appointmentsError: appointmentsError?.message,
-          fullyPaidError: fullyPaidError?.message,
-        },
+        mismatchedTransactionsCount: mismatchedTransactions.length,
+        sampleAppointments: allAppointments?.slice(0, 3) || [],
+        sampleUserTransactions: userTransactions?.slice(0, 3) || [],
+        sampleTransactionsByAppointmentIds: transactionsByAppointmentIds.slice(0, 3) || [],
+        sampleMismatchedTransactions: mismatchedTransactions.slice(0, 3) || [],
       },
     })
   } catch (error: any) {
-    console.error("Debug payment history error:", error)
+    console.error("Unexpected error in debug payment history route:", error)
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message,
-        debug: {
-          errorType: error.constructor.name,
-          errorMessage: error.message,
-          errorStack: error.stack,
-        },
-      },
+      { success: false, message: "An unexpected error occurred", error: error.message },
       { status: 500 },
     )
   }
