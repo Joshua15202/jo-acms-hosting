@@ -1746,7 +1746,9 @@ function BookingFormContent({
                     <hr />
                     <div className="flex justify-between items-center">
                       <span className="font-medium">Total Package Amount:</span>
-                      <span className="text-lg font-bold text-rose-600">{formatCurrency(pricingData.totalAmount)}</span>
+                      <span className="text-lg font-bold text-green-600">
+                        {formatCurrency(pricingData.totalAmount)}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="font-medium">Down Payment (50%):</span>

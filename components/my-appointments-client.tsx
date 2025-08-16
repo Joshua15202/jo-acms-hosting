@@ -105,6 +105,7 @@ export default function MyAppointmentsClient() {
 
   const fetchAppointments = async (showRefreshIndicator = false) => {
     if (!user?.id) {
+      console.log("No user ID available for fetching appointments")
       setLoading(false)
       return
     }
@@ -115,6 +116,8 @@ export default function MyAppointmentsClient() {
 
     try {
       console.log("Fetching appointments for user:", user.id)
+      console.log("User object:", user)
+
       const response = await fetch("/api/scheduling/appointments", {
         method: "GET",
         headers: {
@@ -125,19 +128,23 @@ export default function MyAppointmentsClient() {
         cache: "no-cache",
       })
 
+      console.log("API response status:", response.status)
+
       if (!response.ok) {
         const errorText = await response.text()
         console.error("API response error:", response.status, errorText)
-        throw new Error(`Failed to fetch appointments: ${response.status}`)
+        throw new Error(`Failed to fetch appointments: ${response.status} - ${errorText}`)
       }
 
       const data = await response.json()
-      console.log("Appointments data received:", data)
+      console.log("Appointments API response:", data)
 
       if (data.success) {
+        console.log("Successfully fetched appointments:", data.appointments?.length || 0)
         setAppointments(data.appointments || [])
         setError(null)
       } else {
+        console.error("API returned error:", data.error)
         throw new Error(data.error || "Failed to fetch appointments")
       }
     } catch (err) {
@@ -615,8 +622,6 @@ export default function MyAppointmentsClient() {
                             </div>
                           )}
 
-
-
                           {/* Payment Status */}
                           <div className="flex justify-between items-center py-2">
                             <span className="text-sm text-gray-500">Payment Status</span>
@@ -682,7 +687,7 @@ export default function MyAppointmentsClient() {
                     {appointment.status === "TASTING_COMPLETED" && appointment.payment_status === "unpaid" ? (
                       <Button asChild className="flex-1 bg-green-600 hover:bg-green-700 text-white">
                         <a href="/payment" className="flex items-center justify-center gap-2">
-                          <CreditCard className="h-4 w-4" />
+                          <CreditCard className="h-4 w-4 mr-2" />
                           Proceed to Payment
                         </a>
                       </Button>

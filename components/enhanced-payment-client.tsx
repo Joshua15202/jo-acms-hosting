@@ -770,7 +770,7 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
         let line = ""
         let currentY = y
 
-        for (let n = 0; n < words.length; n++) {
+        for (let n = 0; n < words.length; n < words.length) {
           const testLine = line + words[n] + " "
           const metrics = ctx.measureText(testLine)
           const testWidth = metrics.width
@@ -887,6 +887,16 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
         ctx.fillStyle = "#000000"
         ctx.font = "14px Arial"
 
+        // Display main courses from selected_menu first
+        if (appointment.selected_menu) {
+          const menuItems = parseMenuItems(appointment.selected_menu)
+          menuItems.forEach((item: any) => {
+            ctx.fillText(`• ${item.name || item}`, 40, currentY)
+            currentY += 20
+          })
+        }
+
+        // Display other selections
         if (appointment.pasta_selection) {
           ctx.fillText(`• Pasta: ${appointment.pasta_selection}`, 40, currentY)
           currentY += 20
@@ -900,14 +910,6 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
         if (appointment.dessert_selection) {
           ctx.fillText(`• Dessert: ${appointment.dessert_selection}`, 40, currentY)
           currentY += 20
-        }
-
-        if (appointment.selected_menu) {
-          const menuItems = parseMenuItems(appointment.selected_menu)
-          menuItems.forEach((item: any) => {
-            ctx.fillText(`• ${item.name || item}`, 40, currentY)
-            currentY += 20
-          })
         }
 
         if (appointment.special_requests) {
@@ -1075,18 +1077,14 @@ Color Motif: ${appointment.color_motif || "Not specified"}
 
 ───────────────────────────────────────────────────────
                     MENU SELECTION
-───────────────────────────────────────
-${appointment.pasta_selection ? `Pasta: ${appointment.pasta_selection}` : ""}
-${appointment.beverage_selection ? `Beverage: ${appointment.beverage_selection}` : ""}
-${appointment.dessert_selection ? `Dessert: ${appointment.dessert_selection}` : ""}
-
+───────────────────────────────────────────────────────
 ${
   appointment.selected_menu
-    ? `Additional Items:\n${parseMenuItems(appointment.selected_menu)
+    ? `Main Courses:\n${parseMenuItems(appointment.selected_menu)
         .map((item: any) => `• ${item.name || item}`)
-        .join("\n")}`
+        .join("\n")}\n\n`
     : ""
-}
+}${appointment.pasta_selection ? `Pasta: ${appointment.pasta_selection}\n` : ""}${appointment.beverage_selection ? `Beverage: ${appointment.beverage_selection}\n` : ""}${appointment.dessert_selection ? `Dessert: ${appointment.dessert_selection}\n` : ""}
 
 ${appointment.special_requests ? `Special Requests:\n${appointment.special_requests}` : ""}
 
@@ -1115,7 +1113,7 @@ Payment Status: ${appointment.payment_status.replace("_", " ").toUpperCase()}
 
 ───────────────────────────────────────────────────────
                       NOTES
-───────────────────────────────────────────────────────
+───────────────────────────────────────
 ${transaction.notes || "No additional notes"}
 
 ═══════════════════════════════════════════════════════
@@ -1269,14 +1267,66 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
   }
 
   const parseMenuItems = (menuItems: any) => {
+    console.log("Parsing menu items:", menuItems, typeof menuItems)
+
+    // Handle null or undefined
+    if (!menuItems) {
+      console.log("Menu items is null/undefined")
+      return []
+    }
+
+    // Handle string (JSON)
     if (typeof menuItems === "string") {
       try {
-        return JSON.parse(menuItems)
-      } catch {
+        const parsed = JSON.parse(menuItems)
+        console.log("Parsed menu items from string:", parsed)
+
+        // If it's an array after parsing
+        if (Array.isArray(parsed)) {
+          return parsed.filter((item) => item && (item.name || typeof item === "string"))
+        }
+
+        // If it's an object, try to extract items
+        if (typeof parsed === "object" && parsed !== null) {
+          // Check for common array properties
+          if (parsed.items && Array.isArray(parsed.items)) {
+            return parsed.items.filter((item) => item && (item.name || typeof item === "string"))
+          }
+          // If it's a single object, wrap it in an array
+          return [parsed].filter((item) => item && (item.name || typeof item === "string"))
+        }
+
         return []
+      } catch (error) {
+        console.error("Error parsing menu items JSON:", error)
+        // Try to treat as comma-separated string
+        const items = menuItems
+          .split(",")
+          .map((item: string) => item.trim())
+          .filter(Boolean)
+        return items.map((item: string) => ({ name: item }))
       }
     }
-    return Array.isArray(menuItems) ? menuItems : []
+
+    // Handle array
+    if (Array.isArray(menuItems)) {
+      console.log("Menu items is already array:", menuItems)
+      return menuItems.filter((item) => item && (item.name || typeof item === "string"))
+    }
+
+    // Handle object
+    if (typeof menuItems === "object" && menuItems !== null) {
+      console.log("Menu items is object:", menuItems)
+      // Check for common array properties
+      if (menuItems.items && Array.isArray(menuItems.items)) {
+        return menuItems.items.filter((item) => item && (item.name || typeof item === "string"))
+      }
+      // If it's a single object, wrap it in an array
+      return [menuItems].filter((item) => item && (item.name || typeof item === "string"))
+    }
+
+    console.log("Menu items format not recognized, returning empty array")
+    return []
   }
 
   const getPaymentStatusDisplayInfo = (appointment: Appointment) => {
@@ -2087,19 +2137,38 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                               Menu Selection
                             </h5>
                             <div className="text-sm text-gray-600 space-y-1">
+                              {/* Display main courses from selected_menu FIRST with better styling */}
+                              {transaction.tbl_comprehensive_appointments.selected_menu && (
+                                <div className="mb-2">
+                                  <p className="font-medium text-gray-800 mb-1">Main Courses:</p>
+                                  {parseMenuItems(transaction.tbl_comprehensive_appointments.selected_menu).map(
+                                    (item: any, index: number) => (
+                                      <p key={`main-${index}`} className="ml-2 font-medium text-gray-900">
+                                        • {item.name || item}
+                                      </p>
+                                    ),
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Display other selections */}
                               {transaction.tbl_comprehensive_appointments.pasta_selection && (
-                                <p>• Pasta: {transaction.tbl_comprehensive_appointments.pasta_selection}</p>
+                                <p>
+                                  <strong>Pasta:</strong> {transaction.tbl_comprehensive_appointments.pasta_selection}
+                                </p>
                               )}
                               {transaction.tbl_comprehensive_appointments.beverage_selection && (
-                                <p>• Beverage: {transaction.tbl_comprehensive_appointments.beverage_selection}</p>
+                                <p>
+                                  <strong>Beverage:</strong>{" "}
+                                  {transaction.tbl_comprehensive_appointments.beverage_selection}
+                                </p>
                               )}
                               {transaction.tbl_comprehensive_appointments.dessert_selection && (
-                                <p>• Dessert: {transaction.tbl_comprehensive_appointments.dessert_selection}</p>
+                                <p>
+                                  <strong>Dessert:</strong>{" "}
+                                  {transaction.tbl_comprehensive_appointments.dessert_selection}
+                                </p>
                               )}
-                              {transaction.tbl_comprehensive_appointments.selected_menu &&
-                                parseMenuItems(transaction.tbl_comprehensive_appointments.selected_menu).map(
-                                  (item: any, index: number) => <p key={index}>• {item.name || item}</p>,
-                                )}
                             </div>
                           </div>
                         )}
@@ -2150,311 +2219,304 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
             </Card>
           )}
         </TabsContent>
-      </Tabs>
 
-      {/* Payment Dialog */}
-      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Submit Payment for {selectedAppointment?.event_type} Event
-            </DialogTitle>
-            <DialogDescription>
-              Please provide your payment details and upload proof of payment. We'll verify your payment within 24-48
-              hours.
-            </DialogDescription>
-          </DialogHeader>
+        {/* Payment Dialog */}
+        <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Submit Payment for {selectedAppointment?.event_type} Event
+              </DialogTitle>
+              <DialogDescription>
+                Please provide your payment details and upload proof of payment. We'll verify your payment within 24-48
+                hours.
+              </DialogDescription>
+            </DialogHeader>
 
-          {selectedAppointment && (
-            <div className="space-y-6">
-              {/* Payment Type Selection */}
-              <div className="space-y-3">
-                <Label className="text-base font-medium">Payment Type</Label>
-                <RadioGroup
-                  value={paymentData.paymentType}
-                  onValueChange={handlePaymentTypeChange}
-                  className="space-y-2"
-                >
-                  {getPaymentOptions(selectedAppointment).map((option) => (
-                    <div key={option.type} className="flex items-center space-x-2">
-                      <RadioGroupItem value={option.type} id={option.type} />
-                      <Label htmlFor={option.type} className="flex-1 cursor-pointer">
-                        <div className="flex justify-between items-center">
-                          <span>{option.label}</span>
-                          <span className="font-semibold text-rose-600">{formatCurrency(option.amount)}</span>
+            {selectedAppointment && (
+              <div className="space-y-6">
+                {/* Payment Type Selection */}
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">Payment Type</Label>
+                  <RadioGroup
+                    value={paymentData.paymentType}
+                    onValueChange={handlePaymentTypeChange}
+                    className="space-y-2"
+                  >
+                    {getPaymentOptions(selectedAppointment).map((option) => (
+                      <div key={option.type} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option.type} id={option.type} />
+                        <Label htmlFor={option.type} className="flex-1 cursor-pointer">
+                          <div className="flex justify-between items-center">
+                            <span>{option.label}</span>
+                            <span className="font-semibold text-rose-600">{formatCurrency(option.amount)}</span>
+                          </div>
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+
+                {/* Payment Method */}
+                <div className="space-y-3">
+                  <Label htmlFor="paymentMethod" className="text-base font-medium">
+                    Payment Method *
+                  </Label>
+                  <Select
+                    value={paymentData.paymentMethod}
+                    onValueChange={(value) => {
+                      setPaymentData((prev) => ({ ...prev, paymentMethod: value }))
+                      setShowQrCode(false)
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="gcash">
+                        <div className="flex items-center gap-2">
+                          <Smartphone className="h-4 w-4" />
+                          GCash
                         </div>
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
+                      </SelectItem>
+                      <SelectItem value="bank_transfer">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          Bank Transfer
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Payment Method */}
-              <div className="space-y-3">
-                <Label htmlFor="paymentMethod" className="text-base font-medium">
-                  Payment Method *
-                </Label>
-                <Select
-                  value={paymentData.paymentMethod}
-                  onValueChange={(value) => {
-                    setPaymentData((prev) => ({ ...prev, paymentMethod: value }))
-                    setShowQrCode(false)
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="gcash">
-                      <div className="flex items-center gap-2">
-                        <Smartphone className="h-4 w-4" />
-                        GCash
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="bank_transfer">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        Bank Transfer
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Payment Information based on method */}
-              {(paymentData.paymentMethod === "gcash" || paymentData.paymentMethod === "bank_transfer") && (
-                <div
-                  className={`space-y-2 p-4 rounded-lg 
+                {/* Payment Information based on method */}
+                {(paymentData.paymentMethod === "gcash" || paymentData.paymentMethod === "bank_transfer") && (
+                  <div
+                    className={`space-y-2 p-4 rounded-lg 
                     ${paymentData.paymentMethod === "gcash" ? "bg-blue-100 border-blue-800" : ""} 
                     ${paymentData.paymentMethod === "bank_transfer" ? "bg-green-100 border-green-800" : ""} 
                     border`}
-                >
-                  <h5 className="font-semibold text-gray-700">
-                    Payment Details for {paymentData.paymentMethod === "gcash" ? "GCash" : "Bank Transfer"}
-                  </h5>
-                  <div className="text-sm text-gray-600">
-                    <p>
-                      <strong>Account Name:</strong> Jonel Ray Pacheco
-                    </p>
-                    {paymentData.paymentMethod === "gcash" && (
-                      <>
+                  >
+                    <h5 className="font-semibold text-gray-700">
+                      Payment Details for {paymentData.paymentMethod === "gcash" ? "GCash" : "Bank Transfer"}
+                    </h5>
+                    <div className="text-sm text-gray-600">
+                      <p>
+                        <strong>Account Name:</strong> Jonel Ray Pacheco
+                      </p>
+                      {paymentData.paymentMethod === "gcash" && (
+                        <>
+                          <p>
+                            <strong>GCash Number:</strong> 0921-218-3558
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowQrCode(!showQrCode)}
+                            className="mt-2"
+                          >
+                            {showQrCode ? "Hide QR Code" : "Generate QR Code"}
+                          </Button>
+                          {showQrCode && (
+                            <div className="mt-4 flex flex-col items-center">
+                              <img
+                                src="/placeholder.svg?height=192&width=192&text=GCash+QR+Code"
+                                alt="GCash QR Code"
+                                className="w-48 h-48 border rounded-lg p-2"
+                              />
+                              <p className="text-xs text-gray-500 mt-2">
+                                (This is a placeholder QR code. In a real app, a dynamic QR code would be generated.)
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {paymentData.paymentMethod === "bank_transfer" && (
                         <p>
-                          <strong>GCash Number:</strong> 0921-218-3558
+                          <strong>Bank Account Number:</strong> 987-654-3210 (Dummy)
                         </p>
-                        <Button variant="outline" size="sm" onClick={() => setShowQrCode(!showQrCode)} className="mt-2">
-                          {showQrCode ? "Hide QR Code" : "Generate QR Code"}
-                        </Button>
-                        {showQrCode && (
-                          <div className="mt-4 flex flex-col items-center">
-                            <img
-                              src="/placeholder.svg?height=192&width=192&text=GCash+QR+Code"
-                              alt="GCash QR Code"
-                              className="w-48 h-48 border rounded-lg p-2"
-                            />
-                            <p className="text-xs text-gray-500 mt-2">
-                              (This is a placeholder QR code. In a real app, a dynamic QR code would be generated.)
-                            </p>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    {paymentData.paymentMethod === "bank_transfer" && (
-                      <p>
-                        <strong>Bank Account Number:</strong> 987-654-3210 (Dummy)
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Reference Number */}
-              <div className="space-y-3">
-                <Label htmlFor="reference" className="text-base font-medium">
-                  Reference/Transaction ID *
-                </Label>
-                <Input
-                  id="reference"
-                  value={paymentData.reference}
-                  onChange={(e) => setPaymentData((prev) => ({ ...prev, reference: e.target.value }))}
-                  placeholder="Enter transaction ID or reference number"
-                  required
-                />
-              </div>
-
-              {/* Proof of Payment */}
-              <div className="space-y-3">
-                <Label htmlFor="proofImage" className="text-base font-medium">
-                  Proof of Payment *
-                </Label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    id="proofImage"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <div className="text-center">
-                    {previewImage ? (
-                      <div className="space-y-2">
-                        <img
-                          src={previewImage || "/placeholder.svg"}
-                          alt="Payment proof preview"
-                          className="mx-auto max-h-32 rounded"
-                        />
-                        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                          Change Image
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Upload className="mx-auto h-8 w-8 text-gray-400" />
-                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                          Upload Screenshot/Photo
-                        </Button>
-                        <p className="text-sm text-gray-500">PNG, JPG up to 5MB</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-3">
-                <Label htmlFor="notes" className="text-base font-medium">
-                  Additional Notes (Optional)
-                </Label>
-                <Textarea
-                  id="notes"
-                  value={paymentData.notes}
-                  onChange={(e) => setPaymentData((prev) => ({ ...prev, notes: e.target.value }))}
-                  placeholder="Any additional information about your payment..."
-                  rows={3}
-                />
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPaymentDialogOpen(false)} disabled={submitting}>
-              Cancel
-            </Button>
-            <Button onClick={submitPayment} disabled={submitting} className="bg-rose-600 hover:bg-rose-700">
-              {submitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Submit Payment
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Receipt Dialog */}
-      <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5" />
-              Payment Receipt
-            </DialogTitle>
-            <DialogDescription>
-              Complete receipt for your {selectedTransaction?.tbl_comprehensive_appointments.event_type} event payment
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedTransaction && (
-            <div className="space-y-6">
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <div className="text-center border-b pb-4 mb-4">
-                  <h3 className="text-xl font-bold">Jo Pacheco Catering Services</h3>
-                  <p className="text-gray-600">Payment Receipt</p>
-                  <p className="text-sm text-gray-500">Receipt ID: {selectedTransaction.id}</p>
-                </div>
-
-                <div className="grid gap-6 md:grid-cols-2">
-                  {/* Customer Information */}
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-3">Customer Information</h4>
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        <strong>Name:</strong>{" "}
-                        {`${selectedTransaction.tbl_comprehensive_appointments.contact_first_name} ${selectedTransaction.tbl_comprehensive_appointments.contact_last_name}`.trim()}
-                      </p>
-                      <p>
-                        <strong>Email:</strong> {selectedTransaction.tbl_comprehensive_appointments.contact_email}
-                      </p>
-                      <p>
-                        <strong>Phone:</strong>{" "}
-                        {selectedTransaction.tbl_comprehensive_appointments.contact_phone || "Not provided"}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Event Information */}
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-3">Event Details</h4>
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        <strong>Event Type:</strong>{" "}
-                        {selectedTransaction.tbl_comprehensive_appointments.event_type.charAt(0).toUpperCase() +
-                          selectedTransaction.tbl_comprehensive_appointments.event_type.slice(1)}
-                      </p>
-                      <p>
-                        <strong>Date:</strong>{" "}
-                        {formatEventDate(selectedTransaction.tbl_comprehensive_appointments.event_date)}
-                      </p>
-                      <p>
-                        <strong>Time:</strong> {selectedTransaction.tbl_comprehensive_appointments.event_time}
-                      </p>
-                      <p>
-                        <strong>Guests:</strong> {selectedTransaction.tbl_comprehensive_appointments.guest_count}
-                      </p>
-                      <p>
-                        <strong>Venue:</strong>{" "}
-                        {selectedTransaction.tbl_comprehensive_appointments.venue_address || "To be confirmed"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Menu Selection */}
-                {(selectedTransaction.tbl_comprehensive_appointments.pasta_selection ||
-                  selectedTransaction.tbl_comprehensive_appointments.beverage_selection ||
-                  selectedTransaction.tbl_comprehensive_appointments.dessert_selection ||
-                  selectedTransaction.tbl_comprehensive_appointments.selected_menu) && (
-                  <div className="mt-6">
-                    <h4 className="font-semibold text-gray-900 mb-3">Menu Selection</h4>
-                    <div className="space-y-1 text-sm">
-                      {selectedTransaction.tbl_comprehensive_appointments.pasta_selection && (
-                        <p>• Pasta: {selectedTransaction.tbl_comprehensive_appointments.pasta_selection}</p>
                       )}
-                      {selectedTransaction.tbl_comprehensive_appointments.beverage_selection && (
-                        <p>• Beverage: {selectedTransaction.tbl_comprehensive_appointments.beverage_selection}</p>
-                      )}
-                      {selectedTransaction.tbl_comprehensive_appointments.dessert_selection && (
-                        <p>• Dessert: {selectedTransaction.tbl_comprehensive_appointments.dessert_selection}</p>
-                      )}
-                      {selectedTransaction.tbl_comprehensive_appointments.selected_menu &&
-                        parseMenuItems(selectedTransaction.tbl_comprehensive_appointments.selected_menu).map(
-                          (item: any, index: number) => <p key={index}>• {item.name || item}</p>,
-                        )}
                     </div>
                   </div>
                 )}
 
-                {/* Payment Details */}
-                <div className="mt-6 border-t pt-4">
-                  <h4 className="font-semibold text-gray-900 mb-3">Payment Details</h4>
-                  <div className="grid gap-4 md:grid-cols-2">
+                {/* Reference Number */}
+                <div className="space-y-3">
+                  <Label htmlFor="reference" className="text-base font-medium">
+                    Reference/Transaction ID *
+                  </Label>
+                  <Input
+                    id="reference"
+                    value={paymentData.reference}
+                    onChange={(e) => setPaymentData((prev) => ({ ...prev, reference: e.target.value }))}
+                    placeholder="Enter transaction ID or reference number"
+                    required
+                  />
+                </div>
+
+                {/* Proof of Payment */}
+                <div className="space-y-3">
+                  <Label htmlFor="proofImage" className="text-base font-medium">
+                    Proof of Payment *
+                  </Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      id="proofImage"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <div className="text-center">
+                      {previewImage ? (
+                        <div className="space-y-2">
+                          <img
+                            src={previewImage || "/placeholder.svg"}
+                            alt="Payment proof preview"
+                            className="mx-auto max-h-32 rounded"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            Change Image
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                            Upload Screenshot/Photo
+                          </Button>
+                          <p className="text-sm text-gray-500">PNG, JPG up to 5MB</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-3">
+                  <Label htmlFor="notes" className="text-base font-medium">
+                    Additional Notes (Optional)
+                  </Label>
+                  <Textarea
+                    id="notes"
+                    value={paymentData.notes}
+                    onChange={(e) => setPaymentData((prev) => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Any additional information about your payment..."
+                    rows={3}
+                  />
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPaymentDialogOpen(false)} disabled={submitting}>
+                Cancel
+              </Button>
+              <Button onClick={submitPayment} disabled={submitting} className="bg-rose-600 hover:bg-rose-700">
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Submit Payment
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Receipt Dialog */}
+        <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Receipt className="h-5 w-5" />
+                Payment Receipt
+              </DialogTitle>
+              <DialogDescription>
+                Complete receipt for your {selectedTransaction?.tbl_comprehensive_appointments.event_type} event payment
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedTransaction && (
+              <div className="space-y-6">
+                <div className="bg-gray-50 p-6 rounded-lg">
+                  <div className="text-center border-b pb-4 mb-4">
+                    <h3 className="text-xl font-bold">Jo Pacheco Catering Services</h3>
+                    <p className="text-gray-600">Payment Receipt</p>
+                    <p className="text-sm text-gray-500">Receipt ID: {selectedTransaction.id}</p>
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Customer Information */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">Customer Information</h4>
+                      <div className="space-y-2 text-sm">
+                        <p>
+                          <strong>Name:</strong>{" "}
+                          {`${selectedTransaction.tbl_comprehensive_appointments.contact_first_name} ${selectedTransaction.tbl_comprehensive_appointments.contact_last_name}`.trim()}
+                        </p>
+                        <p>
+                          <strong>Email:</strong> {selectedTransaction.tbl_comprehensive_appointments.contact_email}
+                        </p>
+                        <p>
+                          <strong>Phone:</strong>{" "}
+                          {selectedTransaction.tbl_comprehensive_appointments.contact_phone || "Not provided"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Event Information */}
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-3">Event Details</h4>
+                      <div className="space-y-2 text-sm">
+                        <p>
+                          <strong>Event Type:</strong> {selectedTransaction.tbl_comprehensive_appointments.event_type}
+                        </p>
+                        <p>
+                          <strong>Event Date:</strong>{" "}
+                          {formatEventDate(selectedTransaction.tbl_comprehensive_appointments.event_date)}
+                        </p>
+                        <p>
+                          <strong>Event Time:</strong> {selectedTransaction.tbl_comprehensive_appointments.event_time}
+                        </p>
+                        <p>
+                          <strong>Venue:</strong>{" "}
+                          {selectedTransaction.tbl_comprehensive_appointments.venue_address || "To be confirmed"}
+                        </p>
+                        <p>
+                          <strong>Guest Count:</strong> {selectedTransaction.tbl_comprehensive_appointments.guest_count}{" "}
+                          guests
+                        </p>
+                        {selectedTransaction.tbl_comprehensive_appointments.theme && (
+                          <p>
+                            <strong>Theme:</strong> {selectedTransaction.tbl_comprehensive_appointments.theme}
+                          </p>
+                        )}
+                        {selectedTransaction.tbl_comprehensive_appointments.color_motif && (
+                          <p>
+                            <strong>Color Motif:</strong>{" "}
+                            {selectedTransaction.tbl_comprehensive_appointments.color_motif}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment Information */}
+                  <div className="mt-6">
+                    <h4 className="font-semibold text-gray-900 mb-3">Payment Details</h4>
                     <div className="space-y-2 text-sm">
                       <p>
                         <strong>Payment Type:</strong>{" "}
@@ -2465,68 +2527,91 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                             : "Full Payment"}
                       </p>
                       <p>
-                        <strong>Amount Paid:</strong>{" "}
-                        <span className="text-lg font-bold text-green-600">
-                          {formatCurrency(selectedTransaction.amount)}
-                        </span>
+                        <strong>Amount Paid:</strong> {formatCurrency(selectedTransaction.amount)}
                       </p>
                       <p>
-                        <strong>Payment Method:</strong> {selectedTransaction.payment_method.toUpperCase()}
+                        <strong>Payment Method:</strong> {selectedTransaction.payment_method}
                       </p>
                       <p>
                         <strong>Reference Number:</strong> {selectedTransaction.reference_number}
                       </p>
-                    </div>
-                    <div className="space-y-2 text-sm">
                       <p>
-                        <strong>Payment Date:</strong>{" "}
-                        {format(new Date(selectedTransaction.created_at), "MMMM d, yyyy")}
+                        <strong>Payment Date:</strong> {formatDate(selectedTransaction.created_at)}
                       </p>
                       <p>
                         <strong>Total Package:</strong>{" "}
                         {formatCurrency(selectedTransaction.tbl_comprehensive_appointments.total_package_amount || 0)}
                       </p>
                       <p>
-                        <strong>Down Payment:</strong>{" "}
-                        {formatCurrency(selectedTransaction.tbl_comprehensive_appointments.down_payment_amount || 0)}
-                      </p>
-                      <p>
-                        <strong>Remaining Balance:</strong>{" "}
-                        {formatCurrency(selectedTransaction.tbl_comprehensive_appointments.remaining_balance || 0)}
+                        <strong>Payment Status:</strong>{" "}
+                        {selectedTransaction.tbl_comprehensive_appointments.payment_status}
                       </p>
                     </div>
                   </div>
-                </div>
 
-                {selectedTransaction.notes && (
-                  <div className="mt-6 border-t pt-4">
-                    <h4 className="font-semibold text-gray-900 mb-2">Notes</h4>
-                    <p className="text-sm text-gray-600">{selectedTransaction.notes}</p>
-                  </div>
-                )}
+                  {/* Menu Selection in Receipt Dialog */}
+                  {(selectedTransaction.tbl_comprehensive_appointments.pasta_selection ||
+                    selectedTransaction.tbl_comprehensive_appointments.beverage_selection ||
+                    selectedTransaction.tbl_comprehensive_appointments.dessert_selection ||
+                    selectedTransaction.tbl_comprehensive_appointments.selected_menu) && (
+                    <div className="mt-6">
+                      <h4 className="font-semibold text-gray-900 mb-3">Menu Selection</h4>
+                      <div className="space-y-2 text-sm">
+                        {/* Display main courses from selected_menu FIRST with better styling */}
+                        {selectedTransaction.tbl_comprehensive_appointments.selected_menu && (
+                          <div className="mb-3">
+                            <p className="font-semibold text-gray-900 mb-2">Main Courses:</p>
+                            {parseMenuItems(selectedTransaction.tbl_comprehensive_appointments.selected_menu).map(
+                              (item: any, index: number) => (
+                                <p key={`main-${index}`} className="ml-2 font-medium text-gray-800">
+                                  • {item.name || item}
+                                </p>
+                              ),
+                            )}
+                          </div>
+                        )}
 
-                <div className="mt-6 border-t pt-4 text-center text-xs text-gray-500">
-                  <p>Thank you for choosing Jo Pacheco Catering Services!</p>
-                  <p>Generated on: {format(new Date(), "MMMM d, yyyy 'at' h:mm a")}</p>
+                        {/* Display other selections */}
+                        {selectedTransaction.tbl_comprehensive_appointments.pasta_selection && (
+                          <p>
+                            <strong>Pasta:</strong> {selectedTransaction.tbl_comprehensive_appointments.pasta_selection}
+                          </p>
+                        )}
+                        {selectedTransaction.tbl_comprehensive_appointments.beverage_selection && (
+                          <p>
+                            <strong>Beverage:</strong>{" "}
+                            {selectedTransaction.tbl_comprehensive_appointments.beverage_selection}
+                          </p>
+                        )}
+                        {selectedTransaction.tbl_comprehensive_appointments.dessert_selection && (
+                          <p>
+                            <strong>Dessert:</strong>{" "}
+                            {selectedTransaction.tbl_comprehensive_appointments.dessert_selection}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {selectedTransaction.notes && (
+                    <div className="mt-6">
+                      <h4 className="font-semibold text-gray-900 mb-3">Notes</h4>
+                      <p className="text-sm">{selectedTransaction.notes}</p>
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setReceiptDialogOpen(false)}>
-              Close
-            </Button>
-            <Button
-              onClick={() => selectedTransaction && handleDownloadReceipt(selectedTransaction)}
-              className="bg-rose-600 hover:bg-rose-700"
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download Receipt
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setReceiptDialogOpen(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </Tabs>
     </div>
   )
 }
