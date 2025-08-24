@@ -7,154 +7,159 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!name || !email || !subject || !message) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Missing required fields: name, email, subject, and message are required",
+        },
+        { status: 400 },
+      )
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid email format",
+        },
+        { status: 400 },
+      )
+    }
+
+    console.log("=== Contact Form Submission ===")
+    console.log("From:", name, email)
+    console.log("Subject:", subject)
+    console.log("Phone:", phone || "Not provided")
+
+    // Create admin notification email
+    const adminEmailHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>New Contact Form Message</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #e11d48, #ec4899); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+            .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+            .customer-info { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #e11d48; }
+            .message-section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 2px solid #fecaca; }
+            .info-row { margin-bottom: 12px; }
+            .label { font-weight: bold; color: #374151; display: inline-block; width: 80px; }
+            .value { color: #1f2937; }
+            .message-content { background: #f9fafb; padding: 15px; border-radius: 6px; border-left: 4px solid #e11d48; white-space: pre-wrap; }
+            .actions { text-align: center; margin: 20px 0; }
+            .btn { display: inline-block; padding: 12px 24px; margin: 0 10px; text-decoration: none; border-radius: 6px; font-weight: bold; }
+            .btn-primary { background: #e11d48; color: white; }
+            .btn-secondary { background: #6b7280; color: white; }
+            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 14px; }
+            .timestamp { background: #f3f4f6; padding: 10px; border-radius: 6px; font-size: 14px; color: #6b7280; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0; font-size: 24px;">New Contact Form Message</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.9;">Jo Pacheco Wedding & Event Planning</p>
+            </div>
+            
+            <div class="content">
+              <div class="customer-info">
+                <h2 style="margin-top: 0; color: #e11d48;">Customer Information</h2>
+                <div class="info-row">
+                  <span class="label">Name:</span>
+                  <span class="value">${name}</span>
+                </div>
+                <div class="info-row">
+                  <span class="label">Email:</span>
+                  <span class="value"><a href="mailto:${email}" style="color: #e11d48;">${email}</a></span>
+                </div>
+                ${
+                  phone
+                    ? `<div class="info-row">
+                         <span class="label">Phone:</span>
+                         <span class="value"><a href="tel:${phone}" style="color: #e11d48;">${phone}</a></span>
+                       </div>`
+                    : ""
+                }
+                <div class="info-row">
+                  <span class="label">Subject:</span>
+                  <span class="value"><strong>${subject}</strong></span>
+                </div>
+              </div>
+
+              <div class="message-section">
+                <h3 style="margin-top: 0; color: #e11d48;">Message</h3>
+                <div class="message-content">${message}</div>
+              </div>
+
+              <div class="actions">
+                <a href="mailto:${email}?subject=Re: ${subject}" class="btn btn-primary">Reply to Customer</a>
+                ${phone ? `<a href="tel:${phone}" class="btn btn-secondary">Call Customer</a>` : ""}
+              </div>
+
+              <div class="timestamp">
+                <strong>Received:</strong> ${new Date().toLocaleString("en-PH", {
+                  timeZone: "Asia/Manila",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })} (Philippine Time)
+              </div>
+            </div>
+
+            <div class="footer">
+              <p><strong>Jo Pacheco Wedding & Event Planning</strong></p>
+              <p>Admin Notification System</p>
+              <p style="font-size: 12px; margin-top: 15px;">
+                This is an automated message from your website contact form.<br>
+                Please respond to the customer within 24 hours for best service.
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
 
     // Send email to admin
-    const adminEmail = "blacksights99@gmail.com"
     const emailResult = await sendEmail({
-      to: adminEmail,
+      to: "blacksights99@gmail.com",
       subject: `New Contact Form Message: ${subject}`,
-      html: generateContactFormEmailHTML(name, email, phone, subject, message),
+      html: adminEmailHtml,
     })
 
-    if (emailResult.success) {
-      console.log("✅ Contact form message sent successfully")
-      return NextResponse.json({ success: true })
-    } else {
-      console.error("❌ Failed to send contact form message:", emailResult.error)
-      return NextResponse.json({ success: false, error: "Failed to send message" }, { status: 500 })
+    if (!emailResult.success) {
+      console.error("Failed to send admin notification email:", emailResult.error)
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to send message. Please try again later.",
+        },
+        { status: 500 },
+      )
     }
-  } catch (error) {
-    console.error("❌ Contact form API error:", error)
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
-  }
-}
 
-function generateContactFormEmailHTML(
-  name: string,
-  email: string,
-  phone: string,
-  subject: string,
-  message: string,
-): string {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-      <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #e11d48 0%, #be185d 100%); padding: 30px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">New Contact Form Message</h1>
-          <p style="color: rgba(255, 255, 255, 0.9); margin: 5px 0 0 0; font-size: 16px;">Jo Pacheco Wedding & Event</p>
-        </div>
-        
-        <!-- Content -->
-        <div style="padding: 40px 30px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h2 style="color: #1f2937; margin: 0 0 10px 0; font-size: 24px;">📧 Contact Form Submission</h2>
-            <p style="color: #6b7280; margin: 0; font-size: 16px; line-height: 1.5;">
-              You have received a new message from your website contact form.
-            </p>
-          </div>
-          
-          <!-- Customer Details -->
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin: 25px 0;">
-            <h3 style="color: #1f2937; margin: 0 0 20px 0; font-size: 18px; border-bottom: 2px solid #e11d48; padding-bottom: 10px;">Customer Information</h3>
-            
-            <div style="margin-bottom: 15px;">
-              <strong style="color: #374151; display: inline-block; width: 100px;">Name:</strong>
-              <span style="color: #4b5563;">${name}</span>
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-              <strong style="color: #374151; display: inline-block; width: 100px;">Email:</strong>
-              <a href="mailto:${email}" style="color: #e11d48; text-decoration: none;">${email}</a>
-            </div>
-            
-            ${
-              phone
-                ? `
-            <div style="margin-bottom: 15px;">
-              <strong style="color: #374151; display: inline-block; width: 100px;">Phone:</strong>
-              <a href="tel:${phone}" style="color: #e11d48; text-decoration: none;">${phone}</a>
-            </div>
-            `
-                : ""
-            }
-            
-            <div style="margin-bottom: 15px;">
-              <strong style="color: #374151; display: inline-block; width: 100px;">Subject:</strong>
-              <span style="color: #4b5563;">${subject}</span>
-            </div>
-          </div>
-          
-          <!-- Message Content -->
-          <div style="background: #fef2f2; border: 2px solid #e11d48; border-radius: 12px; padding: 25px; margin: 25px 0;">
-            <h3 style="color: #e11d48; margin: 0 0 15px 0; font-size: 18px;">💬 Message</h3>
-            <div style="background: white; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-              <p style="color: #374151; margin: 0; font-size: 16px; line-height: 1.6; white-space: pre-wrap;">${message}</p>
-            </div>
-          </div>
-          
-          <!-- Action Buttons -->
-          <div style="text-align: center; margin: 30px 0;">
-            <p style="color: #6b7280; font-size: 14px; margin-bottom: 20px;">
-              Quick Actions:
-            </p>
-            
-            <div style="margin-bottom: 15px;">
-              <a href="mailto:${email}?subject=Re: ${subject}" 
-                 style="display: inline-block; background: #e11d48; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 0 10px;">
-                📧 Reply to Customer
-              </a>
-            </div>
-            
-            ${
-              phone
-                ? `
-            <div>
-              <a href="tel:${phone}" 
-                 style="display: inline-block; background: #10b981; color: white; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; margin: 0 10px;">
-                📞 Call Customer
-              </a>
-            </div>
-            `
-                : ""
-            }
-          </div>
-          
-          <!-- Timestamp -->
-          <div style="background: #f3f4f6; border-radius: 6px; padding: 15px; margin: 20px 0; text-align: center;">
-            <p style="color: #6b7280; margin: 0; font-size: 12px;">
-              <strong>Received:</strong> ${new Date().toLocaleString("en-US", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                timeZoneName: "short",
-              })}
-            </p>
-          </div>
-        </div>
-        
-        <!-- Footer -->
-        <div style="background: #f9fafb; padding: 25px 30px; border-top: 1px solid #e5e7eb;">
-          <div style="text-align: center;">
-            <h3 style="color: #e11d48; margin: 0 0 10px 0; font-size: 16px;">Jo Pacheco Wedding & Event</h3>
-            <p style="color: #6b7280; margin: 0; font-size: 12px; line-height: 1.6;">
-              📍 Sullera St. Pandayan, Bulacan<br>
-              📞 Phone: (044) 308 3396 | 📱 Mobile: 0917-8543221
-            </p>
-          </div>
-          
-          <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
-            <p style="color: #9ca3af; font-size: 11px; margin: 0;">
-              © 2024 Jo Pacheco Wedding & Event - Admin Notification System
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  `
+    console.log("✅ Contact form message sent successfully to admin")
+
+    return NextResponse.json({
+      success: true,
+      message: "Message sent successfully! We'll get back to you within 24 hours.",
+    })
+  } catch (error) {
+    console.error("Error in contact form submission:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        message: "An unexpected error occurred. Please try again later.",
+      },
+      { status: 500 },
+    )
+  }
 }
