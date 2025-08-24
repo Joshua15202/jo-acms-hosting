@@ -9,7 +9,6 @@ import { useToast } from "@/components/ui/use-toast"
 import {
   ChevronRight,
   Loader2,
-  Plus,
   Send,
   Shuffle,
   Calendar,
@@ -21,10 +20,8 @@ import {
   Mail,
   Phone,
   Home,
-  AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Slider } from "@/components/ui/slider"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useRouter } from "next/navigation"
@@ -78,57 +75,11 @@ interface MenuItems {
 
 const initialFormDataState = {
   guestCount: "",
-  budget: "25000", // General initial default
   preferredMenus: "",
   venue: "",
   theme: "",
   colorMotif: "",
   additionalEventInfo: "",
-}
-
-const budgetRules = {
-  wedding: {
-    "50": { min: 70000, max: 89000, displayMaxText: "₱89,000" },
-    "100": { min: 90000, max: 114000, displayMaxText: "₱114,000" },
-    "150": { min: 115000, max: 139000, displayMaxText: "₱139,000" },
-    "200": { min: 140000, max: 189000, displayMaxText: "₱189,000" },
-    "300": { min: 190000, max: 300000, displayMaxText: "₱300,000+" },
-  },
-  debut: {
-    "50": { min: 35000, max: 47000, displayMaxText: "₱47,000" },
-    "80": { min: 48000, max: 54000, displayMaxText: "₱54,000" },
-    "100": { min: 55000, max: 76000, displayMaxText: "₱76,000" },
-    "150": { min: 77000, max: 89000, displayMaxText: "₱89,000" },
-    "200": { min: 90000, max: 300000, displayMaxText: "₱300,000+" },
-  },
-  birthday: {
-    "50": { min: 30000, max: 36000, displayMaxText: "₱36,000" },
-    "80": { min: 37000, max: 42000, displayMaxText: "₱42,000" },
-    "100": { min: 43000, max: 61000, displayMaxText: "₱61,000" },
-    "150": { min: 62000, max: 85000, displayMaxText: "₱85,000" },
-    "200": { min: 86000, max: 300000, displayMaxText: "₱300,000+" },
-  },
-  corporate: {
-    "50": { min: 25000, max: 31000, displayMaxText: "₱31,000" },
-    "80": { min: 32000, max: 37000, displayMaxText: "₱37,000" },
-    "100": { min: 38000, max: 56000, displayMaxText: "₱56,000" },
-    "150": { min: 57000, max: 75000, displayMaxText: "₱75,000" },
-    "200": { min: 76000, max: 300000, displayMaxText: "₱300,000+" },
-  },
-  other: {
-    "50": { min: 25000, max: 31000, displayMaxText: "₱31,000" },
-    "80": { min: 32000, max: 37000, displayMaxText: "₱37,000" },
-    "100": { min: 38000, max: 56000, displayMaxText: "₱56,000" },
-    "150": { min: 57000, max: 75000, displayMaxText: "₱75,000" },
-    "200": { min: 76000, max: 300000, displayMaxText: "₱300,000+" },
-  },
-}
-
-const generalDefaultSliderConfig = {
-  min: 25000,
-  max: 300000, // Absolute max for the slider component
-  displayMinText: "₱25,000",
-  displayMaxText: "₱300,000+",
 }
 
 export default function AIRecommendation({ personalInfo, eventInfo, schedulingInfo }: AIRecommendationProps) {
@@ -141,13 +92,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
   const [countdown, setCountdown] = useState(10)
   const [recommendations, setRecommendations] = useState<any>(null)
   const [formData, setFormData] = useState(initialFormDataState)
-  const [budgetValue, setBudgetValue] = useState<number[]>([
-    initialFormDataState.budget ? Number.parseInt(initialFormDataState.budget) : generalDefaultSliderConfig.min,
-  ])
-  const [currentSliderConfig, setCurrentSliderConfig] = useState(generalDefaultSliderConfig)
   const [menuItems, setMenuItems] = useState<MenuItems | null>(null)
   const [isLoadingMenu, setIsLoadingMenu] = useState(true)
-  const [generationCount, setGenerationCount] = useState(0) // Track number of generations for variety
+  const [generationCount, setGenerationCount] = useState(0)
 
   const [selectedMenuItems, setSelectedMenuItems] = useState<{
     menu1: string[] // Beef, Pork
@@ -199,9 +146,163 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     const lowerPrefs = preferences.toLowerCase()
     const restrictions = []
     const emphasis = []
+    const onlyRequests = []
     const specialDiets = []
     const cookingStyles = []
     const quantities = []
+
+    // Enhanced "only" pattern detection
+    const onlyPatterns = {
+      beef: [
+        "only beef",
+        "beef only",
+        "just beef",
+        "beef alone",
+        "exclusively beef",
+        "nothing but beef",
+        "purely beef",
+        "solely beef",
+        "beef dishes only",
+        "beef main course only",
+        "main course beef only",
+        "beef for main course",
+        "beef main dishes only",
+      ],
+      pork: [
+        "only pork",
+        "pork only",
+        "just pork",
+        "pork alone",
+        "exclusively pork",
+        "nothing but pork",
+        "purely pork",
+        "solely pork",
+        "pork dishes only",
+        "pork main course only",
+        "main course pork only",
+        "pork for main course",
+        "pork main dishes only",
+      ],
+      chicken: [
+        "only chicken",
+        "chicken only",
+        "just chicken",
+        "chicken alone",
+        "exclusively chicken",
+        "nothing but chicken",
+        "purely chicken",
+        "solely chicken",
+        "chicken dishes only",
+        "chicken main course only",
+        "main course chicken only",
+        "chicken for main course",
+        "chicken main dishes only",
+      ],
+      seafood: [
+        "only seafood",
+        "seafood only",
+        "just seafood",
+        "seafood alone",
+        "exclusively seafood",
+        "nothing but seafood",
+        "purely seafood",
+        "solely seafood",
+        "seafood dishes only",
+        "only fish",
+        "fish only",
+        "just fish",
+        "seafood main course only",
+        "main course seafood only",
+        "seafood for main course",
+        "seafood main dishes only",
+      ],
+      vegetables: [
+        "only vegetables",
+        "vegetables only",
+        "just vegetables",
+        "vegetables alone",
+        "exclusively vegetables",
+        "nothing but vegetables",
+        "purely vegetables",
+        "solely vegetables",
+        "vegetable dishes only",
+        "only veggies",
+        "veggies only",
+        "just veggies",
+        "vegetable main course only",
+        "main course vegetables only",
+        "vegetables for main course",
+        "vegetable main dishes only",
+      ],
+      pasta: [
+        "only pasta",
+        "pasta only",
+        "just pasta",
+        "pasta alone",
+        "exclusively pasta",
+        "nothing but pasta",
+        "purely pasta",
+        "solely pasta",
+        "pasta dishes only",
+        "pasta main course only",
+        "main course pasta only",
+        "pasta for main course",
+        "pasta main dishes only",
+      ],
+    }
+
+    // Handle combination "only" requests like "only pork & chicken" or "only beef and pork"
+    const combinationPatterns = [
+      {
+        pattern:
+          /only\s+(beef|pork|chicken|seafood|vegetables|pasta)(\s*(&|and)\s*(beef|pork|chicken|seafood|vegetables|pasta))+/i,
+        extract: (match: string) => {
+          const categories = match
+            .toLowerCase()
+            .replace(/only\s+/, "")
+            .replace(/\s*(&|and)\s*/g, ",")
+            .split(",")
+            .map((cat) => cat.trim())
+            .filter((cat) => ["beef", "pork", "chicken", "seafood", "vegetables", "pasta"].includes(cat))
+          return categories
+        },
+      },
+      {
+        pattern:
+          /(beef|pork|chicken|seafood|vegetables|pasta)(\s*(&|and)\s*(beef|pork|chicken|seafood|vegetables|pasta))+\s+only/i,
+        extract: (match: string) => {
+          const categories = match
+            .toLowerCase()
+            .replace(/\s+only$/, "")
+            .replace(/\s*(&|and)\s*/g, ",")
+            .split(",")
+            .map((cat) => cat.trim())
+            .filter((cat) => ["beef", "pork", "chicken", "seafood", "vegetables", "pasta"].includes(cat))
+          return categories
+        },
+      },
+    ]
+
+    // Check for combination "only" requests first
+    for (const pattern of combinationPatterns) {
+      const match = lowerPrefs.match(pattern.pattern)
+      if (match) {
+        const categories = pattern.extract(match[0])
+        onlyRequests.push(...categories)
+        console.log(`Detected combination "only" request:`, categories)
+        break // Only process the first match to avoid duplicates
+      }
+    }
+
+    // If no combination patterns matched, check individual "only" requests
+    if (onlyRequests.length === 0) {
+      Object.keys(onlyPatterns).forEach((category) => {
+        const patterns = onlyPatterns[category as keyof typeof onlyPatterns]
+        if (patterns.some((pattern) => lowerPrefs.includes(pattern))) {
+          onlyRequests.push(category)
+        }
+      })
+    }
 
     // Enhanced restriction patterns
     const restrictionPatterns = {
@@ -218,6 +319,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "not a fan of beef",
         "allergic to beef",
         "cant eat beef",
+        "beef free",
       ],
       pork: [
         "no pork",
@@ -235,6 +337,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "muslim",
         "islamic",
         "no pork for religious reasons",
+        "pork free",
       ],
       chicken: [
         "no chicken",
@@ -249,6 +352,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "not a fan of chicken",
         "allergic to chicken",
         "cant eat chicken",
+        "chicken free",
       ],
       seafood: [
         "no seafood",
@@ -265,6 +369,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "cant eat seafood",
         "no fish",
         "shellfish allergy",
+        "seafood free",
       ],
       vegetables: [
         "no vegetables",
@@ -279,6 +384,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "not a fan of vegetables",
         "no veggies",
         "meat only",
+        "vegetable free",
       ],
       pasta: [
         "no pasta",
@@ -295,6 +401,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "low carb",
         "keto",
         "gluten free",
+        "pasta free",
       ],
     }
 
@@ -318,6 +425,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "heavy on beef",
         "rich in beef",
         "beef lover",
+        "beef heavy",
       ],
       pork: [
         "more pork",
@@ -337,6 +445,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "heavy on pork",
         "rich in pork",
         "pork lover",
+        "pork heavy",
       ],
       chicken: [
         "more chicken",
@@ -356,6 +465,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "heavy on chicken",
         "rich in chicken",
         "chicken lover",
+        "chicken heavy",
       ],
       seafood: [
         "more seafood",
@@ -377,6 +487,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "seafood lover",
         "pescatarian",
         "fish only",
+        "seafood heavy",
       ],
       vegetables: [
         "more vegetables",
@@ -401,6 +512,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "plant based",
         "green",
         "healthy",
+        "vegetable heavy",
       ],
       pasta: [
         "more pasta",
@@ -421,42 +533,40 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         "rich in pasta",
         "pasta lover",
         "carb lover",
+        "pasta heavy",
       ],
     }
 
-    // Check for restrictions
+    // Check for restrictions (but not if "only" is specified for that category)
     Object.keys(restrictionPatterns).forEach((category) => {
-      const patterns = restrictionPatterns[category as keyof typeof restrictionPatterns]
-      if (patterns.some((pattern) => lowerPrefs.includes(pattern))) {
-        restrictions.push(category)
+      if (!onlyRequests.includes(category)) {
+        const patterns = restrictionPatterns[category as keyof typeof restrictionPatterns]
+        if (patterns.some((pattern) => lowerPrefs.includes(pattern))) {
+          restrictions.push(category)
+        }
       }
     })
 
-    // Check for emphasis
+    // Check for emphasis (but not if restricted)
     Object.keys(emphasisPatterns).forEach((category) => {
-      const patterns = emphasisPatterns[category as keyof typeof emphasisPatterns]
-      if (patterns.some((pattern) => lowerPrefs.includes(pattern))) {
-        emphasis.push(category)
+      if (!restrictions.includes(category)) {
+        const patterns = emphasisPatterns[category as keyof typeof emphasisPatterns]
+        if (patterns.some((pattern) => lowerPrefs.includes(pattern))) {
+          emphasis.push(category)
+        }
       }
     })
 
     // Special dietary requirements
     if (lowerPrefs.includes("vegetarian") || lowerPrefs.includes("veggie only") || lowerPrefs.includes("no meat")) {
-      specialDiets.push("vegetarian")
-      restrictions.push("beef", "pork", "chicken")
-      emphasis.push("vegetables")
+      onlyRequests.push("vegetables")
+      restrictions.push("beef", "pork", "chicken", "seafood")
     }
 
     if (lowerPrefs.includes("pescatarian") || lowerPrefs.includes("fish only")) {
-      specialDiets.push("pescatarian")
+      onlyRequests.push("seafood")
       restrictions.push("beef", "pork", "chicken")
       emphasis.push("seafood", "vegetables")
-    }
-
-    if (lowerPrefs.includes("keto") || lowerPrefs.includes("low carb") || lowerPrefs.includes("no carbs")) {
-      specialDiets.push("keto")
-      restrictions.push("pasta")
-      emphasis.push("beef", "pork", "chicken", "seafood")
     }
 
     // Cooking style preferences
@@ -484,6 +594,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     return {
       restrictions: [...new Set(restrictions)],
       emphasis: [...new Set(emphasis)],
+      onlyRequests: [...new Set(onlyRequests)],
       specialDiets,
       cookingStyles,
       quantities,
@@ -520,50 +631,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
   }
 
   const handleSelectChange = (name: string, value: string) => {
-    const updatedFormData = { ...formData, [name]: value }
-
-    if (name === "guestCount") {
-      // Guest count changed, event type is already set from props
-      const eventType = eventInfo.eventType
-      const guestCount = value
-      if (eventType && guestCount) {
-        const rule = budgetRules[eventType as keyof typeof budgetRules]?.[guestCount]
-        if (rule) {
-          setBudgetValue([rule.min])
-          updatedFormData.budget = rule.min.toString()
-          setCurrentSliderConfig({
-            min: rule.min,
-            max: rule.max,
-            displayMinText: `₱${rule.min.toLocaleString()}`,
-            displayMaxText: rule.displayMaxText,
-          })
-        } else {
-          // Fallback if guest count value is unexpected (e.g. cleared)
-          setBudgetValue([generalDefaultSliderConfig.min])
-          updatedFormData.budget = generalDefaultSliderConfig.min.toString()
-          setCurrentSliderConfig(generalDefaultSliderConfig)
-        }
-      } else if (eventType && !guestCount) {
-        // Guest count cleared
-        // Revert to the event type's default budget (e.g., 50pax or general)
-        const defaultMinForEventType =
-          budgetRules[eventType as keyof typeof budgetRules]?.["50"]?.min || generalDefaultSliderConfig.min
-        const defaultMaxForEventType =
-          budgetRules[eventType as keyof typeof budgetRules]?.["50"]?.max || generalDefaultSliderConfig.max
-        const defaultDisplayMaxText =
-          budgetRules[eventType as keyof typeof budgetRules]?.["50"]?.displayMaxText ||
-          generalDefaultSliderConfig.displayMaxText
-        setBudgetValue([defaultMinForEventType])
-        updatedFormData.budget = defaultMinForEventType.toString()
-        setCurrentSliderConfig({
-          min: defaultMinForEventType,
-          max: defaultMaxForEventType,
-          displayMinText: `₱${defaultMinForEventType.toLocaleString()}`,
-          displayMaxText: defaultDisplayMaxText,
-        })
-      }
-    }
-    setFormData(updatedFormData)
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleBookPackage = async (pkg: any) => {
@@ -618,7 +686,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       if (result.success) {
         setBookingResponse(result)
         setIsBookingComplete(true)
-        setCountdown(20) // Start 10-second countdown
+        setCountdown(20) // Start 20-second countdown
       } else {
         throw new Error(result.error || "Failed to book appointment")
       }
@@ -632,6 +700,220 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     } finally {
       setIsBooking(false)
     }
+  }
+
+  // Enhanced function to enforce exactly 3 main courses
+  const enforceFixedStructure = (aiRecommendations: any, userPrefs: any, filteredMenuItems: any) => {
+    console.log("Enforcing fixed structure - Input:", aiRecommendations)
+
+    const finalMenu = {
+      menu1: [] as string[],
+      menu2: [] as string[],
+      menu3: [] as string[],
+      pasta: aiRecommendations.pasta?.slice(0, 1) || [],
+      dessert: aiRecommendations.dessert?.slice(0, 1) || [],
+      beverage: aiRecommendations.beverage?.slice(0, 1) || [],
+    }
+
+    // Collect all main course items from AI response
+    const allMainCourses = [
+      ...(aiRecommendations.menu1 || []),
+      ...(aiRecommendations.menu2 || []),
+      ...(aiRecommendations.menu3 || []),
+    ]
+
+    console.log("All main courses from AI:", allMainCourses)
+
+    // Handle "only" requests - fill all 3 slots with the requested category
+    if (userPrefs.onlyRequests.length > 0) {
+      console.log("Processing 'only' requests:", userPrefs.onlyRequests)
+
+      if (userPrefs.onlyRequests.includes("beef")) {
+        finalMenu.menu1 = shuffleArray([...filteredMenuItems.beef])
+          .slice(0, 3)
+          .map((item: any) => item.name || item)
+      } else if (userPrefs.onlyRequests.includes("pork")) {
+        finalMenu.menu1 = shuffleArray([...filteredMenuItems.pork])
+          .slice(0, 3)
+          .map((item: any) => item.name || item)
+      } else if (userPrefs.onlyRequests.includes("chicken")) {
+        finalMenu.menu2 = shuffleArray([...filteredMenuItems.chicken])
+          .slice(0, 3)
+          .map((item: any) => item.name || item)
+      } else if (userPrefs.onlyRequests.includes("seafood")) {
+        finalMenu.menu3 = shuffleArray([...filteredMenuItems.seafood])
+          .slice(0, 3)
+          .map((item: any) => item.name || item)
+      } else if (userPrefs.onlyRequests.includes("vegetables")) {
+        finalMenu.menu3 = shuffleArray([...filteredMenuItems.vegetables])
+          .slice(0, 3)
+          .map((item: any) => item.name || item)
+      } else {
+        // Multiple "only" categories - distribute among them
+        const availableOnlyCategories = []
+        if (userPrefs.onlyRequests.includes("beef") || userPrefs.onlyRequests.includes("pork")) {
+          availableOnlyCategories.push({
+            key: "menu1",
+            items: [...filteredMenuItems.beef, ...filteredMenuItems.pork],
+          })
+        }
+        if (userPrefs.onlyRequests.includes("chicken")) {
+          availableOnlyCategories.push({ key: "menu2", items: filteredMenuItems.chicken })
+        }
+        if (userPrefs.onlyRequests.includes("seafood") || userPrefs.onlyRequests.includes("vegetables")) {
+          availableOnlyCategories.push({
+            key: "menu3",
+            items: [...filteredMenuItems.seafood, ...filteredMenuItems.vegetables],
+          })
+        }
+
+        // Distribute 3 items across the "only" categories
+        const itemsPerCategory = Math.floor(3 / availableOnlyCategories.length)
+        const extraItems = 3 % availableOnlyCategories.length
+
+        availableOnlyCategories.forEach((category, index) => {
+          const itemCount = itemsPerCategory + (index < extraItems ? 1 : 0)
+          const selectedItems = shuffleArray([...category.items])
+            .slice(0, itemCount)
+            .map((item: any) => item.name || item)
+          finalMenu[category.key as keyof typeof finalMenu] = selectedItems as any
+        })
+      }
+    } else {
+      // Normal distribution - ensure exactly 3 main courses total
+      console.log("Processing normal distribution")
+
+      // Get available categories (not restricted)
+      const availableCategories = []
+      if (
+        !userPrefs.restrictions.includes("beef") &&
+        !userPrefs.restrictions.includes("pork") &&
+        (filteredMenuItems.beef.length > 0 || filteredMenuItems.pork.length > 0)
+      ) {
+        availableCategories.push({
+          key: "menu1",
+          items: [...filteredMenuItems.beef, ...filteredMenuItems.pork],
+          priority: userPrefs.emphasis.includes("beef") || userPrefs.emphasis.includes("pork") ? 2 : 1,
+        })
+      }
+      if (!userPrefs.restrictions.includes("chicken") && filteredMenuItems.chicken.length > 0) {
+        availableCategories.push({
+          key: "menu2",
+          items: filteredMenuItems.chicken,
+          priority: userPrefs.emphasis.includes("chicken") ? 2 : 1,
+        })
+      }
+      if (
+        !userPrefs.restrictions.includes("seafood") &&
+        !userPrefs.restrictions.includes("vegetables") &&
+        (filteredMenuItems.seafood.length > 0 || filteredMenuItems.vegetables.length > 0)
+      ) {
+        availableCategories.push({
+          key: "menu3",
+          items: [...filteredMenuItems.seafood, ...filteredMenuItems.vegetables],
+          priority: userPrefs.emphasis.includes("seafood") || userPrefs.emphasis.includes("vegetables") ? 2 : 1,
+        })
+      }
+
+      console.log(
+        "Available categories:",
+        availableCategories.map((c) => c.key),
+      )
+
+      if (availableCategories.length === 0) {
+        console.warn("No available categories for main courses!")
+        return finalMenu
+      }
+
+      // Sort by priority (emphasized categories first)
+      availableCategories.sort((a, b) => b.priority - a.priority)
+
+      // Distribute exactly 3 items across available categories
+      let remainingItems = 3
+      let categoryIndex = 0
+
+      while (remainingItems > 0 && categoryIndex < availableCategories.length) {
+        const category = availableCategories[categoryIndex]
+        const maxItemsForCategory = Math.min(
+          remainingItems,
+          category.items.length,
+          category.priority === 2 ? 2 : 1, // Emphasized categories can get up to 2 items
+        )
+
+        if (maxItemsForCategory > 0) {
+          const selectedItems = shuffleArray([...category.items])
+            .slice(0, maxItemsForCategory)
+            .map((item: any) => item.name || item)
+
+          finalMenu[category.key as keyof typeof finalMenu] = selectedItems as any
+          remainingItems -= maxItemsForCategory
+          console.log(`Assigned ${maxItemsForCategory} items to ${category.key}:`, selectedItems)
+        }
+
+        categoryIndex++
+
+        // If we've gone through all categories and still have items to assign, loop back
+        if (categoryIndex >= availableCategories.length && remainingItems > 0) {
+          categoryIndex = 0
+          // On second pass, allow any category to get additional items
+          availableCategories.forEach((cat) => (cat.priority = 1))
+        }
+      }
+
+      // If we still don't have exactly 3, fill remaining slots
+      const currentMainCourseCount = finalMenu.menu1.length + finalMenu.menu2.length + finalMenu.menu3.length
+      if (currentMainCourseCount < 3) {
+        const needed = 3 - currentMainCourseCount
+        console.log(`Need ${needed} more main courses`)
+
+        for (const category of availableCategories) {
+          if (needed <= 0) break
+
+          const currentItems = finalMenu[category.key as keyof typeof finalMenu] as string[]
+          const availableItems = category.items.filter((item: any) => !currentItems.includes(item.name || item))
+
+          if (availableItems.length > 0) {
+            const additionalItems = shuffleArray([...availableItems])
+              .slice(0, Math.min(needed, availableItems.length))
+              .map((item: any) => item.name || item)
+
+            finalMenu[category.key as keyof typeof finalMenu] = [...currentItems, ...additionalItems] as any
+            console.log(`Added ${additionalItems.length} more items to ${category.key}:`, additionalItems)
+            break
+          }
+        }
+      }
+    }
+
+    // Ensure we have exactly 1 pasta, 1 dessert, 1 beverage
+    if (finalMenu.pasta.length === 0 && filteredMenuItems.pasta.length > 0) {
+      finalMenu.pasta = [
+        shuffleArray([...filteredMenuItems.pasta])[0].name || shuffleArray([...filteredMenuItems.pasta])[0],
+      ]
+    }
+    if (finalMenu.dessert.length === 0 && filteredMenuItems.dessert.length > 0) {
+      finalMenu.dessert = [
+        shuffleArray([...filteredMenuItems.dessert])[0].name || shuffleArray([...filteredMenuItems.dessert])[0],
+      ]
+    }
+    if (finalMenu.beverage.length === 0 && filteredMenuItems.beverage.length > 0) {
+      finalMenu.beverage = [
+        shuffleArray([...filteredMenuItems.beverage])[0].name || shuffleArray([...filteredMenuItems.beverage])[0],
+      ]
+    }
+
+    const totalMainCourses = finalMenu.menu1.length + finalMenu.menu2.length + finalMenu.menu3.length
+    console.log("Final menu structure:", {
+      menu1: finalMenu.menu1.length,
+      menu2: finalMenu.menu2.length,
+      menu3: finalMenu.menu3.length,
+      pasta: finalMenu.pasta.length,
+      dessert: finalMenu.dessert.length,
+      beverage: finalMenu.beverage.length,
+      totalMainCourses,
+    })
+
+    return finalMenu
   }
 
   const generateAIRecommendations = async () => {
@@ -659,7 +941,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       const aiRequest = {
         eventType: eventInfo.eventType,
         guestCount: formData.guestCount,
-        budget: budgetValue[0],
         preferredMenus: formData.preferredMenus,
         venue: formData.venue,
         theme: formData.theme,
@@ -681,30 +962,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       const result = await response.json()
       console.log("AI API response:", result)
 
-      // Handle budget exceeded response FIRST - this is the key fix
-      if (!result.success && result.budgetExceeded) {
-        console.log("Budget exceeded detected, showing warnings")
-
-        // Show budget warnings to user via toast
-        toast({
-          title: "Budget Adjustment Needed",
-          description: result.message,
-          variant: "destructive",
-        })
-
-        // Create a special recommendations object to show budget warnings
-        const budgetWarningRecommendations = {
-          packages: [],
-          budgetExceeded: true,
-          budgetWarnings: result.budgetWarnings,
-          suggestions: result.suggestions,
-          message: result.message,
-        }
-
-        setRecommendations(budgetWarningRecommendations)
-        return // Exit early, don't proceed to fallback
-      }
-
       // Handle successful AI response
       if (result.success && result.recommendations) {
         console.log("AI recommendations received successfully")
@@ -712,400 +969,41 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         // Parse user preferences for client-side validation
         const userPrefs = parseUserPreferences(formData.preferredMenus || "")
 
-        // Budget-conscious optimization function
-        const optimizeMenuForBudget = (
-          selections: any,
-          allMenuItems: MenuItems,
-          budget: number,
-          numGuests: number,
-          userPreferences: any,
-        ) => {
-          const costs = {
-            menu1: 70,
-            menu2: 60,
-            menu3: 50,
-            pasta: 40,
-            dessert: 25,
-            beverage: 25,
+        // Apply user restrictions to available items
+        const applyUserRestrictions = (items: MenuItem[], category: string) => {
+          if (userPrefs.restrictions.includes(category.toLowerCase())) {
+            return [] // Completely exclude this category
           }
-
-          // Service fee calculation
-          let serviceFee = 0
-          const isWeddingOrDebut = eventInfo.eventType === "wedding" || eventInfo.eventType === "debut"
-          if (!isWeddingOrDebut) {
-            const serviceFees: { [key: string]: number } = {
-              "50": 11500,
-              "80": 10400,
-              "100": 11000,
-              "150": 16500,
-              "200": 22000,
-            }
-            serviceFee = serviceFees[formData.guestCount] || 11500
-          }
-
-          const availableMenuBudget = budget - serviceFee
-
-          // Determine budget tier and target quantities
-          let budgetTier = "low"
-          let targetMainCourses = 3
-          let targetPasta = 1
-          let targetDessert = 1
-          let targetBeverage = 1
-
-          if (budget >= 150000) {
-            budgetTier = "premium"
-            targetMainCourses = 8
-            targetPasta = 3
-            targetDessert = 3
-            targetBeverage = 3
-          } else if (budget >= 81000) {
-            budgetTier = "high"
-            targetMainCourses = 6
-            targetPasta = 2
-            targetDessert = 2
-            targetBeverage = 2
-          } else if (budget >= 41000) {
-            budgetTier = "medium"
-            targetMainCourses = 4
-            targetPasta = 1
-            targetDessert = 1
-            targetBeverage = 1
-          } else {
-            budgetTier = "low"
-            targetMainCourses = 3
-            targetPasta = 1
-            targetDessert = 1
-            targetBeverage = 1
-          }
-
-          console.log("Budget tier analysis:", {
-            budget: budget,
-            budgetTier: budgetTier,
-            availableMenuBudget: availableMenuBudget,
-            targets: { targetMainCourses, targetPasta, targetDessert, targetBeverage },
-          })
-
-          // Apply user restrictions to available items with randomization
-          const applyUserRestrictions = (items: MenuItem[], category: string) => {
-            if (userPreferences.restrictions.includes(category.toLowerCase())) {
-              return [] // Completely exclude this category
-            }
-            // Double shuffle for maximum randomization
-            return shuffleArray([...shuffleArray(items)]).map((item) => item.name)
-          }
-
-          // Filter available items based on user restrictions with enhanced randomization
-          const filteredMenuItems = {
-            beef: applyUserRestrictions(allMenuItems.beef, "beef"),
-            pork: applyUserRestrictions(allMenuItems.pork, "pork"),
-            chicken: applyUserRestrictions(allMenuItems.chicken, "chicken"),
-            seafood: applyUserRestrictions(allMenuItems.seafood, "seafood"),
-            vegetables: applyUserRestrictions(allMenuItems.vegetables, "vegetables"),
-            pasta: applyUserRestrictions(allMenuItems.pasta, "pasta"),
-            dessert: shuffleArray([...shuffleArray(allMenuItems.dessert)]).map((item) => item.name),
-            beverage: shuffleArray([...shuffleArray(allMenuItems.beverage)]).map((item) => item.name),
-          }
-
-          // Start with AI selections but validate against budget
-          const finalSelections = {
-            menu1: [] as string[],
-            menu2: [] as string[],
-            menu3: [] as string[],
-            pasta: [] as string[],
-            dessert: [] as string[],
-            beverage: [] as string[],
-            reasoning: selections.reasoning,
-            explanation: selections.explanation,
-          }
-
-          // Helper function to calculate cost for current selections
-          const calculateCurrentCost = () => {
-            return (
-              (finalSelections.menu1.length * costs.menu1 +
-                finalSelections.menu2.length * costs.menu2 +
-                finalSelections.menu3.length * costs.menu3 +
-                finalSelections.pasta.length * costs.pasta +
-                finalSelections.dessert.length * costs.dessert +
-                finalSelections.beverage.length * costs.beverage) *
-              numGuests
-            )
-          }
-
-          // Helper function to get items within budget constraints
-          const getItemsWithinBudget = (
-            aiItems: string[],
-            availableItems: string[],
-            category: string,
-            targetCount: number,
-          ) => {
-            const result: string[] = []
-            const used = new Set<string>()
-            const categoryCost = costs[category as keyof typeof costs]
-
-            // Try AI suggestions first
-            for (const item of aiItems || []) {
-              if (result.length >= targetCount) break
-              if (item && availableItems.includes(item) && !used.has(item)) {
-                const testCost = calculateCurrentCost() + categoryCost * numGuests
-                if (testCost <= availableMenuBudget) {
-                  result.push(item)
-                  used.add(item)
-                }
-              }
-            }
-
-            // Fill remaining slots if budget allows and we haven't reached target
-            for (const item of availableItems) {
-              if (result.length >= targetCount) break
-              if (item && !used.has(item)) {
-                const testCost = calculateCurrentCost() + categoryCost * numGuests
-                if (testCost <= availableMenuBudget) {
-                  result.push(item)
-                  used.add(item)
-                } else {
-                  break // Stop if we can't afford more
-                }
-              }
-            }
-
-            return result
-          }
-
-          // Handle non-main course items first (pasta, dessert, beverage)
-          // Adjust targets based on user restrictions
-          const adjustedTargetPasta = userPreferences.restrictions.includes("pasta")
-            ? 0
-            : userPreferences.emphasis.includes("pasta")
-              ? Math.min(targetPasta + 1, filteredMenuItems.pasta.length)
-              : targetPasta
-
-          const adjustedTargetDessert = userPreferences.emphasis.includes("dessert")
-            ? Math.min(targetDessert + 1, filteredMenuItems.dessert.length)
-            : targetDessert
-
-          const adjustedTargetBeverage = userPreferences.emphasis.includes("beverage")
-            ? Math.min(targetBeverage + 1, filteredMenuItems.beverage.length)
-            : targetBeverage
-
-          finalSelections.pasta = getItemsWithinBudget(
-            selections.pasta || [],
-            filteredMenuItems.pasta,
-            "pasta",
-            adjustedTargetPasta,
-          )
-          finalSelections.dessert = getItemsWithinBudget(
-            selections.dessert || [],
-            filteredMenuItems.dessert,
-            "dessert",
-            adjustedTargetDessert,
-          )
-          finalSelections.beverage = getItemsWithinBudget(
-            selections.beverage || [],
-            filteredMenuItems.beverage,
-            "beverage",
-            adjustedTargetBeverage,
-          )
-
-          // Handle main courses with budget-conscious compensation
-          const availableMainCategories = [
-            { name: "menu1", items: [...filteredMenuItems.beef, ...filteredMenuItems.pork], cost: costs.menu1 },
-            { name: "menu2", items: filteredMenuItems.chicken, cost: costs.menu2 },
-            {
-              name: "menu3",
-              items: [...filteredMenuItems.seafood, ...filteredMenuItems.vegetables],
-              cost: costs.menu3,
-            },
-          ].filter((cat) => cat.items.length > 0)
-
-          // Calculate excluded main course categories for compensation
-          const excludedMainCategories = [
-            userPreferences.restrictions.includes("beef") || userPreferences.restrictions.includes("pork")
-              ? "menu1"
-              : null,
-            userPreferences.restrictions.includes("chicken") ? "menu2" : null,
-            userPreferences.restrictions.includes("seafood") || userPreferences.restrictions.includes("vegetables")
-              ? "menu3"
-              : null,
-          ].filter(Boolean)
-
-          // Adjust target main courses based on exclusions and budget tier
-          let adjustedTargetMainCourses = targetMainCourses
-          if (excludedMainCategories.length > 0) {
-            // Compensate for excluded categories by adding more to remaining categories
-            const compensationFactor = budgetTier === "premium" ? 2 : budgetTier === "high" ? 1.5 : 1
-            adjustedTargetMainCourses = Math.min(
-              targetMainCourses + Math.floor(excludedMainCategories.length * compensationFactor),
-              availableMainCategories.reduce((sum, cat) => sum + cat.items.length, 0),
-            )
-          }
-
-          // Sort categories by preference and cost efficiency
-          const sortedCategories = [...availableMainCategories].sort((a, b) => {
-            // Prioritize emphasized categories
-            const aEmphasized =
-              (a.name === "menu1" &&
-                (userPreferences.emphasis.includes("beef") || userPreferences.emphasis.includes("pork"))) ||
-              (a.name === "menu2" && userPreferences.emphasis.includes("chicken")) ||
-              (a.name === "menu3" &&
-                (userPreferences.emphasis.includes("seafood") || userPreferences.emphasis.includes("vegetables")))
-
-            const bEmphasized =
-              (b.name === "menu1" &&
-                (userPreferences.emphasis.includes("beef") || userPreferences.emphasis.includes("pork"))) ||
-              (b.name === "menu2" && userPreferences.emphasis.includes("chicken")) ||
-              (b.name === "menu3" &&
-                (userPreferences.emphasis.includes("seafood") || userPreferences.emphasis.includes("vegetables")))
-
-            if (aEmphasized && !bEmphasized) return -1
-            if (!aEmphasized && bEmphasized) return 1
-
-            // For low budgets, prefer cheaper options
-            if (budgetTier === "low") return a.cost - b.cost
-
-            return 0
-          })
-
-          // Distribute main courses across available categories
-          let remainingBudget = availableMenuBudget - calculateCurrentCost()
-          let addedMainCourses = 0
-
-          // Calculate items per category
-          const itemsPerCategory = Math.floor(adjustedTargetMainCourses / sortedCategories.length)
-          const extraItems = adjustedTargetMainCourses % sortedCategories.length
-
-          for (let i = 0; i < sortedCategories.length; i++) {
-            const category = sortedCategories[i]
-            if (addedMainCourses >= adjustedTargetMainCourses) break
-
-            let targetForThisCategory = itemsPerCategory
-            if (i < extraItems) targetForThisCategory += 1 // Distribute extra items
-
-            // For emphasized categories, add bonus items if budget allows
-            const isEmphasized =
-              (category.name === "menu1" &&
-                (userPreferences.emphasis.includes("beef") || userPreferences.emphasis.includes("pork"))) ||
-              (category.name === "menu2" && userPreferences.emphasis.includes("chicken")) ||
-              (category.name === "menu3" &&
-                (userPreferences.emphasis.includes("seafood") || userPreferences.emphasis.includes("vegetables")))
-
-            if (isEmphasized && budgetTier !== "low") {
-              targetForThisCategory = Math.min(targetForThisCategory + 1, category.items.length)
-            }
-
-            const maxAffordable = Math.floor(remainingBudget / (category.cost * numGuests))
-            const actualTarget = Math.min(targetForThisCategory, maxAffordable, category.items.length)
-
-            if (actualTarget > 0) {
-              const categoryKey = category.name as keyof typeof finalSelections
-              const aiCategoryItems =
-                category.name === "menu1"
-                  ? selections.menu1 || []
-                  : category.name === "menu2"
-                    ? selections.menu2 || []
-                    : selections.menu3 || []
-
-              const selectedItems = getItemsWithinBudget(aiCategoryItems, category.items, category.name, actualTarget)
-              finalSelections[categoryKey] = selectedItems as any
-              addedMainCourses += selectedItems.length
-              remainingBudget -= selectedItems.length * category.cost * numGuests
-            }
-          }
-
-          // If we still have budget and haven't reached minimum main courses, add more
-          if (addedMainCourses < 3 && remainingBudget > 0) {
-            for (const category of sortedCategories) {
-              if (addedMainCourses >= 3) break
-
-              const categoryKey = category.name as keyof typeof finalSelections
-              const currentItems = finalSelections[categoryKey] as string[]
-              const maxAffordable = Math.floor(remainingBudget / (category.cost * numGuests))
-
-              if (maxAffordable > 0 && currentItems.length < category.items.length) {
-                const additionalItems = category.items
-                  .filter((item) => !currentItems.includes(item))
-                  .slice(0, Math.min(maxAffordable, 3 - addedMainCourses))
-                finalSelections[categoryKey] = [...currentItems, ...additionalItems] as any
-                addedMainCourses += additionalItems.length
-                remainingBudget -= additionalItems.length * category.cost * numGuests
-              }
-            }
-          }
-
-          // If we have significant remaining budget (>20% of available), try to add more items
-          const budgetUtilization = (availableMenuBudget - remainingBudget) / availableMenuBudget
-          if (budgetUtilization < 0.8 && remainingBudget > availableMenuBudget * 0.2) {
-            // Try to add more items to utilize budget better
-            const allCategories = [
-              { name: "pasta", items: filteredMenuItems.pasta, cost: costs.pasta },
-              { name: "dessert", items: filteredMenuItems.dessert, cost: costs.dessert },
-              { name: "beverage", items: filteredMenuItems.beverage, cost: costs.beverage },
-              ...sortedCategories,
-            ]
-
-            for (const category of allCategories) {
-              if (remainingBudget < category.cost * numGuests) continue
-
-              const categoryKey = category.name as keyof typeof finalSelections
-              const currentItems = finalSelections[categoryKey] as string[]
-              const maxAffordable = Math.floor(remainingBudget / (category.cost * numGuests))
-
-              if (maxAffordable > 0 && currentItems.length < category.items.length) {
-                const additionalItems = category.items
-                  .filter((item) => !currentItems.includes(item))
-                  .slice(0, Math.min(maxAffordable, 2)) // Add up to 2 more items
-
-                if (additionalItems.length > 0) {
-                  finalSelections[categoryKey] = [...currentItems, ...additionalItems] as any
-                  remainingBudget -= additionalItems.length * category.cost * numGuests
-                }
-              }
-            }
-          }
-
-          console.log("Enhanced budget optimization result:", {
-            budgetTier: budgetTier,
-            targetMainCourses: adjustedTargetMainCourses,
-            actualMainCourses: addedMainCourses,
-            remainingBudget: remainingBudget,
-            budgetUtilization: (((availableMenuBudget - remainingBudget) / availableMenuBudget) * 100).toFixed(1) + "%",
-            finalStructure: {
-              menu1: finalSelections.menu1.length,
-              menu2: finalSelections.menu2.length,
-              menu3: finalSelections.menu3.length,
-              pasta: finalSelections.pasta.length,
-              dessert: finalSelections.dessert.length,
-              beverage: finalSelections.beverage.length,
-            },
-          })
-
-          return finalSelections
+          return shuffleArray(items) // Randomize available items
         }
 
-        // Create package recommendations based on AI suggestions
-        const numGuests = Number.parseInt(formData.guestCount) || 50
-        const userBudget = budgetValue[0]
+        const filteredMenuItems = {
+          beef: applyUserRestrictions(menuItems.beef, "beef"),
+          pork: applyUserRestrictions(menuItems.pork, "pork"),
+          chicken: applyUserRestrictions(menuItems.chicken, "chicken"),
+          seafood: applyUserRestrictions(menuItems.seafood, "seafood"),
+          vegetables: applyUserRestrictions(menuItems.vegetables, "vegetables"),
+          pasta: applyUserRestrictions(menuItems.pasta, "pasta"),
+          dessert: shuffleArray(menuItems.dessert),
+          beverage: shuffleArray(menuItems.beverage),
+        }
 
-        // Optimize menu based on budget while respecting user preferences strictly
-        const adjustedMenuSelections = optimizeMenuForBudget(
-          result.recommendations,
-          menuItems,
-          userBudget,
-          numGuests,
-          userPrefs,
-        )
+        // Enforce fixed structure: exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage
+        const finalMenu = enforceFixedStructure(result.recommendations, userPrefs, filteredMenuItems)
 
-        // Update the state with the final, preference-respecting menu
+        // Update the state with the final menu
         setSelectedMenuItems({
-          menu1: adjustedMenuSelections.menu1 || [],
-          menu2: adjustedMenuSelections.menu2 || [],
-          menu3: adjustedMenuSelections.menu3 || [],
-          pasta: adjustedMenuSelections.pasta || [],
-          dessert: adjustedMenuSelections.dessert || [],
-          beverage: adjustedMenuSelections.beverage || [],
+          menu1: finalMenu.menu1,
+          menu2: finalMenu.menu2,
+          menu3: finalMenu.menu3,
+          pasta: finalMenu.pasta,
+          dessert: finalMenu.dessert,
+          beverage: finalMenu.beverage,
         })
 
         // Calculate pricing based on final selections
         const calculateMenuPricing = (selections: any) => {
+          const numGuests = Number.parseInt(formData.guestCount) || 50
           let total = 0
           const breakdown: any = {
             menu1: [],
@@ -1161,8 +1059,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           return { total, breakdown }
         }
 
-        // Calculate pricing based on the FINAL menu structure
-        const menuPricing = calculateMenuPricing(adjustedMenuSelections)
+        // Calculate pricing based on the final menu structure
+        const menuPricing = calculateMenuPricing(finalMenu)
+        const numGuests = Number.parseInt(formData.guestCount) || 50
 
         // Service fee based on guest count (except for wedding & debut)
         let serviceFee = 0
@@ -1182,20 +1081,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         // Calculate final total amount
         const finalTotalAmount = menuPricing.total + serviceFee
         const finalDownPayment = Math.round(finalTotalAmount * 0.5)
-
-        // Determine if the final price is over budget to display a message
-        let budgetExceededMessage = ""
-        if (finalTotalAmount > userBudget) {
-          budgetExceededMessage = `The package price of ₱${finalTotalAmount.toLocaleString()} is above your budget of ₱${userBudget.toLocaleString()}. This reflects your specific menu preferences and restrictions.`
-        }
-
-        // Determine budget tier based on budget and guest count
-        let budgetTierKey = "economy"
-        if (userBudget >= (budgetRules.wedding["200"]?.min || 140000) && numGuests >= 200) budgetTierKey = "luxury"
-        else if (userBudget >= (budgetRules.wedding["150"]?.min || 115000) && numGuests >= 150)
-          budgetTierKey = "premium"
-        else if (userBudget >= (budgetRules.wedding["100"]?.min || 90000) && numGuests >= 100)
-          budgetTierKey = "standard"
 
         // Service fee inclusions for non-wedding/debut events
         const isWeddingOrDebutEvent = eventInfo.eventType === "wedding" || eventInfo.eventType === "debut"
@@ -1250,19 +1135,15 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           if (userPrefs.emphasis.length > 0) {
             features.push(`✓ Emphasizes: ${userPrefs.emphasis.join(", ")} (as requested)`)
           }
+          if (userPrefs.onlyRequests.length > 0) {
+            features.push(`✓ Only includes: ${userPrefs.onlyRequests.join(", ")} (as requested)`)
+          }
 
           // Add other standard features
           features.push(`${numGuests} guests`)
           features.push(`AI-personalized based on your preferences`)
-          features.push(`${budgetTierKey.charAt(0).toUpperCase() + budgetTierKey.slice(1)} tier quality`)
           features.push(`Generation #${generationCount} - Fresh variety`)
-
-          // Show budget context
-          if (finalTotalAmount <= userBudget) {
-            features.push(`✓ Within your ₱${userBudget.toLocaleString()} budget`)
-          } else {
-            features.push(`Customized for your specific preferences`)
-          }
+          features.push(`Fixed structure: exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage`)
 
           return features
         }
@@ -1270,29 +1151,26 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         const mockRecommendations = {
           packages: [
             {
-              name: `AI-Curated ${budgetTierKey.charAt(0).toUpperCase() + budgetTierKey.slice(1)} Package`,
-              description: `A personalized ${budgetTierKey} package for your ${eventInfo.eventType} featuring AI-selected menu items that strictly follow your dietary preferences and budget constraints.`,
+              name: `AI-Curated ${eventInfo.eventType.charAt(0).toUpperCase() + eventInfo.eventType.slice(1)} Package`,
+              description: `A personalized package for your ${eventInfo.eventType} featuring AI-selected menu items that strictly follow your dietary preferences with our standard structure of exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage.`,
               price: `₱${finalTotalAmount.toLocaleString()}`,
-              budgetTier: budgetTierKey,
-              features: createPackageFeatures(adjustedMenuSelections),
+              features: createPackageFeatures(finalMenu),
               isRecommended: true,
               reasoning:
-                adjustedMenuSelections.reasoning ||
-                `This AI-curated package strictly follows your menu preferences: "${formData.preferredMenus}". Your dietary restrictions and budget constraints have been carefully respected.`,
+                result.recommendations.reasoning ||
+                `This AI-curated package strictly follows your menu preferences: "${formData.preferredMenus}". Your dietary restrictions have been carefully respected while maintaining our standard menu structure of exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage.`,
               menuTotal: menuPricing.total,
               serviceFee: serviceFee,
               serviceFeeInclusions: serviceFeeInclusions,
               downPayment: finalDownPayment,
               isWeddingOrDebut: isWeddingOrDebut,
-              budgetExceededMessage: budgetExceededMessage,
               userPreferences: userPrefs,
-              menuSelections: adjustedMenuSelections,
+              menuSelections: finalMenu,
               generationCount: generationCount,
             },
           ],
-          menu: adjustedMenuSelections,
+          menu: finalMenu,
           menuPricing: menuPricing,
-          budgetTier: budgetTierKey,
         }
 
         setRecommendations(mockRecommendations)
@@ -1314,68 +1192,14 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     if (!menuItems) return
 
     const numGuests = Number.parseInt(formData.guestCount) || 50
-    const currentBudget = budgetValue[0]
     const userPrefs = parseUserPreferences(formData.preferredMenus || "")
 
-    // If no preferences provided, ensure maximum randomization
-    const hasNoPreferences = !formData.preferredMenus || formData.preferredMenus.trim() === ""
-    if (hasNoPreferences) {
-      console.log("No user preferences detected - applying maximum randomization")
-    }
-
-    // Determine budget tier and target quantities
-    let budgetTier = "economy"
-    let targetMainCourses = 3
-    let targetPasta = 1
-    let targetDessert = 1
-    let targetBeverage = 1
-
-    if (currentBudget >= 150000) {
-      budgetTier = "luxury"
-      targetMainCourses = 8
-      targetPasta = 3
-      targetDessert = 3
-      targetBeverage = 3
-    } else if (currentBudget >= 81000) {
-      budgetTier = "premium"
-      targetMainCourses = 6
-      targetPasta = 2
-      targetDessert = 2
-      targetBeverage = 2
-    } else if (currentBudget >= 41000) {
-      budgetTier = "standard"
-      targetMainCourses = 4
-      targetPasta = 1
-      targetDessert = 1
-      targetBeverage = 1
-    }
-
-    // Calculate service fee
-    let serviceFee = 0
-    const isWeddingOrDebut = eventInfo.eventType === "wedding" || eventInfo.eventType === "debut"
-
-    if (!isWeddingOrDebut) {
-      const serviceFees: { [key: string]: number } = {
-        "50": 11500,
-        "80": 10400,
-        "100": 11000,
-        "150": 16500,
-        "200": 22000,
-      }
-      serviceFee = serviceFees[formData.guestCount] || 11500
-    }
-
-    const availableMenuBudget = currentBudget - serviceFee
-
+    // Apply user restrictions to available items
     const applyUserRestrictions = (items: MenuItem[], category: string) => {
       if (userPrefs.restrictions.includes(category.toLowerCase())) {
         return [] // Completely exclude this category
       }
-      // Apply extra randomization when no preferences are specified
-      if (hasNoPreferences) {
-        return shuffleArray([...shuffleArray(items)]) // Double shuffle for no preferences
-      }
-      return shuffleArray(items) // Single shuffle for normal cases
+      return shuffleArray(items) // Randomize available items
     }
 
     const filteredMenuItems = {
@@ -1389,195 +1213,52 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       beverage: shuffleArray(menuItems.beverage),
     }
 
-    // Define costs per guest for each category
-    const costs = {
-      menu1: 70,
-      menu2: 60,
-      menu3: 50,
-      pasta: 40,
-      dessert: 25,
-      beverage: 25,
+    // Use the same fixed structure enforcement
+    const fallbackRecommendations = {
+      menu1: [],
+      menu2: [],
+      menu3: [],
+      pasta: [],
+      dessert: [],
+      beverage: [],
     }
 
-    // Adjust targets based on user preferences
-    const adjustedTargetPasta = userPrefs.restrictions.includes("pasta")
-      ? 0
-      : userPrefs.emphasis.includes("pasta")
-        ? Math.min(targetPasta + 1, filteredMenuItems.pasta.length)
-        : targetPasta
-
-    const adjustedTargetDessert = userPrefs.emphasis.includes("dessert")
-      ? Math.min(targetDessert + 1, filteredMenuItems.dessert.length)
-      : targetDessert
-
-    const adjustedTargetBeverage = userPrefs.emphasis.includes("beverage")
-      ? Math.min(targetBeverage + 1, filteredMenuItems.beverage.length)
-      : targetBeverage
-
-    // Reserve budget for essentials first
-    const essentialCost =
-      (adjustedTargetPasta * costs.pasta +
-        adjustedTargetDessert * costs.dessert +
-        adjustedTargetBeverage * costs.beverage) *
-      numGuests
-    let remainingBudget = availableMenuBudget - essentialCost
-
-    // Available main course categories with budget priority
-    const availableMainCategories = [
-      { name: "menu3", items: [...filteredMenuItems.seafood, ...filteredMenuItems.vegetables], cost: costs.menu3 },
-      { name: "menu2", items: filteredMenuItems.chicken, cost: costs.menu2 },
-      { name: "menu1", items: [...filteredMenuItems.beef, ...filteredMenuItems.pork], cost: costs.menu1 },
-    ].filter((cat) => cat.items.length > 0)
-
-    // Calculate excluded main course categories for compensation
-    const excludedMainCategories = [
-      userPrefs.restrictions.includes("beef") || userPrefs.restrictions.includes("pork") ? "menu1" : null,
-      userPrefs.restrictions.includes("chicken") ? "menu2" : null,
-      userPrefs.restrictions.includes("seafood") || userPrefs.restrictions.includes("vegetables") ? "menu3" : null,
-    ].filter(Boolean)
-
-    // Adjust target main courses based on exclusions and budget tier
-    let adjustedTargetMainCourses = targetMainCourses
-    if (excludedMainCategories.length > 0) {
-      const compensationFactor = budgetTier === "luxury" ? 2 : budgetTier === "premium" ? 1.5 : 1
-      adjustedTargetMainCourses = Math.min(
-        targetMainCourses + Math.floor(excludedMainCategories.length * compensationFactor),
-        availableMainCategories.reduce((sum, cat) => sum + cat.items.length, 0),
-      )
-    }
-
-    // Sort categories by preference and cost efficiency
-    const sortedCategories = [...availableMainCategories].sort((a, b) => {
-      const aEmphasized =
-        (a.name === "menu1" && (userPrefs.emphasis.includes("beef") || userPrefs.emphasis.includes("pork"))) ||
-        (a.name === "menu2" && userPrefs.emphasis.includes("chicken")) ||
-        (a.name === "menu3" && (userPrefs.emphasis.includes("seafood") || userPrefs.emphasis.includes("vegetables")))
-
-      const bEmphasized =
-        (b.name === "menu1" && (userPrefs.emphasis.includes("beef") || userPrefs.emphasis.includes("pork"))) ||
-        (b.name === "menu2" && userPrefs.emphasis.includes("chicken")) ||
-        (b.name === "menu3" && (userPrefs.emphasis.includes("seafood") || userPrefs.emphasis.includes("vegetables")))
-
-      if (aEmphasized && !bEmphasized) return -1
-      if (!aEmphasized && bEmphasized) return 1
-
-      // For low budgets, prefer cheaper options
-      if (budgetTier === "economy") return a.cost - b.cost
-
-      return 0
-    })
-
-    // Distribute main courses across available categories
-    let finalMenu1 = 0
-    let finalMenu2 = 0
-    let finalMenu3 = 0
-    let addedMainCourses = 0
-
-    // Calculate items per category
-    const itemsPerCategory = Math.floor(adjustedTargetMainCourses / sortedCategories.length)
-    const extraItems = adjustedTargetMainCourses % sortedCategories.length
-
-    for (let i = 0; i < sortedCategories.length; i++) {
-      const category = sortedCategories[i]
-      if (addedMainCourses >= adjustedTargetMainCourses) break
-
-      let targetForThisCategory = itemsPerCategory
-      if (i < extraItems) targetForThisCategory += 1
-
-      // For emphasized categories, add bonus items if budget allows
-      const isEmphasized =
-        (category.name === "menu1" && (userPrefs.emphasis.includes("beef") || userPrefs.emphasis.includes("pork"))) ||
-        (category.name === "menu2" && userPrefs.emphasis.includes("chicken")) ||
-        (category.name === "menu3" &&
-          (userPrefs.emphasis.includes("seafood") || userPrefs.emphasis.includes("vegetables")))
-
-      if (isEmphasized && budgetTier !== "economy") {
-        targetForThisCategory = Math.min(targetForThisCategory + 1, category.items.length)
-      }
-
-      const maxAffordable = Math.floor(remainingBudget / (category.cost * numGuests))
-      const actualTarget = Math.min(targetForThisCategory, maxAffordable, category.items.length)
-
-      if (actualTarget > 0) {
-        if (category.name === "menu1") finalMenu1 = actualTarget
-        else if (category.name === "menu2") finalMenu2 = actualTarget
-        else if (category.name === "menu3") finalMenu3 = actualTarget
-
-        addedMainCourses += actualTarget
-        remainingBudget -= actualTarget * category.cost * numGuests
-      }
-    }
-
-    // Ensure minimum 3 main courses if budget allows
-    if (addedMainCourses < 3 && remainingBudget > 0) {
-      for (const category of sortedCategories) {
-        if (addedMainCourses >= 3) break
-
-        const currentItems =
-          category.name === "menu1" ? finalMenu1 : category.name === "menu2" ? finalMenu2 : finalMenu3
-
-        if (currentItems === 0) {
-          const canAfford = Math.floor(remainingBudget / (category.cost * numGuests))
-          if (canAfford > 0) {
-            if (category.name === "menu1") finalMenu1 = 1
-            else if (category.name === "menu2") finalMenu2 = 1
-            else if (category.name === "menu3") finalMenu3 = 1
-
-            addedMainCourses += 1
-            remainingBudget -= category.cost * numGuests
-          }
-        }
-      }
-    }
-
-    console.log("Enhanced fallback result:", {
-      budgetTier: budgetTier,
-      targetMainCourses: adjustedTargetMainCourses,
-      actualMainCourses: addedMainCourses,
-      remainingBudget: remainingBudget,
-      budgetUtilization: (((availableMenuBudget - remainingBudget) / availableMenuBudget) * 100).toFixed(1) + "%",
-      finalStructure: {
-        finalMenu1,
-        finalMenu2,
-        finalMenu3,
-        adjustedTargetPasta,
-        adjustedTargetDessert,
-        adjustedTargetBeverage,
-      },
-    })
-
-    const pickItems = (items: MenuItem[], count: number) =>
-      items.slice(0, Math.min(items.length, count)).map((item) => item.name)
-
-    const suggestedMenu = {
-      menu1: pickItems([...filteredMenuItems.beef, ...filteredMenuItems.pork], finalMenu1),
-      menu2: pickItems(filteredMenuItems.chicken, finalMenu2),
-      menu3: pickItems([...filteredMenuItems.seafood, ...filteredMenuItems.vegetables], finalMenu3),
-      pasta: pickItems(filteredMenuItems.pasta, adjustedTargetPasta),
-      dessert: pickItems(filteredMenuItems.dessert, adjustedTargetDessert),
-      beverage: pickItems(filteredMenuItems.beverage, adjustedTargetBeverage),
-    }
+    const finalMenu = enforceFixedStructure(fallbackRecommendations, userPrefs, filteredMenuItems)
 
     setSelectedMenuItems({
-      menu1: [...suggestedMenu.menu1],
-      menu2: [...suggestedMenu.menu2],
-      menu3: [...suggestedMenu.menu3],
-      pasta: [...suggestedMenu.pasta],
-      dessert: [...suggestedMenu.dessert],
-      beverage: [...suggestedMenu.beverage],
+      menu1: [...finalMenu.menu1],
+      menu2: [...finalMenu.menu2],
+      menu3: [...finalMenu.menu3],
+      pasta: [...finalMenu.pasta],
+      dessert: [...finalMenu.dessert],
+      beverage: [...finalMenu.beverage],
     })
 
     const isWeddingOrDebutEvent = eventInfo.eventType === "wedding" || eventInfo.eventType === "debut"
 
-    // Calculate final menu cost
+    // Calculate final menu cost with fixed pricing
+    const costs = { menu1: 70, menu2: 60, menu3: 50, pasta: 40, dessert: 25, beverage: 25 }
     const finalMenuCost =
-      (suggestedMenu.menu1.length * costs.menu1 +
-        suggestedMenu.menu2.length * costs.menu2 +
-        suggestedMenu.menu3.length * costs.menu3 +
-        suggestedMenu.pasta.length * costs.pasta +
-        suggestedMenu.dessert.length * costs.dessert +
-        suggestedMenu.beverage.length * costs.beverage) *
+      (finalMenu.menu1.length * costs.menu1 +
+        finalMenu.menu2.length * costs.menu2 +
+        finalMenu.menu3.length * costs.menu3 +
+        finalMenu.pasta.length * costs.pasta +
+        finalMenu.dessert.length * costs.dessert +
+        finalMenu.beverage.length * costs.beverage) *
       numGuests
+
+    // Service fee calculation
+    let serviceFee = 0
+    if (!isWeddingOrDebutEvent) {
+      const serviceFees: { [key: string]: number } = {
+        "50": 11500,
+        "80": 10400,
+        "100": 11000,
+        "150": 16500,
+        "200": 22000,
+      }
+      serviceFee = serviceFees[formData.guestCount] || 11500
+    }
 
     // Calculate final total amount
     const finalTotalAmount = finalMenuCost + serviceFee
@@ -1635,18 +1316,14 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       if (userPrefs.emphasis.length > 0) {
         features.push(`✓ Emphasizes: ${userPrefs.emphasis.join(", ")} (as requested)`)
       }
+      if (userPrefs.onlyRequests.length > 0) {
+        features.push(`✓ Only includes: ${userPrefs.onlyRequests.join(", ")} (as requested)`)
+      }
 
       // Add other standard features
       features.push(`${numGuests} guests`)
-      features.push(`${budgetTier.charAt(0).toUpperCase() + budgetTier.slice(1)} tier quality`)
-      features.push(`Generation #${generationCount} - Budget-scaled variety`)
-
-      // Show budget context
-      if (finalTotalAmount <= currentBudget) {
-        features.push(`✓ Within your ₱${currentBudget.toLocaleString()} budget`)
-      } else {
-        features.push(`Customized for your specific preferences`)
-      }
+      features.push(`Generation #${generationCount} - Standard structure`)
+      features.push(`Fixed structure: exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage`)
 
       return features
     }
@@ -1654,25 +1331,23 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     const mockRecommendations = {
       packages: [
         {
-          name: `${budgetTier.charAt(0).toUpperCase() + budgetTier.slice(1)} Celebration Package`,
-          description: `A budget-scaled ${budgetTier} package for your ${eventInfo.eventType} featuring menu selection that maximizes value within your budget range.`,
+          name: `${eventInfo.eventType.charAt(0).toUpperCase() + eventInfo.eventType.slice(1)} Celebration Package`,
+          description: `A standard package for your ${eventInfo.eventType} featuring menu selection that follows our fixed structure of exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage.`,
           price: `₱${finalTotalAmount.toLocaleString()}`,
-          budgetTier: budgetTier,
-          features: createFallbackPackageFeatures(suggestedMenu),
+          features: createFallbackPackageFeatures(finalMenu),
           isRecommended: true,
-          reasoning: `This package has been customized to follow your preferences: "${formData.preferredMenus}". Your dietary restrictions and budget have been optimized for maximum value with ${addedMainCourses} main courses, ${adjustedTargetPasta} pasta, ${adjustedTargetDessert} dessert, and ${adjustedTargetBeverage} beverage options.`,
+          reasoning: `This package has been customized to follow your preferences: "${formData.preferredMenus}". Your dietary restrictions have been respected while maintaining our standard menu structure of exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage.`,
           menuTotal: finalMenuCost,
           serviceFee: serviceFee,
           serviceFeeInclusions: serviceFeeInclusions,
           downPayment: finalDownPayment,
           isWeddingOrDebut: isWeddingOrDebutEvent,
           userPreferences: userPrefs,
-          menuSelections: suggestedMenu,
+          menuSelections: finalMenu,
           generationCount: generationCount,
         },
       ],
-      menu: suggestedMenu,
-      budgetTier: budgetTier,
+      menu: finalMenu,
     }
 
     setRecommendations(mockRecommendations)
@@ -1788,9 +1463,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
             <div className="text-center space-y-2">
               <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">AI-Powered Event Planning</h3>
               <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                Fill in your preferences below and our AI will recommend the perfect package and menu for your{" "}
-                <span className="font-medium text-rose-600">{eventInfo.eventType}</span> event using our structured menu
-                system with budget-conscious recommendations.
+                Fill in your preferences below and our AI will recommend the perfect menu for your{" "}
+                <span className="font-medium text-rose-600">{eventInfo.eventType}</span> event using our standard
+                structure: <strong>exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage</strong>.
               </p>
             </div>
 
@@ -1820,52 +1495,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                   </Select>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label htmlFor="budget" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      Budget Range
-                    </label>
-                    <span className="text-lg font-bold text-rose-600">₱{budgetValue[0].toLocaleString()}</span>
-                  </div>
-                  <div className="space-y-4">
-                    <Slider
-                      id="budget"
-                      disabled={isFormDisabled || !formData.guestCount}
-                      value={budgetValue}
-                      max={currentSliderConfig.max}
-                      min={currentSliderConfig.min}
-                      step={1000}
-                      onValueChange={(value) => {
-                        setBudgetValue(value)
-                        setFormData((prev) => ({ ...prev, budget: value[0].toString() }))
-                      }}
-                      className="py-2"
-                    />
-                    <div className="flex items-center justify-between">
-                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 flex-1">
-                        <span>{currentSliderConfig.displayMinText}</span>
-                        <span>{currentSliderConfig.displayMaxText}</span>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setCurrentSliderConfig((prev) => ({
-                            ...prev,
-                            max: prev.max + 5000,
-                            displayMaxText: `₱${(prev.max + 5000).toLocaleString()}+`,
-                          }))
-                        }}
-                        className="ml-4 text-xs px-3 py-1 h-7 border-rose-300 text-rose-600 hover:bg-rose-50 hover:border-rose-400"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        ₱5K
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="space-y-3 md:col-span-2">
                   <label htmlFor="preferredMenus" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                     AI Menu Preferences & Dietary Restrictions
@@ -1877,7 +1506,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                       disabled={isFormDisabled}
                       value={formData.preferredMenus}
                       onChange={handleInputChange}
-                      placeholder="Tell our AI your specific menu preferences and dietary restrictions. Examples: 'No beef', 'Add more chicken', 'More seafood', 'No pork', 'Prefer vegetables', 'Extra pasta options', 'Vegetarian only', 'Halal requirements', 'No shellfish allergy', 'Gluten-free options', 'Keto diet', 'Pescatarian', etc."
+                      placeholder="Tell our AI your specific menu preferences and dietary restrictions. Examples: 'No beef', 'Add more chicken', 'More seafood', 'No pork', 'Prefer vegetables', 'Only chicken dishes', 'Vegetarian only', 'Halal requirements', 'No shellfish allergy', 'Gluten-free options', 'Keto diet', 'Pescatarian', etc. Our AI will maintain exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage while respecting your preferences."
                       className="min-h-[120px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 resize-none pr-12"
                     />
                     <Send className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
@@ -1899,7 +1528,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                         { label: "No Chicken", value: "no chicken, exclude chicken" },
                         { label: "More Seafood", value: "more seafood, extra seafood, prefer seafood" },
                         { label: "More Vegetables", value: "more vegetables, extra vegetables, prefer vegetables" },
-                        { label: "Spicy Food", value: "spicy food, hot dishes, maanghang" },
+                        { label: "Only Chicken", value: "only chicken, chicken only, chicken dishes only" },
+                        { label: "Only Beef", value: "only beef, beef only, beef dishes only" },
+                        { label: "Only Seafood", value: "only seafood, seafood only, seafood dishes only" },
                       ].map((restriction) => (
                         <Button
                           key={restriction.label}
@@ -1922,7 +1553,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
 
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                     <p className="text-xs text-blue-700 dark:text-blue-300">
-                      💡 <strong>Pro tip:</strong> Be specific about your dietary needs! Our AI understands:
+                      💡 <strong>Fixed Menu Structure:</strong> Our AI will always provide exactly 3 main courses, 1
+                      pasta, 1 dessert, and 1 beverage. You can specify preferences for specific dishes or categories,
+                      and our AI will respect your dietary restrictions while maintaining this structure.
                     </p>
                     <ul className="text-xs text-blue-600 dark:text-blue-400 mt-2 space-y-1 ml-4">
                       <li>
@@ -1930,15 +1563,15 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                         allergy"
                       </li>
                       <li>
-                        • <strong>Preferences:</strong> "More seafood", "Extra vegetables", "Prefer chicken", "Add
-                        pasta"
+                        • <strong>Preferences:</strong> "More seafood", "Extra vegetables", "Prefer chicken", "Specific
+                        pasta dish"
+                      </li>
+                      <li>
+                        • <strong>Only requests:</strong> "Only chicken", "Only seafood", "Only beef dishes"
                       </li>
                       <li>
                         • <strong>Dietary needs:</strong> "Vegetarian", "Halal", "Gluten-free", "Keto diet",
                         "Pescatarian"
-                      </li>
-                      <li>
-                        • <strong>Cooking style:</strong> "Spicy food", "Mild flavors", "Grilled only", "No fried"
                       </li>
                     </ul>
                   </div>
@@ -1999,12 +1632,12 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                   {isGenerating ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Generating AI Recommendations...
+                      Generating AI Menu...
                     </>
                   ) : (
                     <>
                       <Shuffle className="mr-2 h-5 w-5" />
-                      Generate AI Recommendations {generationCount > 0 && `(#${generationCount + 1})`}
+                      Generate AI Menu {generationCount > 0 && `(#${generationCount + 1})`}
                     </>
                   )}
                 </Button>
@@ -2016,11 +1649,11 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         <>
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">AI-Generated Recommendations</h3>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">AI-Generated Menu</h3>
               <p className="text-gray-600 dark:text-gray-400">
-                Based on your preferences and budget analysis, here's your personalized package:
+                Based on your preferences, here's your personalized menu with our standard structure:
               </p>
-              {recommendations && !recommendations.budgetExceeded && (
+              {recommendations && (
                 <div className="space-y-6">
                   {/* Personal Information Summary */}
                   <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-900/20">
@@ -2144,7 +1777,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                     {pkg.isRecommended && (
                       <div className="flex justify-end mb-2">
                         <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white px-3 py-1 text-sm font-semibold rounded-full">
-                          AI Recommended - Budget Optimized
+                          AI Recommended - Fixed Structure
                         </div>
                       </div>
                     )}
@@ -2171,7 +1804,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                   <CardContent className="space-y-6">
                     {/* User Preferences Acknowledgment */}
                     {pkg.userPreferences &&
-                      (pkg.userPreferences.restrictions.length > 0 || pkg.userPreferences.emphasis.length > 0) && (
+                      (pkg.userPreferences.restrictions.length > 0 ||
+                        pkg.userPreferences.emphasis.length > 0 ||
+                        pkg.userPreferences.onlyRequests.length > 0) && (
                         <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                           <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">
                             ✓ Your Preferences Applied
@@ -2187,17 +1822,14 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                                 <strong>Emphasized:</strong> {pkg.userPreferences.emphasis.join(", ")}
                               </p>
                             )}
+                            {pkg.userPreferences.onlyRequests.length > 0 && (
+                              <p>
+                                <strong>Only includes:</strong> {pkg.userPreferences.onlyRequests.join(", ")}
+                              </p>
+                            )}
                           </div>
                         </div>
                       )}
-
-                    {/* Budget Exceeded Message */}
-                    {pkg.budgetExceededMessage && (
-                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                        <h4 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">Budget Notice</h4>
-                        <p className="text-sm text-amber-700 dark:text-amber-300">{pkg.budgetExceededMessage}</p>
-                      </div>
-                    )}
 
                     {/* Package Includes */}
                     <div>
@@ -2285,11 +1917,13 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                         <div className="flex items-start space-x-3">
                           <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
                           <span className="text-gray-700 dark:text-gray-300">
-                            {pkg.budgetTier.charAt(0).toUpperCase() + pkg.budgetTier.slice(1)} tier quality
+                            Fixed structure: exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage
                           </span>
                         </div>
                         {pkg.userPreferences &&
-                          (pkg.userPreferences.restrictions.length > 0 || pkg.userPreferences.emphasis.length > 0) && (
+                          (pkg.userPreferences.restrictions.length > 0 ||
+                            pkg.userPreferences.emphasis.length > 0 ||
+                            pkg.userPreferences.onlyRequests.length > 0) && (
                             <div className="flex items-start space-x-3">
                               <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
                               <span className="text-gray-700 dark:text-gray-300">
@@ -2301,7 +1935,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                           <div className="flex items-start space-x-3">
                             <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
                             <span className="text-gray-700 dark:text-gray-300">
-                              Generation #{pkg.generationCount} - Budget optimized
+                              Generation #{pkg.generationCount} - Fresh variety
                             </span>
                           </div>
                         )}
@@ -2401,97 +2035,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
               ))}
             </div>
 
-            {/* Budget Exceeded Warning Display */}
-            {recommendations.budgetExceeded && (
-              <div className="space-y-6">
-                <Card className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                      <AlertTriangle className="h-5 w-5" />
-                      Budget Adjustment Required
-                    </CardTitle>
-                    <CardDescription className="text-amber-700 dark:text-amber-300">
-                      {recommendations.message}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {recommendations.budgetWarnings?.map((warning: any, index: number) => (
-                      <div
-                        key={index}
-                        className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-700 rounded-lg p-4"
-                      >
-                        <h4 className="font-semibold text-amber-800 dark:text-amber-200 mb-2">
-                          {warning.category === "premium_preferences"
-                            ? "Premium Preferences"
-                            : `"Only ${warning.category}" Request`}
-                        </h4>
-                        <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">{warning.reason}</p>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">Current Budget:</span>
-                            <span className="font-semibold text-gray-800 dark:text-gray-200 ml-2">
-                              ₱{warning.currentBudget.toLocaleString()}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">Suggested Budget:</span>
-                            <span className="font-semibold text-green-600 ml-2">
-                              ₱{warning.suggestedBudget.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                        <Button
-                          onClick={() => {
-                            setBudgetValue([warning.suggestedBudget])
-                            setFormData((prev) => ({ ...prev, budget: warning.suggestedBudget.toString() }))
-                            setCurrentSliderConfig((prev) => ({
-                              ...prev,
-                              max: Math.max(prev.max, warning.suggestedBudget + 50000),
-                              displayMaxText: `₱${(warning.suggestedBudget + 50000).toLocaleString()}+`,
-                            }))
-                            setRecommendations(null) // Clear recommendations to show form again
-                          }}
-                          className="w-full mt-3 bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          Update Budget to ₱{warning.suggestedBudget.toLocaleString()}
-                        </Button>
-                      </div>
-                    ))}
-
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                      <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Alternative Options:</h4>
-                      <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                        <li>• Adjust your menu preferences to be less specific</li>
-                        <li>• Remove some dietary restrictions if possible</li>
-                        <li>• Consider a mixed menu instead of "only" requests</li>
-                        <li>• Reduce the number of emphasized categories</li>
-                      </ul>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <div className="flex gap-3 w-full">
-                      <Button
-                        onClick={() => {
-                          setRecommendations(null)
-                          setFormData((prev) => ({ ...prev, preferredMenus: "" }))
-                        }}
-                        variant="outline"
-                        className="flex-1"
-                      >
-                        Clear Preferences & Try Again
-                      </Button>
-                      <Button
-                        onClick={() => setRecommendations(null)}
-                        className="flex-1 bg-rose-600 hover:bg-rose-700 text-white"
-                      >
-                        Adjust Preferences
-                      </Button>
-                    </div>
-                  </CardFooter>
-                </Card>
-              </div>
-            )}
-
             <div className="flex justify-center">
               <Button
                 onClick={() => {
@@ -2509,7 +2052,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                 className="px-6 py-2 border-rose-300 text-rose-600 hover:bg-rose-50 hover:border-rose-400"
               >
                 <Shuffle className="mr-2 h-4 w-4" />
-                Generate New Recommendations
+                Generate New Menu
               </Button>
             </div>
           </div>

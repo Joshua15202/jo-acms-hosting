@@ -8,11 +8,11 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 export async function GET() {
   try {
-    console.log("=== Fetching All Registered Customers ===")
+    console.log("=== Fetching ALL Registered Customers ===")
     console.log("Supabase URL:", supabaseUrl ? "Set" : "Not set")
     console.log("Service Key:", supabaseServiceKey ? "Set" : "Not set")
 
-    // Get all users from tbl_users with valid email addresses
+    // Get ALL users from tbl_users with valid email addresses (no limit)
     const { data: customers, error } = await supabase
       .from("tbl_users")
       .select("id, email, full_name, phone, created_at, updated_at")
@@ -44,6 +44,10 @@ export async function GET() {
       }) || []
 
     console.log(`Found ${validCustomers.length} customers with valid emails`)
+
+    // Log some sample emails for debugging
+    const sampleEmails = validCustomers.slice(0, 5).map((c) => c.email)
+    console.log("Sample valid emails:", sampleEmails)
 
     return NextResponse.json({
       success: true,

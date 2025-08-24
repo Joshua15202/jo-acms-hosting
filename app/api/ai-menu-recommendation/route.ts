@@ -4,19 +4,10 @@ import { google } from "@ai-sdk/google"
 
 export async function POST(request: Request) {
   try {
-    const {
-      eventType,
-      guestCount,
-      budget,
-      preferredMenus,
-      venue,
-      theme,
-      colorMotif,
-      availableMenuItems,
-      generationCount,
-    } = await request.json()
+    const { eventType, guestCount, preferredMenus, venue, theme, colorMotif, availableMenuItems, generationCount } =
+      await request.json()
 
-    if (!eventType || !guestCount || !budget || !availableMenuItems) {
+    if (!eventType || !guestCount || !availableMenuItems) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
@@ -32,42 +23,12 @@ export async function POST(request: Request) {
       })
     }
 
-    // Enhanced preference parsing with budget validation
-    const parseAdvancedUserPreferences = (preferences: string, budget: number, guestCount: number) => {
+    // Enhanced preference parsing for fixed structure
+    const parseAdvancedUserPreferences = (preferences: string) => {
       const lowerPrefs = preferences.toLowerCase()
       const restrictions = []
       const emphasis = []
       const onlyRequests = []
-      const budgetWarnings = []
-
-      // Service fee calculation for budget validation
-      let serviceFee = 0
-      const isWeddingOrDebut = eventType === "wedding" || eventType === "debut"
-      if (!isWeddingOrDebut) {
-        const serviceFees: { [key: string]: number } = {
-          "50": 11500,
-          "80": 10400,
-          "100": 11000,
-          "150": 16500,
-          "200": 22000,
-        }
-        serviceFee = serviceFees[guestCount.toString()] || 11500
-      }
-
-      const availableMenuBudget = budget - serviceFee
-      const numGuests = Number.parseInt(guestCount)
-
-      // Menu pricing per guest
-      const menuPricing = {
-        beef: 70,
-        pork: 70,
-        chicken: 60,
-        seafood: 50,
-        vegetables: 50,
-        pasta: 40,
-        dessert: 25,
-        beverage: 25,
-      }
 
       // Enhanced "only" pattern detection with more comprehensive patterns
       const onlyPatterns = {
@@ -475,96 +436,27 @@ export async function POST(request: Request) {
         }
       })
 
-      // Special dietary requirements with budget validation
+      // Special dietary requirements
       if (lowerPrefs.includes("vegetarian") || lowerPrefs.includes("veggie only") || lowerPrefs.includes("no meat")) {
         onlyRequests.push("vegetables")
         restrictions.push("beef", "pork", "chicken", "seafood")
-
-        // Budget validation for vegetarian
-        const vegetarianCost =
-          (menuPricing.vegetables * 4 + menuPricing.pasta * 2 + menuPricing.dessert + menuPricing.beverage) * numGuests
-        if (vegetarianCost > availableMenuBudget) {
-          const suggestedBudget = vegetarianCost + serviceFee + vegetarianCost * 0.2
-          budgetWarnings.push({
-            category: "vegetarian",
-            currentBudget: budget,
-            suggestedBudget: Math.ceil(suggestedBudget / 1000) * 1000,
-            reason: `Vegetarian menu requires minimum ₱${vegetarianCost.toLocaleString()} for adequate variety (4 vegetable dishes + 2 pasta + dessert + beverage), but your available menu budget is only ₱${availableMenuBudget.toLocaleString()}.`,
-          })
-        }
       }
 
       if (lowerPrefs.includes("pescatarian") || lowerPrefs.includes("fish only")) {
         onlyRequests.push("seafood")
         restrictions.push("beef", "pork", "chicken")
         emphasis.push("seafood", "vegetables")
-
-        // Budget validation for pescatarian
-        const pescatarianCost =
-          (menuPricing.seafood * 3 +
-            menuPricing.vegetables * 2 +
-            menuPricing.pasta +
-            menuPricing.dessert +
-            menuPricing.beverage) *
-          numGuests
-        if (pescatarianCost > availableMenuBudget) {
-          const suggestedBudget = pescatarianCost + serviceFee + pescatarianCost * 0.2
-          budgetWarnings.push({
-            category: "pescatarian",
-            currentBudget: budget,
-            suggestedBudget: Math.ceil(suggestedBudget / 1000) * 1000,
-            reason: `Pescatarian menu requires minimum ₱${pescatarianCost.toLocaleString()} for adequate variety (3 seafood + 2 vegetable dishes + pasta + dessert + beverage), but your available menu budget is only ₱${availableMenuBudget.toLocaleString()}.`,
-          })
-        }
-      }
-
-      // Premium preference validation (multiple emphasis)
-      if (emphasis.length >= 3) {
-        const premiumCost =
-          emphasis.reduce((total, cat) => {
-            return total + menuPricing[cat as keyof typeof menuPricing] * 2 * numGuests
-          }, 0) +
-          (menuPricing.pasta + menuPricing.dessert + menuPricing.beverage) * numGuests
-
-        if (premiumCost > availableMenuBudget) {
-          const suggestedBudget = premiumCost + serviceFee + premiumCost * 0.2
-          budgetWarnings.push({
-            category: "premium_preferences",
-            currentBudget: budget,
-            suggestedBudget: Math.ceil(suggestedBudget / 1000) * 1000,
-            reason: `Your multiple preferences (${emphasis.join(", ")}) require a premium menu costing ₱${premiumCost.toLocaleString()}, but your available menu budget is only ₱${availableMenuBudget.toLocaleString()}.`,
-          })
-        }
       }
 
       return {
         restrictions: [...new Set(restrictions)],
         emphasis: [...new Set(emphasis)],
         onlyRequests: [...new Set(onlyRequests)],
-        budgetWarnings,
-        availableMenuBudget,
-        serviceFee,
       }
     }
 
-    // Parse user preferences with enhanced budget validation
-    const userPrefs = parseAdvancedUserPreferences(preferredMenus || "", budget, Number.parseInt(guestCount))
-
-    // If there are budget warnings, return them immediately
-    if (userPrefs.budgetWarnings.length > 0) {
-      return NextResponse.json({
-        success: false,
-        budgetExceeded: true,
-        budgetWarnings: userPrefs.budgetWarnings,
-        message:
-          "Your menu preferences exceed your current budget range. Please consider increasing your budget or adjusting your preferences.",
-        suggestions: userPrefs.budgetWarnings.map((warning) => ({
-          issue: warning.reason,
-          suggestedBudget: warning.suggestedBudget,
-          category: warning.category,
-        })),
-      })
-    }
+    // Parse user preferences
+    const userPrefs = parseAdvancedUserPreferences(preferredMenus || "")
 
     // Randomize menu items to ensure variety in recommendations
     const shuffleArray = (array: string[]) => {
@@ -577,7 +469,6 @@ export async function POST(request: Request) {
     }
 
     // Randomize all menu categories for variety - include generation count for more randomness
-    const randomSeed = Math.random() * generationCount + Date.now()
     const randomizedMenuItems = {
       beef: shuffleArray([...availableMenuItems.beef]).sort(() => Math.random() - 0.5),
       pork: shuffleArray([...availableMenuItems.pork]).sort(() => Math.random() - 0.5),
@@ -593,17 +484,23 @@ export async function POST(request: Request) {
     const sessionId = Math.random().toString(36).substring(2, 15)
     const timestamp = new Date().toISOString()
 
-    // Create the enhanced AI prompt with budget-conscious recommendations
-    const prompt = `You are an expert catering menu curator for Jo Pacheco Wedding & Event Catering Services with deep understanding of Filipino cuisine, dietary preferences, and budget optimization.
+    // Create the enhanced AI prompt with strict fixed structure enforcement
+    const prompt = `You are an expert catering menu curator for Jo Pacheco Wedding & Event Catering Services with deep understanding of Filipino cuisine and dietary preferences.
 
-IMPORTANT: This is session ${sessionId} at ${timestamp}. Generation #${generationCount}. You MUST provide COMPLETELY DIFFERENT menu selections from previous recommendations to ensure maximum variety and prevent any repetition. Randomize ALL categories including pasta, desserts, and beverages while still following user preferences strictly.
+CRITICAL FIXED STRUCTURE REQUIREMENT:
+You MUST provide EXACTLY:
+- 3 main courses total (distributed across Menu 1, Menu 2, Menu 3)
+- 1 pasta dish
+- 1 dessert
+- 1 beverage
+
+NEVER exceed these quantities. NEVER provide more than 3 main courses total.
+
+IMPORTANT: This is session ${sessionId} at ${timestamp}. Generation #${generationCount}. You MUST provide COMPLETELY DIFFERENT menu selections from previous recommendations to ensure maximum variety and prevent any repetition. Randomize ALL categories while following user preferences strictly.
 
 EVENT DETAILS:
 - Event Type: ${eventType}
 - Guest Count: ${guestCount}
-- Budget: ₱${budget}
-- Available Menu Budget: ₱${userPrefs.availableMenuBudget}
-- Service Fee: ₱${userPrefs.serviceFee}
 - Venue: ${venue || "Not specified"}
 - Theme: ${theme || "Not specified"}
 - Color Motif: ${colorMotif || "Not specified"}
@@ -620,23 +517,6 @@ ${userPrefs.emphasis.length > 0 ? userPrefs.emphasis.join(", ") : "None"}
 EXCLUSIVE "ONLY" REQUESTS (FOCUS EXCLUSIVELY ON THESE):
 ${userPrefs.onlyRequests.length > 0 ? userPrefs.onlyRequests.join(", ") : "None"}
 
-CRITICAL BUDGET VALIDATION: Budget has been pre-validated for user preferences. You can proceed with confidence that the budget supports their requests.
-
-MENU PRICING PER GUEST:
-- Beef & Pork (Menu 1): ₱70 per guest
-- Chicken (Menu 2): ₱60 per guest
-- Seafood & Vegetables (Menu 3): ₱50 per guest
-- Pasta: ₱40 per guest
-- Desserts: ₱25 per guest
-- Beverages: ₱25 per guest
-
-SERVICE FEE (for non-wedding/debut events):
-- 50 guests: ₱11,500
-- 80 guests: ₱10,400
-- 100 guests: ₱11,000
-- 150 guests: ₱16,500
-- 200 guests: ₱22,000
-
 AVAILABLE MENU ITEMS BY CATEGORY (RANDOMIZED FOR VARIETY):
 Menu 1 (Beef & Pork): ${randomizedMenuItems.beef.join(", ")}, ${randomizedMenuItems.pork.join(", ")}
 Menu 2 (Chicken): ${randomizedMenuItems.chicken.join(", ")}
@@ -648,58 +528,52 @@ Beverages: ${randomizedMenuItems.beverage.join(", ")}
 ENHANCED PREFERENCE HANDLING RULES:
 
 1. EXCLUSIVE "ONLY" REQUESTS (HIGHEST PRIORITY - MUST BE STRICTLY ENFORCED):
-   - If user says "only beef", "beef only", "just beef" → ONLY select from beef items, COMPLETELY EXCLUDE all pork, chicken, seafood, vegetables from main courses
-   - If user says "only chicken", "chicken only" → ONLY select from chicken items, COMPLETELY EXCLUDE all beef, pork, seafood, vegetables from main courses  
-   - If user says "only seafood", "seafood only" → ONLY select from seafood items, COMPLETELY EXCLUDE all beef, pork, chicken, vegetables from main courses
-   - If user says "only vegetables", "vegetarian only" → ONLY select from vegetables, COMPLETELY EXCLUDE all meat/seafood from main courses
-   - If user says "only pork & chicken" or "pork and chicken only" → ONLY select from pork AND chicken, COMPLETELY EXCLUDE beef, seafood, vegetables from main courses
-   - For "only" requests, provide 4-6 items ONLY from the specified category/categories to ensure variety within the constraint
-   - Still include pasta, dessert, and beverage unless specifically excluded
+   - If user says "only beef", "beef only", "just beef" → ALL 3 main courses MUST be beef items from Menu 1, menu2=[], menu3=[]
+   - If user says "only chicken", "chicken only" → ALL 3 main courses MUST be chicken items from Menu 2, menu1=[], menu3=[]
+   - If user says "only seafood", "seafood only" → ALL 3 main courses MUST be seafood items from Menu 3, menu1=[], menu2=[]
+   - If user says "only vegetables", "vegetarian only" → ALL 3 main courses MUST be vegetable items from Menu 3, menu1=[], menu2=[]
+   - If user says "only pork & chicken" → Distribute 3 main courses between ONLY pork (Menu 1) AND chicken (Menu 2), menu3=[]
+   - For "only" requests, provide exactly 3 items total ONLY from the specified category/categories
+   - Still include exactly 1 pasta, 1 dessert, and 1 beverage unless specifically excluded
    - CRITICAL: "Only" means EXCLUSIVE - no other main course categories should appear
 
-2. MAIN COURSE CATEGORY MAPPING FOR "ONLY" REQUESTS:
-   - "only beef" → menu1 = [beef items only], menu2 = [], menu3 = []
-   - "only pork" → menu1 = [pork items only], menu2 = [], menu3 = []  
-   - "only chicken" → menu1 = [], menu2 = [chicken items only], menu3 = []
-   - "only seafood" → menu1 = [], menu2 = [], menu3 = [seafood items only]
-   - "only vegetables" → menu1 = [], menu2 = [], menu3 = [vegetable items only]
-   - "only pork & chicken" → menu1 = [pork items only], menu2 = [chicken items only], menu3 = []
-   - "only beef & seafood" → menu1 = [beef items only], menu2 = [], menu3 = [seafood items only]
+2. MAIN COURSE DISTRIBUTION FOR "ONLY" REQUESTS:
+   - "only beef" → menu1 = [3 beef items], menu2 = [], menu3 = []
+   - "only pork" → menu1 = [3 pork items], menu2 = [], menu3 = []  
+   - "only chicken" → menu1 = [], menu2 = [3 chicken items], menu3 = []
+   - "only seafood" → menu1 = [], menu2 = [], menu3 = [3 seafood items]
+   - "only vegetables" → menu1 = [], menu2 = [], menu3 = [3 vegetable items]
+   - "only pork & chicken" → menu1 = [1-2 pork items], menu2 = [1-2 chicken items], menu3 = [] (total must be exactly 3)
+   - "only beef & seafood" → menu1 = [1-2 beef items], menu2 = [], menu3 = [1-2 seafood items] (total must be exactly 3)
 
 3. RESTRICTION ENFORCEMENT (SECOND PRIORITY):
    - Complete exclusion of restricted categories
    - No exceptions or substitutions
    - Religious restrictions (halal, kosher) must be strictly observed
+   - If all main course categories are restricted, return error
 
 4. EMPHASIS AMPLIFICATION (THIRD PRIORITY):
-   - Double the normal quantity for emphasized categories
-   - Prioritize premium items from emphasized categories
-   - Ensure emphasized categories dominate the menu composition
+   - Prioritize emphasized categories when distributing the 3 main courses
+   - If user emphasizes chicken, try to include 2 chicken dishes out of 3 main courses
+   - Ensure emphasized categories are well-represented within the 3-item limit
 
-5. BUDGET OPTIMIZATION STRATEGY:
-   - Available menu budget: ₱${userPrefs.availableMenuBudget}
-   - Use 85-95% of available budget for optimal value
-   - Prioritize user preferences even if it means fewer total items
-   - Quality over quantity when budget is constrained
+5. NORMAL DISTRIBUTION (NO SPECIAL REQUESTS):
+   - Distribute exactly 3 main courses across available categories
+   - Try to include variety: 1 from Menu 1 (beef/pork), 1 from Menu 2 (chicken), 1 from Menu 3 (seafood/vegetables)
+   - If a category is restricted, redistribute to remaining categories
+   - NEVER exceed 3 main courses total
 
-6. MENU COMPOSITION INTELLIGENCE:
-   - Minimum 3 main course items (unless "only" request specifies otherwise)
-   - Scale quantities based on budget tier:
-     * Economy (₱25k-40k): 3-4 main, 1 pasta, 1 dessert, 1 beverage
-     * Standard (₱41k-80k): 4-6 main, 1-2 pasta, 1-2 dessert, 1-2 beverage
-     * Premium (₱81k-150k): 6-8 main, 2-3 pasta, 2-3 dessert, 2-3 beverage
-     * Luxury (₱150k+): 8+ main, 3+ pasta, 3+ dessert, 3+ beverage
-
-7. SPECIAL DIETARY HANDLING:
-   - Vegetarian: Focus on vegetables + pasta, exclude all meat/seafood
-   - Pescatarian: Seafood + vegetables only, exclude meat
-   - Halal: Exclude pork completely, ensure halal compliance
-   - Keto: Emphasize meat/seafood, minimize pasta
-   - Gluten-free: Exclude pasta, emphasize other categories
+6. SPECIAL DIETARY HANDLING:
+   - Vegetarian: All 3 main courses from vegetables (Menu 3), exclude all meat/seafood
+   - Pescatarian: All 3 main courses from seafood (Menu 3), exclude meat
+   - Halal: Exclude pork completely, distribute 3 items among beef, chicken, seafood, vegetables
+   - Keto: Emphasize meat/seafood, exclude pasta if requested
+   - Gluten-free: Exclude pasta if requested, emphasize other categories
 
 CRITICAL SUCCESS FACTORS:
 - User satisfaction is paramount - follow their preferences exactly
-- Budget compliance is mandatory - stay within ₱${userPrefs.availableMenuBudget} for menu items
+- ALWAYS provide exactly 3 main courses total, 1 pasta, 1 dessert, 1 beverage
+- NEVER exceed these quantities under any circumstances
 - Ensure variety within constraints
 - Provide clear reasoning for all selections
 - MAXIMUM RANDOMIZATION for generation #${generationCount}
@@ -710,20 +584,25 @@ Respond with a JSON object containing:
   "menu1": ["selected beef/pork items - EMPTY array [] if user restricted these or requested only other categories"],
   "menu2": ["selected chicken items - EMPTY array [] if user restricted chicken or requested only other categories"], 
   "menu3": ["selected seafood/vegetable items - EMPTY array [] if user restricted these or requested only other categories"],
-  "pasta": ["selected pasta items - EMPTY array [] if user restricted pasta"],
-  "dessert": ["selected dessert items"],
-  "beverage": ["selected beverage items"],
-  "reasoning": "Detailed explanation of how user preferences were interpreted and applied, including budget considerations and any special handling for 'only' requests",
-  "explanation": "Step-by-step breakdown of selection process, budget calculations, and any trade-offs made to stay within budget while honoring preferences",
-  "budgetUtilization": "Percentage of available menu budget used and justification for the utilization level"
+  "pasta": ["exactly 1 pasta item - EMPTY array [] if user restricted pasta"],
+  "dessert": ["exactly 1 dessert item"],
+  "beverage": ["exactly 1 beverage item"],
+  "reasoning": "Detailed explanation of how user preferences were interpreted and applied, including how the fixed structure of exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage was maintained",
+  "explanation": "Step-by-step breakdown of selection process and any trade-offs made to maintain the fixed structure while honoring preferences"
 }
 
-EXAMPLE HANDLING FOR "ONLY" REQUESTS:
-- User says "only beef": menu1 = [4-6 beef items], menu2 = [], menu3 = [], pasta = [1-2 items], dessert = [1-2 items], beverage = [1-2 items]
-- User says "only chicken": menu1 = [], menu2 = [4-6 chicken items], menu3 = [], pasta = [1-2 items], dessert = [1-2 items], beverage = [1-2 items]
-- User says "vegetarian only": menu1 = [], menu2 = [], menu3 = [4-6 vegetable items], pasta = [2-3 items], dessert = [1-2 items], beverage = [1-2 items]
+VALIDATION RULES:
+- menu1.length + menu2.length + menu3.length MUST EQUAL exactly 3
+- pasta.length MUST EQUAL exactly 1 (unless restricted)
+- dessert.length MUST EQUAL exactly 1
+- beverage.length MUST EQUAL exactly 1
 
-Remember: The user's preferences and budget have been pre-validated. Focus on creating the perfect menu within their constraints while ensuring maximum variety for generation #${generationCount}.`
+EXAMPLE HANDLING FOR "ONLY" REQUESTS:
+- User says "only beef": menu1 = [3 beef items], menu2 = [], menu3 = [], pasta = [1 item], dessert = [1 item], beverage = [1 item]
+- User says "only chicken": menu1 = [], menu2 = [3 chicken items], menu3 = [], pasta = [1 item], dessert = [1 item], beverage = [1 item]
+- User says "vegetarian only": menu1 = [], menu2 = [], menu3 = [3 vegetable items], pasta = [1 item], dessert = [1 item], beverage = [1 item]
+
+Remember: Always maintain the fixed structure of exactly 3 main courses total, 1 pasta, 1 dessert, and 1 beverage while respecting user preferences. Focus on creating the perfect menu within these constraints while ensuring maximum variety for generation #${generationCount}.`
 
     const response = await generateText({
       model: google("gemini-1.5-flash"),
@@ -802,28 +681,124 @@ Remember: The user's preferences and budget have been pre-validated. Focus on cr
         [...filteredMenuItems.seafood, ...filteredMenuItems.vegetables],
         "Menu 3",
       ),
-      pasta: validateSelections(aiRecommendations.pasta || [], filteredMenuItems.pasta, "Pasta"),
-      dessert: validateSelections(aiRecommendations.dessert || [], filteredMenuItems.dessert, "Dessert"),
-      beverage: validateSelections(aiRecommendations.beverage || [], filteredMenuItems.beverage, "Beverage"),
+      pasta: validateSelections(aiRecommendations.pasta || [], filteredMenuItems.pasta, "Pasta").slice(0, 1), // Ensure exactly 1
+      dessert: validateSelections(aiRecommendations.dessert || [], filteredMenuItems.dessert, "Dessert").slice(0, 1), // Ensure exactly 1
+      beverage: validateSelections(aiRecommendations.beverage || [], filteredMenuItems.beverage, "Beverage").slice(
+        0,
+        1,
+      ), // Ensure exactly 1
       reasoning:
         aiRecommendations.reasoning ||
-        `Menu curated based on your specific preferences: "${preferredMenus}". Your dietary restrictions, "only" requests, and budget constraints have been carefully respected.`,
+        `Menu curated with fixed structure: exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage. Your dietary restrictions and preferences: "${preferredMenus}" have been carefully respected.`,
       explanation:
         aiRecommendations.explanation ||
-        `This menu was carefully selected to follow your dietary preferences and restrictions while staying within your available menu budget of ₱${userPrefs.availableMenuBudget.toLocaleString()} and ensuring variety.`,
-      budgetUtilization: aiRecommendations.budgetUtilization || "Budget optimized for your preferences",
+        `This menu was carefully selected to follow your dietary preferences and restrictions while maintaining our standard structure of exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage.`,
     }
+
+    // CRITICAL: Enforce exactly 3 main courses total
+    const totalMainCourses =
+      validatedRecommendations.menu1.length +
+      validatedRecommendations.menu2.length +
+      validatedRecommendations.menu3.length
+
+    console.log("AI Response validation:", {
+      menu1: validatedRecommendations.menu1.length,
+      menu2: validatedRecommendations.menu2.length,
+      menu3: validatedRecommendations.menu3.length,
+      totalMainCourses,
+      pasta: validatedRecommendations.pasta.length,
+      dessert: validatedRecommendations.dessert.length,
+      beverage: validatedRecommendations.beverage.length,
+    })
+
+    // If AI didn't provide exactly 3 main courses, fix it
+    if (totalMainCourses !== 3) {
+      console.log(`AI provided ${totalMainCourses} main courses instead of 3. Fixing...`)
+
+      // Collect all main course items
+      const allMainItems = [
+        ...validatedRecommendations.menu1.map((item) => ({ item, category: "menu1" })),
+        ...validatedRecommendations.menu2.map((item) => ({ item, category: "menu2" })),
+        ...validatedRecommendations.menu3.map((item) => ({ item, category: "menu3" })),
+      ]
+
+      // Reset main course arrays
+      validatedRecommendations.menu1 = []
+      validatedRecommendations.menu2 = []
+      validatedRecommendations.menu3 = []
+
+      if (totalMainCourses > 3) {
+        // Too many items - take first 3
+        const selectedItems = allMainItems.slice(0, 3)
+        selectedItems.forEach(({ item, category }) => {
+          validatedRecommendations[category as keyof typeof validatedRecommendations].push(item)
+        })
+      } else if (totalMainCourses < 3) {
+        // Too few items - add more
+        // First, add existing items back
+        allMainItems.forEach(({ item, category }) => {
+          validatedRecommendations[category as keyof typeof validatedRecommendations].push(item)
+        })
+
+        // Then add more items to reach exactly 3
+        const needed = 3 - totalMainCourses
+        const availableCategories = [
+          { key: "menu1", items: [...filteredMenuItems.beef, ...filteredMenuItems.pork] },
+          { key: "menu2", items: filteredMenuItems.chicken },
+          { key: "menu3", items: [...filteredMenuItems.seafood, ...filteredMenuItems.vegetables] },
+        ].filter((cat) => cat.items.length > 0)
+
+        for (let i = 0; i < needed && availableCategories.length > 0; i++) {
+          const category = availableCategories[i % availableCategories.length]
+          const currentItems = validatedRecommendations[
+            category.key as keyof typeof validatedRecommendations
+          ] as string[]
+          const availableItems = category.items.filter((item) => !currentItems.includes(item))
+
+          if (availableItems.length > 0) {
+            const randomItem = availableItems[Math.floor(Math.random() * availableItems.length)]
+            currentItems.push(randomItem)
+          }
+        }
+      }
+    }
+
+    // Ensure we have exactly 1 pasta, 1 dessert, 1 beverage
+    if (validatedRecommendations.pasta.length === 0 && filteredMenuItems.pasta.length > 0) {
+      validatedRecommendations.pasta = [filteredMenuItems.pasta[0]]
+    }
+    if (validatedRecommendations.dessert.length === 0 && filteredMenuItems.dessert.length > 0) {
+      validatedRecommendations.dessert = [filteredMenuItems.dessert[0]]
+    }
+    if (validatedRecommendations.beverage.length === 0 && filteredMenuItems.beverage.length > 0) {
+      validatedRecommendations.beverage = [filteredMenuItems.beverage[0]]
+    }
+
+    // Final validation
+    const finalMainCourses =
+      validatedRecommendations.menu1.length +
+      validatedRecommendations.menu2.length +
+      validatedRecommendations.menu3.length
+    console.log("Final validation:", {
+      menu1: validatedRecommendations.menu1.length,
+      menu2: validatedRecommendations.menu2.length,
+      menu3: validatedRecommendations.menu3.length,
+      totalMainCourses: finalMainCourses,
+      pasta: validatedRecommendations.pasta.length,
+      dessert: validatedRecommendations.dessert.length,
+      beverage: validatedRecommendations.beverage.length,
+    })
 
     return NextResponse.json({
       success: true,
       recommendations: validatedRecommendations,
       userPreferences: userPrefs, // Include parsed preferences for debugging
       sessionId: sessionId, // Include session ID for tracking variety
-      budgetAnalysis: {
-        totalBudget: budget,
-        serviceFee: userPrefs.serviceFee,
-        availableMenuBudget: userPrefs.availableMenuBudget,
-        budgetValidated: true,
+      fixedStructure: {
+        mainCourses: finalMainCourses,
+        pasta: validatedRecommendations.pasta.length,
+        dessert: validatedRecommendations.dessert.length,
+        beverage: validatedRecommendations.beverage.length,
       },
     })
   } catch (error) {

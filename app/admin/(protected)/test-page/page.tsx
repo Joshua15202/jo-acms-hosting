@@ -5,7 +5,20 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Loader2, User, Mail, Calendar, Clock, MapPin, Users, Phone, Search } from "lucide-react"
+import {
+  Loader2,
+  User,
+  Mail,
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  Phone,
+  Search,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react"
 
 interface Customer {
   id: string
@@ -32,14 +45,38 @@ interface UpcomingEvent {
   }
 }
 
+interface RevenueData {
+  totalRevenue: number
+  prevMonthRevenue: number
+  percentageChange: number
+  completedEvents: number
+  revenueBreakdown: {
+    id: string
+    customerName: string
+    customerEmail: string
+    eventType: string
+    eventDate: string
+    guestCount: number
+    amount: number
+    paymentStatus: string
+    completedAt: string
+  }[]
+  month: number
+  year: number
+  monthName: string
+}
+
 export default function AdminDashboard() {
   const [showCustomers, setShowCustomers] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
+  const [showRevenue, setShowRevenue] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([])
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([])
+  const [revenueData, setRevenueData] = useState<RevenueData | null>(null)
   const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [loadingEvents, setLoadingEvents] = useState(false)
+  const [loadingRevenue, setLoadingRevenue] = useState(false)
   const [totalCustomers, setTotalCustomers] = useState(0)
   const [totalUpcomingEvents, setTotalUpcomingEvents] = useState(0)
   const [customerSearchTerm, setCustomerSearchTerm] = useState("")
@@ -49,6 +86,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchCustomersCount()
     fetchUpcomingEventsCount()
+    fetchMonthlyRevenue()
   }, [])
 
   // Filter customers based on search term
@@ -70,12 +108,12 @@ export default function AdminDashboard() {
     try {
       console.log("Fetching customers count...")
 
-      // Try the new API first
+      // Try the new comprehensive API first
       try {
-        const response = await fetch("/api/admin/customers")
+        const response = await fetch("/api/admin/all-customers")
         const text = await response.text()
 
-        console.log("Raw response:", text)
+        console.log("Raw response:", text.substring(0, 200))
 
         // Check if response is HTML (error page)
         if (text.startsWith("<!DOCTYPE")) {
@@ -83,8 +121,8 @@ export default function AdminDashboard() {
         }
 
         const data = JSON.parse(text)
-        console.log("Customers API response:", data)
-        setDebugInfo(`API Response: ${JSON.stringify(data, null, 2)}`)
+        console.log("All customers API response:", data)
+        setDebugInfo(`All Customers API Response: ${JSON.stringify(data, null, 2)}`)
 
         if (data.success) {
           setTotalCustomers(data.totalCustomers || 0)
@@ -92,8 +130,29 @@ export default function AdminDashboard() {
           return
         }
       } catch (apiError) {
-        console.error("New API failed:", apiError)
-        setDebugInfo(`New API Error: ${apiError}`)
+        console.error("All customers API failed:", apiError)
+        setDebugInfo(`All Customers API Error: ${apiError}`)
+      }
+
+      // Try the regular customers API
+      try {
+        const response = await fetch("/api/admin/customers")
+        const text = await response.text()
+
+        if (text.startsWith("<!DOCTYPE")) {
+          throw new Error("Received HTML instead of JSON")
+        }
+
+        const data = JSON.parse(text)
+        console.log("Customers API response:", data)
+
+        if (data.success) {
+          setTotalCustomers(data.totalCustomers || 0)
+          console.log(`Set total customers to: ${data.totalCustomers}`)
+          return
+        }
+      } catch (apiError) {
+        console.error("Customers API failed:", apiError)
       }
 
       // Fallback to debug-all-users endpoint
@@ -107,7 +166,7 @@ export default function AdminDashboard() {
 
       const fallbackData = JSON.parse(fallbackText)
       console.log("Fallback API response:", fallbackData)
-      setDebugInfo(`Fallback API Response: ${JSON.stringify(fallbackData, null, 2)}`)
+      setDebugInfo(`Fallback API Response (Limited to 10): ${JSON.stringify(fallbackData, null, 2)}`)
 
       if (fallbackData.users) {
         // Filter for valid emails
@@ -116,7 +175,7 @@ export default function AdminDashboard() {
           return user.email && emailRegex.test(user.email)
         })
         setTotalCustomers(validUsers.length)
-        console.log(`Set total customers from fallback: ${validUsers.length}`)
+        console.log(`Set total customers from fallback: ${validUsers.length} (Note: This may be limited)`)
       }
     } catch (error) {
       console.error("Error fetching customers count:", error)
@@ -153,14 +212,36 @@ export default function AdminDashboard() {
     }
   }
 
+  const fetchMonthlyRevenue = async () => {
+    try {
+      console.log("Fetching monthly revenue...")
+      const response = await fetch("/api/admin/monthly-revenue")
+      const text = await response.text()
+
+      if (text.startsWith("<!DOCTYPE")) {
+        console.error("Monthly revenue API returned HTML")
+        return
+      }
+
+      const data = JSON.parse(text)
+      console.log("Monthly revenue API response:", data)
+
+      if (data.success) {
+        setRevenueData(data.data)
+      }
+    } catch (error) {
+      console.error("Error fetching monthly revenue:", error)
+    }
+  }
+
   const fetchCustomers = async () => {
     setLoadingCustomers(true)
     try {
       console.log("Fetching full customers list...")
 
-      // Try the new API first
+      // Try the comprehensive API first
       try {
-        const response = await fetch("/api/admin/customers")
+        const response = await fetch("/api/admin/all-customers")
         const text = await response.text()
 
         if (text.startsWith("<!DOCTYPE")) {
@@ -177,7 +258,29 @@ export default function AdminDashboard() {
           return
         }
       } catch (apiError) {
-        console.error("New API failed:", apiError)
+        console.error("All customers API failed:", apiError)
+      }
+
+      // Try the regular customers API
+      try {
+        const response = await fetch("/api/admin/customers")
+        const text = await response.text()
+
+        if (text.startsWith("<!DOCTYPE")) {
+          throw new Error("Received HTML instead of JSON")
+        }
+
+        const data = JSON.parse(text)
+        console.log("Customers API response:", data)
+
+        if (data.success && data.customers) {
+          setCustomers(data.customers)
+          setTotalCustomers(data.totalCustomers)
+          console.log(`Loaded ${data.customers.length} customers`)
+          return
+        }
+      } catch (apiError) {
+        console.error("Customers API failed:", apiError)
       }
 
       // Fallback to debug-all-users endpoint
@@ -210,7 +313,7 @@ export default function AdminDashboard() {
 
         setCustomers(validUsers)
         setTotalCustomers(validUsers.length)
-        console.log(`Loaded ${validUsers.length} customers from fallback`)
+        console.log(`Loaded ${validUsers.length} customers from fallback (may be limited)`)
       }
     } catch (error) {
       console.error("Error fetching customers:", error)
@@ -263,6 +366,17 @@ export default function AdminDashboard() {
     }
   }
 
+  const fetchRevenueDetails = async () => {
+    setLoadingRevenue(true)
+    try {
+      await fetchMonthlyRevenue()
+    } catch (error) {
+      console.error("Error fetching revenue details:", error)
+    } finally {
+      setLoadingRevenue(false)
+    }
+  }
+
   const handleCustomersClick = () => {
     setShowCustomers(true)
     if (customers.length === 0) {
@@ -275,6 +389,22 @@ export default function AdminDashboard() {
     if (upcomingEvents.length === 0) {
       fetchUpcomingEvents()
     }
+  }
+
+  const handleRevenueClick = () => {
+    setShowRevenue(true)
+    if (!revenueData) {
+      fetchRevenueDetails()
+    }
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-PH", {
+      style: "currency",
+      currency: "PHP",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount)
   }
 
   const formatDate = (dateString: string) => {
@@ -365,7 +495,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Clickable Registered Customers Card */}
         <div
           className="bg-white p-6 rounded-lg shadow border cursor-pointer hover:shadow-lg transition-shadow duration-200 hover:bg-gray-50"
@@ -377,7 +507,7 @@ export default function AdminDashboard() {
               <p className="text-2xl font-bold text-gray-900">{totalCustomers}</p>
             </div>
             <div className="h-8 w-8 bg-rose-100 rounded-full flex items-center justify-center">
-              <span className="text-rose-600 text-sm">👥</span>
+              <User className="h-5 w-5 text-rose-600" />
             </div>
           </div>
           <p className="text-xs text-gray-500 mt-2">Click to view all customers</p>
@@ -394,36 +524,43 @@ export default function AdminDashboard() {
               <p className="text-2xl font-bold text-gray-900">{totalUpcomingEvents}</p>
             </div>
             <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-blue-600 text-sm">📅</span>
+              <Calendar className="h-5 w-5 text-blue-600" />
             </div>
           </div>
           <p className="text-xs text-gray-500 mt-2">Click to view upcoming events</p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
-              <p className="text-2xl font-bold text-gray-900">8</p>
-            </div>
-            <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
-              <span className="text-orange-600 text-sm">📦</span>
-            </div>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">-2 from last week</p>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border">
+        {/* Clickable Monthly Revenue Card */}
+        <div
+          className="bg-white p-6 rounded-lg shadow border cursor-pointer hover:shadow-lg transition-shadow duration-200 hover:bg-gray-50"
+          onClick={handleRevenueClick}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">₱245,000</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {revenueData ? formatCurrency(revenueData.totalRevenue) : "Loading..."}
+              </p>
             </div>
             <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-              <span className="text-green-600 text-sm">💰</span>
+              <DollarSign className="h-5 w-5 text-green-600" />
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-2">+15% from last month</p>
+          <div className="flex items-center mt-2">
+            {revenueData && (
+              <>
+                {revenueData.percentageChange >= 0 ? (
+                  <TrendingUp className="h-4 w-4 text-green-600 mr-1" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-600 mr-1" />
+                )}
+                <p className={`text-xs ${revenueData.percentageChange >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  {revenueData.percentageChange >= 0 ? "+" : ""}
+                  {revenueData.percentageChange}% from last month
+                </p>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -437,10 +574,10 @@ export default function AdminDashboard() {
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold mb-4">Inventory Status</h3>
-          <p className="text-sm text-gray-600 mb-4">Current inventory levels by category</p>
+          <h3 className="text-lg font-semibold mb-4">Revenue Analytics</h3>
+          <p className="text-sm text-gray-600 mb-4">Monthly revenue trends and projections</p>
           <div className="h-48 bg-gray-50 rounded-md flex items-center justify-center">
-            <p className="text-gray-500">Inventory chart will be displayed here</p>
+            <p className="text-gray-500">Revenue chart will be displayed here</p>
           </div>
         </div>
       </div>
@@ -634,6 +771,130 @@ export default function AdminDashboard() {
 
           <div className="flex justify-end pt-4 border-t">
             <Button variant="outline" onClick={() => setShowEvents(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Monthly Revenue Modal */}
+      <Dialog open={showRevenue} onOpenChange={setShowRevenue}>
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              {revenueData ? `${revenueData.monthName} ${revenueData.year} Revenue` : "Monthly Revenue"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="overflow-y-auto max-h-[60vh]">
+            {loadingRevenue ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+                <span className="ml-2">Loading revenue data...</span>
+              </div>
+            ) : revenueData ? (
+              <div className="space-y-6">
+                {/* Revenue Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Total Revenue</p>
+                    <p className="text-2xl font-bold text-green-600">{formatCurrency(revenueData.totalRevenue)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Completed Events</p>
+                    <p className="text-2xl font-bold text-blue-600">{revenueData.completedEvents}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">vs Last Month</p>
+                    <div className="flex items-center justify-center gap-1">
+                      {revenueData.percentageChange >= 0 ? (
+                        <TrendingUp className="h-5 w-5 text-green-600" />
+                      ) : (
+                        <TrendingDown className="h-5 w-5 text-red-600" />
+                      )}
+                      <p
+                        className={`text-xl font-bold ${revenueData.percentageChange >= 0 ? "text-green-600" : "text-red-600"}`}
+                      >
+                        {revenueData.percentageChange >= 0 ? "+" : ""}
+                        {revenueData.percentageChange}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Revenue Breakdown */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Completed Events Breakdown</h3>
+                  {revenueData.revenueBreakdown.length > 0 ? (
+                    <div className="space-y-3">
+                      {revenueData.revenueBreakdown.map((event) => (
+                        <div key={event.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                                  <DollarSign className="h-5 w-5 text-green-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="font-semibold text-gray-900">{event.eventType}</h4>
+                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                                      Fully Paid
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm text-gray-600">
+                                    Client: {event.customerName} ({event.customerEmail})
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-lg font-bold text-green-600">{formatCurrency(event.amount)}</p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>{formatEventDate(event.eventDate)}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Users className="h-4 w-4" />
+                                  <span>{event.guestCount} guests</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-4 w-4" />
+                                  <span>Completed: {formatDate(event.completedAt)}</span>
+                                </div>
+                                <div className="text-xs">ID: {event.id.slice(0, 8)}...</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">No completed events with full payment found for this month</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No revenue data available</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center pt-4 border-t">
+            <p className="text-sm text-gray-500">
+              {revenueData
+                ? `${revenueData.completedEvents} completed events • ${formatCurrency(revenueData.totalRevenue)} total revenue`
+                : "Loading..."}
+            </p>
+            <Button variant="outline" onClick={() => setShowRevenue(false)}>
               Close
             </Button>
           </div>

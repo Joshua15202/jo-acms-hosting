@@ -33,11 +33,11 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
     { name: "Dashboard", href: "/admin/test-page", icon: LayoutDashboard },
     { name: "Appointments", href: "/admin/appointments", icon: Calendar },
     { name: "Payments", href: "/admin/payments", icon: CreditCard },
+    { name: "Customers", href: "/admin/customers", icon: Users },
     { name: "Inventory", href: "/admin/inventory", icon: Package },
     { name: "Forecasting", href: "/admin/forecasting", icon: TrendingUp },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { name: "Analytics", href: "/admin/analytics", icon: BarChart },
-    { name: "Customers", href: "/admin/customers", icon: Users },
     { name: "Settings", href: "/admin/settings", icon: Settings },
   ]
 
@@ -55,7 +55,7 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
           <Package className="h-4 w-4" />
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-semibold text-gray-900">Jo-ACMS</span>
+          <span className="text-sm font-semibold text-gray-900">Jo-AIMS</span>
           <span className="text-xs text-gray-500">Admin Panel</span>
         </div>
       </div>
