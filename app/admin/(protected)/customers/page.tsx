@@ -16,6 +16,8 @@ import {
   Phone,
   Calendar,
   Loader2,
+  CreditCard,
+  CheckCircle,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -31,10 +33,12 @@ interface Customer {
   phone: string | null
   created_at: string
   updated_at: string
-  status?: "active" | "inactive"
-  totalAppointments?: number
-  totalSpent?: number
-  lastLogin?: string
+  status: "active" | "inactive"
+  totalAppointments: number
+  completedAppointments: number
+  totalSpent: number
+  lastLogin: string | null
+  paymentCount: number
 }
 
 interface CustomerStats {
@@ -64,38 +68,16 @@ export default function CustomersPage() {
   const fetchCustomers = async () => {
     try {
       setLoading(true)
-      console.log("Fetching customers...")
+      console.log("Fetching customers with accurate spending data...")
 
-      const response = await fetch("/api/admin/all-customers")
+      const response = await fetch("/api/admin/customers")
       const data = await response.json()
 
       console.log("API Response:", data)
 
       if (data.success && data.customers) {
-        // Enhance customer data with computed fields
-        const enhancedCustomers = data.customers.map((customer: Customer) => ({
-          ...customer,
-          status: Math.random() > 0.2 ? "active" : ("inactive" as "active" | "inactive"),
-          totalAppointments: Math.floor(Math.random() * 10) + 1,
-          totalSpent: Math.floor(Math.random() * 50000) + 5000,
-          lastLogin: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-        }))
-
-        setCustomers(enhancedCustomers)
-
-        // Calculate stats
-        const activeCount = enhancedCustomers.filter((c: Customer) => c.status === "active").length
-        const thisMonth = new Date()
-        thisMonth.setDate(1)
-        const newThisMonth = enhancedCustomers.filter((c: Customer) => new Date(c.created_at) >= thisMonth).length
-        const totalRevenue = enhancedCustomers.reduce((sum: number, c: Customer) => sum + (c.totalSpent || 0), 0)
-
-        setStats({
-          totalCustomers: data.totalCustomers,
-          activeCustomers: activeCount,
-          newThisMonth,
-          totalRevenue,
-        })
+        setCustomers(data.customers)
+        setStats(data.stats)
       } else {
         console.error("Failed to fetch customers:", data)
       }
@@ -144,6 +126,49 @@ export default function CustomersPage() {
     })
   }
 
+  const exportCustomerData = () => {
+    const csvContent = [
+      // CSV Header
+      [
+        "Name",
+        "Email",
+        "Phone",
+        "Status",
+        "Total Spent",
+        "Appointments",
+        "Completed",
+        "Payments",
+        "Joined",
+        "Last Activity",
+      ].join(","),
+      // CSV Data
+      ...filteredCustomers.map((customer) =>
+        [
+          `"${customer.full_name}"`,
+          `"${customer.email}"`,
+          `"${customer.phone || "N/A"}"`,
+          customer.status,
+          customer.totalSpent,
+          customer.totalAppointments,
+          customer.completedAppointments,
+          customer.paymentCount,
+          `"${formatDate(customer.created_at)}"`,
+          `"${customer.lastLogin ? formatDate(customer.lastLogin) : "Never"}"`,
+        ].join(","),
+      ),
+    ].join("\n")
+
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `customers-${new Date().toISOString().split("T")[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
+
   if (loading) {
     return (
       <div className="p-6">
@@ -163,9 +188,9 @@ export default function CustomersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
-          <p className="text-gray-600">Manage and view all registered customers</p>
+          <p className="text-gray-600">Manage and view all registered customers with accurate spending data</p>
         </div>
-        <Button className="bg-rose-600 hover:bg-rose-700">
+        <Button onClick={exportCustomerData} className="bg-rose-600 hover:bg-rose-700">
           <Download className="h-4 w-4 mr-2" />
           Export Data
         </Button>
@@ -191,7 +216,7 @@ export default function CustomersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.activeCustomers}</div>
-            <p className="text-xs text-muted-foreground">Currently active</p>
+            <p className="text-xs text-muted-foreground">Recent activity (6 months)</p>
           </CardContent>
         </Card>
 
@@ -213,7 +238,7 @@ export default function CustomersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-rose-600">{formatCurrency(stats.totalRevenue)}</div>
-            <p className="text-xs text-muted-foreground">From all customers</p>
+            <p className="text-xs text-muted-foreground">From verified payments</p>
           </CardContent>
         </Card>
       </div>
@@ -298,8 +323,25 @@ export default function CustomersPage() {
                         {customer.status}
                       </Badge>
                       <div className="mt-2">
-                        <p className="text-sm font-medium">{formatCurrency(customer.totalSpent || 0)}</p>
-                        <p className="text-xs text-gray-500">{customer.totalAppointments} appointments</p>
+                        <p className="text-sm font-medium text-rose-600">{formatCurrency(customer.totalSpent)}</p>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>{customer.totalAppointments} appointments</span>
+                          {customer.paymentCount > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <CreditCard className="h-3 w-3" />
+                                {customer.paymentCount} payments
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {customer.completedAppointments > 0 && (
+                          <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
+                            <CheckCircle className="h-3 w-3" />
+                            {customer.completedAppointments} completed
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -378,7 +420,7 @@ export default function CustomersPage() {
                                     {formatDateTime(selectedCustomer.updated_at)}
                                   </p>
                                   <p>
-                                    <span className="font-medium">Last Login:</span>{" "}
+                                    <span className="font-medium">Last Activity:</span>{" "}
                                     {selectedCustomer.lastLogin ? formatDateTime(selectedCustomer.lastLogin) : "Never"}
                                   </p>
                                 </div>
@@ -386,44 +428,52 @@ export default function CustomersPage() {
                             </div>
 
                             {/* Stats */}
-                            <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                            <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
                               <div className="text-center">
                                 <p className="text-2xl font-bold text-rose-600">{selectedCustomer.totalAppointments}</p>
                                 <p className="text-sm text-gray-600">Total Appointments</p>
                               </div>
                               <div className="text-center">
                                 <p className="text-2xl font-bold text-green-600">
-                                  {formatCurrency(selectedCustomer.totalSpent || 0)}
+                                  {selectedCustomer.completedAppointments}
+                                </p>
+                                <p className="text-sm text-gray-600">Completed</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-blue-600">{selectedCustomer.paymentCount}</p>
+                                <p className="text-sm text-gray-600">Payments Made</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-2xl font-bold text-purple-600">
+                                  {formatCurrency(selectedCustomer.totalSpent)}
                                 </p>
                                 <p className="text-sm text-gray-600">Total Spent</p>
                               </div>
-                              <div className="text-center">
-                                <p className="text-2xl font-bold text-blue-600">
-                                  {selectedCustomer.totalSpent && selectedCustomer.totalAppointments
-                                    ? formatCurrency(selectedCustomer.totalSpent / selectedCustomer.totalAppointments)
-                                    : formatCurrency(0)}
-                                </p>
-                                <p className="text-sm text-gray-600">Avg per Event</p>
-                              </div>
                             </div>
 
-                            {/* Recent Activity */}
+                            {/* Average per event */}
+                            {selectedCustomer.totalAppointments > 0 && (
+                              <div className="text-center p-3 bg-rose-50 rounded-lg">
+                                <p className="text-lg font-semibold text-rose-600">
+                                  {formatCurrency(selectedCustomer.totalSpent / selectedCustomer.totalAppointments)}
+                                </p>
+                                <p className="text-sm text-gray-600">Average Spending per Event</p>
+                              </div>
+                            )}
+
+                            {/* Payment Status */}
                             <div>
-                              <h3 className="font-medium text-gray-900 mb-3">Recent Activity</h3>
-                              <div className="space-y-3">
-                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                  <div>
-                                    <p className="font-medium">Wedding Package Booking</p>
-                                    <p className="text-sm text-gray-600">Booked for March 15, 2024</p>
-                                  </div>
-                                  <Badge className="bg-green-100 text-green-800">Confirmed</Badge>
+                              <h3 className="font-medium text-gray-900 mb-3">Payment Summary</h3>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 bg-green-50 rounded-lg">
+                                  <p className="text-lg font-semibold text-green-600">
+                                    {formatCurrency(selectedCustomer.totalSpent)}
+                                  </p>
+                                  <p className="text-sm text-gray-600">Total Verified Payments</p>
                                 </div>
-                                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                                  <div>
-                                    <p className="font-medium">Payment Completed</p>
-                                    <p className="text-sm text-gray-600">Full payment received</p>
-                                  </div>
-                                  <Badge variant="secondary">Paid</Badge>
+                                <div className="p-3 bg-blue-50 rounded-lg">
+                                  <p className="text-lg font-semibold text-blue-600">{selectedCustomer.paymentCount}</p>
+                                  <p className="text-sm text-gray-600">Payment Transactions</p>
                                 </div>
                               </div>
                             </div>

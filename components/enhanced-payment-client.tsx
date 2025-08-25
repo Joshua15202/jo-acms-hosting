@@ -164,6 +164,7 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
   const [selectedTransaction, setSelectedTransaction] = useState<PaymentTransaction | null>(null)
   const [showDebug, setShowDebug] = useState(true)
   const [activeTab, setActiveTab] = useState("payments")
+  const [downloadingReceipt, setDownloadingReceipt] = useState(false)
   const [paymentData, setPaymentData] = useState<PaymentFormData>({
     appointmentId: "",
     amount: 0,
@@ -744,275 +745,169 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
     setReceiptDialogOpen(true)
   }
 
+  // Optimized receipt download function with better performance
   const handleDownloadReceipt = async (transaction: PaymentTransaction) => {
+    if (downloadingReceipt) {
+      toast({
+        title: "Download in Progress",
+        description: "Please wait for the current download to complete.",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
+      setDownloadingReceipt(true)
+
+      toast({
+        title: "Generating Receipt",
+        description: "Please wait while we generate your receipt...",
+      })
+
       const appointment = transaction.tbl_comprehensive_appointments
       const contactName = `${appointment.contact_first_name} ${appointment.contact_last_name}`.trim()
 
-      // Create canvas
+      // Use requestAnimationFrame to prevent blocking
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+
+      // Create canvas with optimized settings
       const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
+      const ctx = canvas.getContext("2d", { alpha: false })
       if (!ctx) {
         throw new Error("Could not get canvas context")
       }
 
-      // Set canvas size (A4-like proportions)
-      canvas.width = 800
-      canvas.height = 1000
+      // Set canvas size (smaller for better performance)
+      canvas.width = 600
+      canvas.height = 800
 
       // Set background
       ctx.fillStyle = "#ffffff"
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      // Helper function to draw text with word wrapping
-      const drawText = (text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
-        const words = text.split(" ")
-        let line = ""
-        let currentY = y
-
-        for (let n = 0; n < words.length; n < words.length) {
-          const testLine = line + words[n] + " "
-          const metrics = ctx.measureText(testLine)
-          const testWidth = metrics.width
-
-          if (testWidth > maxWidth && n > 0) {
-            ctx.fillText(line, x, currentY)
-            line = words[n] + " "
-            currentY += lineHeight
-          } else {
-            line = testLine
+      // Optimized text drawing function
+      const drawText = (text: string, x: number, y: number, maxWidth?: number) => {
+        if (maxWidth && ctx.measureText(text).width > maxWidth) {
+          // Simple text truncation for performance
+          let truncated = text
+          while (ctx.measureText(truncated + "...").width > maxWidth && truncated.length > 0) {
+            truncated = truncated.slice(0, -1)
           }
+          ctx.fillText(truncated + "...", x, y)
+        } else {
+          ctx.fillText(text, x, y)
         }
-        ctx.fillText(line, x, currentY)
-        return currentY + lineHeight
+        return y + 20
       }
 
-      let currentY = 40
+      let currentY = 30
 
-      // Header
+      // Header - simplified
       ctx.fillStyle = "#1f2937"
-      ctx.font = "bold 28px Arial"
+      ctx.font = "bold 24px Arial"
       ctx.textAlign = "center"
       ctx.fillText("Jo Pacheco Catering Services", canvas.width / 2, currentY)
-      currentY += 35
+      currentY += 30
 
-      ctx.font = "20px Arial"
+      ctx.font = "18px Arial"
       ctx.fillStyle = "#6b7280"
       ctx.fillText("Payment Receipt", canvas.width / 2, currentY)
-      currentY += 25
-
-      ctx.font = "14px Arial"
-      ctx.fillStyle = "#9ca3af"
-      ctx.fillText(`Receipt ID: ${transaction.id}`, canvas.width / 2, currentY)
-      currentY += 20
-      ctx.fillText(
-        `Date: ${format(new Date(transaction.created_at), "MMMM d, yyyy 'at' h:mm a")}`,
-        canvas.width / 2,
-        currentY,
-      )
-      currentY += 50
-
-      // Draw line
-      ctx.strokeStyle = "#e5e7eb"
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(40, currentY)
-      ctx.lineTo(canvas.width - 40, currentY)
-      ctx.stroke()
-      currentY += 40
-
-      // Customer Information Section
-      ctx.textAlign = "left"
-      ctx.fillStyle = "#dc2626"
-      ctx.font = "bold 18px Arial"
-      ctx.fillText("Customer Information", 40, currentY)
-      currentY += 30
-
-      ctx.fillStyle = "#000000"
-      ctx.font = "14px Arial"
-      ctx.fillText(`Name: ${contactName}`, 40, currentY)
-      currentY += 20
-      ctx.fillText(`Email: ${appointment.contact_email}`, 40, currentY)
-      currentY += 20
-      ctx.fillText(`Phone: ${appointment.contact_phone || "Not provided"}`, 40, currentY)
-      currentY += 40
-
-      // Event Details Section
-      ctx.fillStyle = "#dc2626"
-      ctx.font = "bold 18px Arial"
-      ctx.fillText("Event Details", 40, currentY)
-      currentY += 30
-
-      ctx.fillStyle = "#000000"
-      ctx.font = "14px Arial"
-      ctx.fillText(
-        `Event Type: ${appointment.event_type.charAt(0).toUpperCase() + appointment.event_type.slice(1)}`,
-        40,
-        currentY,
-      )
-      currentY += 20
-      ctx.fillText(`Date: ${formatEventDate(appointment.event_date)}`, 40, currentY)
-      currentY += 20
-      ctx.fillText(`Time: ${appointment.event_time}`, 40, currentY)
-      currentY += 20
-      ctx.fillText(`Venue: ${appointment.venue_address || "To be confirmed"}`, 40, currentY)
-      currentY += 20
-      ctx.fillText(`Guest Count: ${appointment.guest_count} guests`, 40, currentY)
-      currentY += 20
-
-      if (appointment.theme) {
-        ctx.fillText(`Theme: ${appointment.theme}`, 40, currentY)
-        currentY += 20
-      }
-
-      if (appointment.color_motif) {
-        ctx.fillText(`Color Motif: ${appointment.color_motif}`, 40, currentY)
-        currentY += 20
-      }
-
-      currentY += 20
-
-      // Menu Selection (if available)
-      if (
-        appointment.pasta_selection ||
-        appointment.beverage_selection ||
-        appointment.dessert_selection ||
-        appointment.selected_menu
-      ) {
-        ctx.fillStyle = "#dc2626"
-        ctx.font = "bold 18px Arial"
-        ctx.fillText("Menu Selection", 40, currentY)
-        currentY += 30
-
-        ctx.fillStyle = "#000000"
-        ctx.font = "14px Arial"
-
-        // Display main courses from selected_menu first
-        if (appointment.selected_menu) {
-          const menuItems = parseMenuItems(appointment.selected_menu)
-          menuItems.forEach((item: any) => {
-            ctx.fillText(`• ${item.name || item}`, 40, currentY)
-            currentY += 20
-          })
-        }
-
-        // Display other selections
-        if (appointment.pasta_selection) {
-          ctx.fillText(`• Pasta: ${appointment.pasta_selection}`, 40, currentY)
-          currentY += 20
-        }
-
-        if (appointment.beverage_selection) {
-          ctx.fillText(`• Beverage: ${appointment.beverage_selection}`, 40, currentY)
-          currentY += 20
-        }
-
-        if (appointment.dessert_selection) {
-          ctx.fillText(`• Dessert: ${appointment.dessert_selection}`, 40, currentY)
-          currentY += 20
-        }
-
-        if (appointment.special_requests) {
-          currentY += 10
-          ctx.font = "bold 14px Arial"
-          ctx.fillText("Special Requests:", 40, currentY)
-          currentY += 20
-          ctx.font = "14px Arial"
-          ctx.fillStyle = "#6b7280"
-          currentY = drawText(appointment.special_requests, 40, currentY, canvas.width - 80, 20)
-          ctx.fillStyle = "#000000"
-        }
-
-        currentY += 20
-      }
-
-      // Payment Details Section (with background)
-      ctx.fillStyle = "#f9fafb"
-      ctx.fillRect(40, currentY, canvas.width - 80, 200)
-
-      currentY += 30
-      ctx.fillStyle = "#dc2626"
-      ctx.font = "bold 18px Arial"
-      ctx.fillText("Payment Details", 60, currentY)
-      currentY += 40
-
-      ctx.font = "14px Arial"
-      ctx.fillStyle = "#000000"
-      ctx.fillText(
-        `Payment Type: ${
-          transaction.payment_type === "down_payment"
-            ? "Down Payment"
-            : transaction.payment_type === "remaining_balance"
-              ? "Remaining Balance"
-              : "Full Payment"
-        }`,
-        60,
-        currentY,
-      )
-      currentY += 25
-
-      ctx.font = "bold 18px Arial"
-      ctx.fillStyle = "#059669"
-      ctx.fillText(`Total Package Amount: ${formatCurrency(appointment.total_package_amount || 0)}`, 60, currentY)
-      currentY += 25
-
-      ctx.font = "bold 16px Arial"
-      ctx.fillStyle = "#dc2626"
-      ctx.fillText(`Amount Paid (This Transaction): ${formatCurrency(transaction.amount)}`, 60, currentY)
-      currentY += 30
-
-      ctx.font = "14px Arial"
-      ctx.fillStyle = "#000000"
-      ctx.fillText(`Payment Method: ${transaction.payment_method.toUpperCase()}`, 60, currentY)
-      currentY += 20
-      ctx.fillText(`Reference Number: ${transaction.reference_number}`, 60, currentY)
-      currentY += 20
-      ctx.fillText(`Payment Date: ${format(new Date(transaction.created_at), "MMMM d, yyyy")}`, 60, currentY)
-      currentY += 20
-      ctx.fillText(`Total Package: ${formatCurrency(appointment.total_package_amount || 0)}`, 60, currentY)
-      currentY += 20
-      ctx.fillText(`Payment Status: ${appointment.payment_status.replace("_", " ").toUpperCase()}`, 60, currentY)
-      currentY += 40
-
-      // Notes (if available)
-      if (transaction.notes) {
-        ctx.fillStyle = "#dc2626"
-        ctx.font = "bold 18px Arial"
-        ctx.fillText("Notes", 40, currentY)
-        currentY += 30
-
-        ctx.fillStyle = "#6b7280"
-        ctx.font = "italic 14px Arial"
-        currentY = drawText(transaction.notes, 40, currentY, canvas.width - 80, 20)
-        currentY += 20
-      }
-
-      // Footer
-      currentY += 30
-      ctx.strokeStyle = "#e5e7eb"
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(40, currentY)
-      ctx.lineTo(canvas.width - 40, currentY)
-      ctx.stroke()
-      currentY += 30
-
-      ctx.textAlign = "center"
-      ctx.fillStyle = "#1f2937"
-      ctx.font = "bold 16px Arial"
-      ctx.fillText("Thank you for choosing Jo Pacheco Catering Services!", canvas.width / 2, currentY)
-      currentY += 25
-
-      ctx.font = "14px Arial"
-      ctx.fillStyle = "#6b7280"
-      ctx.fillText("For inquiries, please contact us at your convenience.", canvas.width / 2, currentY)
       currentY += 20
 
       ctx.font = "12px Arial"
       ctx.fillStyle = "#9ca3af"
-      ctx.fillText(`Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}`, canvas.width / 2, currentY)
+      ctx.fillText(`Receipt ID: ${transaction.id.slice(0, 12)}`, canvas.width / 2, currentY)
+      currentY += 15
+      ctx.fillText(
+        `Date: ${format(new Date(transaction.created_at), "MMM d, yyyy 'at' h:mm a")}`,
+        canvas.width / 2,
+        currentY,
+      )
+      currentY += 40
 
-      // Convert canvas to blob and download
+      // Draw line
+      ctx.strokeStyle = "#e5e7eb"
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(30, currentY)
+      ctx.lineTo(canvas.width - 30, currentY)
+      ctx.stroke()
+      currentY += 30
+
+      // Customer Information - simplified
+      ctx.textAlign = "left"
+      ctx.fillStyle = "#dc2626"
+      ctx.font = "bold 16px Arial"
+      ctx.fillText("Customer Information", 30, currentY)
+      currentY += 25
+
+      ctx.fillStyle = "#000000"
+      ctx.font = "12px Arial"
+      currentY = drawText(`Name: ${contactName}`, 30, currentY, canvas.width - 60)
+      currentY = drawText(`Email: ${appointment.contact_email}`, 30, currentY, canvas.width - 60)
+      currentY = drawText(`Phone: ${appointment.contact_phone || "Not provided"}`, 30, currentY, canvas.width - 60)
+      currentY += 15
+
+      // Event Details - simplified
+      ctx.fillStyle = "#dc2626"
+      ctx.font = "bold 16px Arial"
+      ctx.fillText("Event Details", 30, currentY)
+      currentY += 25
+
+      ctx.fillStyle = "#000000"
+      ctx.font = "12px Arial"
+      currentY = drawText(`Event: ${appointment.event_type}`, 30, currentY, canvas.width - 60)
+      currentY = drawText(`Date: ${formatEventDate(appointment.event_date)}`, 30, currentY, canvas.width - 60)
+      currentY = drawText(`Time: ${appointment.event_time}`, 30, currentY, canvas.width - 60)
+      currentY = drawText(`Guests: ${appointment.guest_count}`, 30, currentY, canvas.width - 60)
+      currentY += 15
+
+      // Payment Details - simplified
+      ctx.fillStyle = "#f9fafb"
+      ctx.fillRect(30, currentY, canvas.width - 60, 120)
+
+      currentY += 20
+      ctx.fillStyle = "#dc2626"
+      ctx.font = "bold 16px Arial"
+      ctx.fillText("Payment Details", 40, currentY)
+      currentY += 25
+
+      ctx.font = "12px Arial"
+      ctx.fillStyle = "#000000"
+      const paymentTypeLabel =
+        transaction.payment_type === "down_payment"
+          ? "Down Payment"
+          : transaction.payment_type === "remaining_balance"
+            ? "Remaining Balance"
+            : "Full Payment"
+
+      currentY = drawText(`Payment Type: ${paymentTypeLabel}`, 40, currentY, canvas.width - 80)
+
+      ctx.font = "bold 14px Arial"
+      ctx.fillStyle = "#059669"
+      currentY = drawText(`Amount Paid: ${formatCurrency(transaction.amount)}`, 40, currentY, canvas.width - 80)
+
+      ctx.font = "12px Arial"
+      ctx.fillStyle = "#000000"
+      currentY = drawText(`Method: ${transaction.payment_method.toUpperCase()}`, 40, currentY, canvas.width - 80)
+      currentY = drawText(`Reference: ${transaction.reference_number}`, 40, currentY, canvas.width - 80)
+      currentY += 30
+
+      // Footer - simplified
+      ctx.textAlign = "center"
+      ctx.fillStyle = "#1f2937"
+      ctx.font = "bold 14px Arial"
+      ctx.fillText("Thank you for choosing Jo Pacheco Catering Services!", canvas.width / 2, currentY)
+      currentY += 20
+
+      ctx.font = "10px Arial"
+      ctx.fillStyle = "#9ca3af"
+      ctx.fillText(`Generated: ${format(new Date(), "MMM d, yyyy 'at' h:mm a")}`, canvas.width / 2, currentY)
+
+      // Use requestAnimationFrame before converting to blob
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+
+      // Convert to blob with lower quality for better performance
       canvas.toBlob(
         (blob) => {
           if (blob) {
@@ -1027,18 +922,20 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
 
             toast({
               title: "Receipt Downloaded",
-              description: "Your receipt image has been downloaded successfully.",
+              description: "Your receipt has been downloaded successfully.",
             })
           }
+          setDownloadingReceipt(false)
         },
         "image/png",
-        1.0,
+        0.8, // Reduced quality for better performance
       )
     } catch (error) {
-      console.error("Error generating receipt image:", error)
+      console.error("Error generating receipt:", error)
+      setDownloadingReceipt(false)
       toast({
         title: "Download Failed",
-        description: "Could not generate receipt image. Please try again.",
+        description: "Could not generate receipt. Please try again.",
         variant: "destructive",
       })
     }
@@ -2182,9 +2079,19 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                             variant="outline"
                             onClick={() => handleDownloadReceipt(transaction)}
                             className="flex-1"
+                            disabled={downloadingReceipt}
                           >
-                            <Download className="mr-2 h-4 w-4" />
-                            Download
+                            {downloadingReceipt ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="mr-2 h-4 w-4" />
+                                Download
+                              </>
+                            )}
                           </Button>
                         </div>
                       </div>

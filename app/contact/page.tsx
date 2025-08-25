@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { MapPin, Phone, Mail, Clock, Send, Loader2 } from "lucide-react"
+import { MapPin, Phone, Mail, Clock, Send, Loader2, ExternalLink } from "lucide-react"
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -65,6 +65,9 @@ export default function ContactPage() {
     }
   }
 
+  // Google Maps URL for Jo Pacheco Wedding and Events
+  const googleMapsUrl = "https://maps.app.goo.gl/bkvHdD7mZi26wDLY7"
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
       {/* Hero Section */}
@@ -97,9 +100,8 @@ export default function ContactPage() {
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Our Location</h3>
                   <p className="text-gray-600">
-                    123 Wedding Avenue
+                    Sullera Street, Meycauyan, Bulacan, Philippines
                     <br />
-                    Manila, Philippines 1000
                   </p>
                 </div>
               </div>
@@ -110,7 +112,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Phone</h3>
-                  <p className="text-gray-600">+63 917 123 4567</p>
+                  <p className="text-gray-600">0917 854 3221</p>
                 </div>
               </div>
 
@@ -132,16 +134,44 @@ export default function ContactPage() {
                   <h3 className="font-semibold text-gray-900 mb-1">Business Hours</h3>
                   <div className="text-gray-600">
                     <p>Monday - Friday: 9:00 AM - 6:00 PM</p>
-                    <p>Saturday: 10:00 AM - 4:00 PM</p>
-                    <p>Sunday: By appointment only</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Map placeholder */}
-            <div className="bg-gray-200 rounded-lg h-64 flex items-center justify-center">
-              <p className="text-gray-500">Interactive Map Coming Soon</p>
+            {/* Interactive Map */}
+            <div className="bg-white rounded-lg shadow-md overflow-hidden">
+              <div className="p-4 bg-rose-50 border-b">
+                <h3 className="font-semibold text-gray-900 flex items-center">
+                  <MapPin className="h-5 w-5 text-rose-600 mr-2" />
+                  Find Us Here
+                </h3>
+              </div>
+              <div className="relative">
+                <a
+                  href={googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block relative group cursor-pointer"
+                  aria-label="Open Jo Pacheco Wedding and Events location in Google Maps"
+                >
+                  <img
+                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-6BrsUwyntb77MoXDr4j2ATtpjrUDqB.png"
+                    alt="Jo Pacheco Wedding and Events location map showing Sullera Street, Meycauyan, Bulacan"
+                    className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                    <div className="bg-white bg-opacity-95 px-6 py-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                      <div className="flex items-center space-x-2">
+                        <ExternalLink className="h-5 w-5 text-rose-600" />
+                        <p className="text-sm text-gray-800 font-medium">Open in Google Maps</p>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              </div>
+
+             
             </div>
           </div>
 
