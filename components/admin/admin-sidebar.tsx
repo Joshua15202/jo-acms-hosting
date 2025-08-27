@@ -8,12 +8,12 @@ import {
   Calendar,
   Package,
   BarChart,
-  Settings,
   Users,
   ShoppingCart,
   TrendingUp,
   CreditCard,
   LogOut,
+  Menu,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -34,11 +34,10 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
     { name: "Appointments", href: "/admin/appointments", icon: Calendar },
     { name: "Payments", href: "/admin/payments", icon: CreditCard },
     { name: "Customers", href: "/admin/customers", icon: Users },
-    { name: "Inventory", href: "/admin/inventory", icon: Package },
+    { name: "Menu Management", href: "/admin/inventory", icon: Menu },
     { name: "Forecasting", href: "/admin/forecasting", icon: TrendingUp },
     { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
     { name: "Analytics", href: "/admin/analytics", icon: BarChart },
-    { name: "Settings", href: "/admin/settings", icon: Settings },
   ]
 
   const handleLogout = () => {

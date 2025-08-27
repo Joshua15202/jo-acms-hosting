@@ -370,14 +370,14 @@ export default function InventoryPage() {
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
-  }
+  } 
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Inventory Management</h1>
+          <h1 className="text-3xl font-bold">Maintenance</h1>
           <p className="text-muted-foreground">Manage your menu items and pricing</p>
         </div>
         <div className="flex gap-2">

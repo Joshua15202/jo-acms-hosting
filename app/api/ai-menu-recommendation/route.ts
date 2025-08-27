@@ -26,9 +26,9 @@ export async function POST(request: Request) {
     // Enhanced preference parsing for fixed structure
     const parseAdvancedUserPreferences = (preferences: string) => {
       const lowerPrefs = preferences.toLowerCase()
-      const restrictions = []
-      const emphasis = []
-      const onlyRequests = []
+      const restrictions: string[] = []
+      const emphasis: string[] = []
+      const onlyRequests: string[] = []
 
       // Enhanced "only" pattern detection with more comprehensive patterns
       const onlyPatterns = {
@@ -455,6 +455,32 @@ export async function POST(request: Request) {
       }
     }
 
+    // Helper function to validate selections
+    const validateSelections = (selections: string[], availableItems: string[], category: string) => {
+      return selections.filter((item) => {
+        const exists = availableItems.some((available) => available.toLowerCase().trim() === item.toLowerCase().trim())
+        if (!exists) {
+          console.warn(`Item "${item}" not found in ${category} menu`)
+        }
+        return exists
+      })
+    }
+
+    // Helper function to apply user constraints
+    const applyUserConstraints = (items: string[], category: string, userPrefs: any) => {
+      // If there are "only" requests and this category is not in the list, return empty
+      if (userPrefs.onlyRequests.length > 0 && !userPrefs.onlyRequests.includes(category.toLowerCase())) {
+        return []
+      }
+
+      // If this category is restricted, return empty
+      if (userPrefs.restrictions.includes(category.toLowerCase())) {
+        return []
+      }
+
+      return items
+    }
+
     // Parse user preferences
     const userPrefs = parseAdvancedUserPreferences(preferredMenus || "")
 
@@ -468,33 +494,49 @@ export async function POST(request: Request) {
       return shuffled
     }
 
+    // Apply user constraints to available items
+    const filteredMenuItems = {
+      beef: applyUserConstraints(availableMenuItems.beef || [], "beef", userPrefs),
+      pork: applyUserConstraints(availableMenuItems.pork || [], "pork", userPrefs),
+      chicken: applyUserConstraints(availableMenuItems.chicken || [], "chicken", userPrefs),
+      seafood: applyUserConstraints(availableMenuItems.seafood || [], "seafood", userPrefs),
+      vegetables: applyUserConstraints(availableMenuItems.vegetables || [], "vegetables", userPrefs),
+      pasta: applyUserConstraints(availableMenuItems.pasta || [], "pasta", userPrefs),
+      dessert: availableMenuItems.dessert || [], // Desserts rarely restricted
+      beverage: availableMenuItems.beverage || [], // Beverages rarely restricted
+    }
+
     // Randomize all menu categories for variety - include generation count for more randomness
     const randomizedMenuItems = {
-      beef: shuffleArray([...availableMenuItems.beef]).sort(() => Math.random() - 0.5),
-      pork: shuffleArray([...availableMenuItems.pork]).sort(() => Math.random() - 0.5),
-      chicken: shuffleArray([...availableMenuItems.chicken]).sort(() => Math.random() - 0.5),
-      seafood: shuffleArray([...availableMenuItems.seafood]).sort(() => Math.random() - 0.5),
-      vegetables: shuffleArray([...availableMenuItems.vegetables]).sort(() => Math.random() - 0.5),
-      pasta: shuffleArray([...availableMenuItems.pasta]).sort(() => Math.random() - 0.5),
-      dessert: shuffleArray([...availableMenuItems.dessert]).sort(() => Math.random() - 0.5),
-      beverage: shuffleArray([...availableMenuItems.beverage]).sort(() => Math.random() - 0.5),
+      beef: shuffleArray([...filteredMenuItems.beef]).sort(() => Math.random() - 0.5),
+      pork: shuffleArray([...filteredMenuItems.pork]).sort(() => Math.random() - 0.5),
+      chicken: shuffleArray([...filteredMenuItems.chicken]).sort(() => Math.random() - 0.5),
+      seafood: shuffleArray([...filteredMenuItems.seafood]).sort(() => Math.random() - 0.5),
+      vegetables: shuffleArray([...filteredMenuItems.vegetables]).sort(() => Math.random() - 0.5),
+      pasta: shuffleArray([...filteredMenuItems.pasta]).sort(() => Math.random() - 0.5),
+      dessert: shuffleArray([...filteredMenuItems.dessert]).sort(() => Math.random() - 0.5),
+      beverage: shuffleArray([...filteredMenuItems.beverage]).sort(() => Math.random() - 0.5),
     }
 
     // Generate a random session ID to ensure variety in AI responses
     const sessionId = Math.random().toString(36).substring(2, 15)
     const timestamp = new Date().toISOString()
 
-    // Create the enhanced AI prompt with strict fixed structure enforcement
+    // Create the enhanced AI prompt with CORRECTED structure enforcement
     const prompt = `You are an expert catering menu curator for Jo Pacheco Wedding & Event Catering Services with deep understanding of Filipino cuisine and dietary preferences.
 
 CRITICAL FIXED STRUCTURE REQUIREMENT:
 You MUST provide EXACTLY:
-- 3 main courses total (distributed across Menu 1, Menu 2, Menu 3)
-- 1 pasta dish
+- 1 beef dish OR empty if restricted
+- 1 pork dish OR empty if restricted  
+- 1 chicken dish OR empty if restricted
+- 1 seafood dish OR empty if restricted
+- 1 vegetable dish OR empty if restricted
+- 1 pasta dish OR empty if restricted
 - 1 dessert
 - 1 beverage
 
-NEVER exceed these quantities. NEVER provide more than 3 main courses total.
+NEVER exceed these quantities. NEVER provide more than 1 item per main course category (beef, pork, chicken, seafood, vegetables).
 
 IMPORTANT: This is session ${sessionId} at ${timestamp}. Generation #${generationCount}. You MUST provide COMPLETELY DIFFERENT menu selections from previous recommendations to ensure maximum variety and prevent any repetition. Randomize ALL categories while following user preferences strictly.
 
@@ -517,92 +559,86 @@ ${userPrefs.emphasis.length > 0 ? userPrefs.emphasis.join(", ") : "None"}
 EXCLUSIVE "ONLY" REQUESTS (FOCUS EXCLUSIVELY ON THESE):
 ${userPrefs.onlyRequests.length > 0 ? userPrefs.onlyRequests.join(", ") : "None"}
 
-AVAILABLE MENU ITEMS BY CATEGORY (RANDOMIZED FOR VARIETY):
-Menu 1 (Beef & Pork): ${randomizedMenuItems.beef.join(", ")}, ${randomizedMenuItems.pork.join(", ")}
-Menu 2 (Chicken): ${randomizedMenuItems.chicken.join(", ")}
-Menu 3 (Seafood & Vegetables): ${randomizedMenuItems.seafood.join(", ")}, ${randomizedMenuItems.vegetables.join(", ")}
+AVAILABLE MENU ITEMS BY CATEGORY (ALREADY FILTERED FOR USER RESTRICTIONS):
+Beef: ${randomizedMenuItems.beef.join(", ")}
+Pork: ${randomizedMenuItems.pork.join(", ")}
+Chicken: ${randomizedMenuItems.chicken.join(", ")}
+Seafood: ${randomizedMenuItems.seafood.join(", ")}
+Vegetables: ${randomizedMenuItems.vegetables.join(", ")}
 Pasta: ${randomizedMenuItems.pasta.join(", ")}
 Desserts: ${randomizedMenuItems.dessert.join(", ")}
 Beverages: ${randomizedMenuItems.beverage.join(", ")}
 
 ENHANCED PREFERENCE HANDLING RULES:
 
-1. EXCLUSIVE "ONLY" REQUESTS (HIGHEST PRIORITY - MUST BE STRICTLY ENFORCED):
-   - If user says "only beef", "beef only", "just beef" → ALL 3 main courses MUST be beef items from Menu 1, menu2=[], menu3=[]
-   - If user says "only chicken", "chicken only" → ALL 3 main courses MUST be chicken items from Menu 2, menu1=[], menu3=[]
-   - If user says "only seafood", "seafood only" → ALL 3 main courses MUST be seafood items from Menu 3, menu1=[], menu2=[]
-   - If user says "only vegetables", "vegetarian only" → ALL 3 main courses MUST be vegetable items from Menu 3, menu1=[], menu2=[]
-   - If user says "only pork & chicken" → Distribute 3 main courses between ONLY pork (Menu 1) AND chicken (Menu 2), menu3=[]
-   - For "only" requests, provide exactly 3 items total ONLY from the specified category/categories
-   - Still include exactly 1 pasta, 1 dessert, and 1 beverage unless specifically excluded
-   - CRITICAL: "Only" means EXCLUSIVE - no other main course categories should appear
+1. RESTRICTION ENFORCEMENT (HIGHEST PRIORITY):
+   - If user restricts a category (e.g., "no beef"), that category MUST be completely excluded
+   - If user restricts beef: beef = []
+   - If user restricts pork: pork = []
+   - If user restricts chicken: chicken = []
+   - If user restricts seafood: seafood = []
+   - If user restricts vegetables: vegetables = []
+   - If user restricts pasta: pasta = []
 
-2. MAIN COURSE DISTRIBUTION FOR "ONLY" REQUESTS:
-   - "only beef" → menu1 = [3 beef items], menu2 = [], menu3 = []
-   - "only pork" → menu1 = [3 pork items], menu2 = [], menu3 = []  
-   - "only chicken" → menu1 = [], menu2 = [3 chicken items], menu3 = []
-   - "only seafood" → menu1 = [], menu2 = [], menu3 = [3 seafood items]
-   - "only vegetables" → menu1 = [], menu2 = [], menu3 = [3 vegetable items]
-   - "only pork & chicken" → menu1 = [1-2 pork items], menu2 = [1-2 chicken items], menu3 = [] (total must be exactly 3)
-   - "only beef & seafood" → menu1 = [1-2 beef items], menu2 = [], menu3 = [1-2 seafood items] (total must be exactly 3)
+2. MAIN COURSE DISTRIBUTION RULES:
+   - ALWAYS provide exactly 0 or 1 item per main course category (beef, pork, chicken, seafood, vegetables)
+   - NEVER exceed 1 item per category under any circumstances
+   - When a category is restricted, other categories can still have 1 item each
 
-3. RESTRICTION ENFORCEMENT (SECOND PRIORITY):
-   - Complete exclusion of restricted categories
-   - No exceptions or substitutions
-   - Religious restrictions (halal, kosher) must be strictly observed
-   - If all main course categories are restricted, return error
+3. RESTRICTION EXAMPLES:
+   - "no beef" → beef = [], pork = [1 item], chicken = [1 item], seafood = [1 item], vegetables = [1 item]
+   - "no pork" → beef = [1 item], pork = [], chicken = [1 item], seafood = [1 item], vegetables = [1 item]
+   - "no chicken" → beef = [1 item], pork = [1 item], chicken = [], seafood = [1 item], vegetables = [1 item]
+   - "no seafood" → beef = [1 item], pork = [1 item], chicken = [1 item], seafood = [], vegetables = [1 item]
+   - "vegetarian" → beef = [], pork = [], chicken = [], seafood = [], vegetables = [1 item]
+   - "halal" (no pork) → beef = [1 item], pork = [], chicken = [1 item], seafood = [1 item], vegetables = [1 item]
 
-4. EMPHASIS AMPLIFICATION (THIRD PRIORITY):
-   - Prioritize emphasized categories when distributing the 3 main courses
-   - If user emphasizes chicken, try to include 2 chicken dishes out of 3 main courses
-   - Ensure emphasized categories are well-represented within the 3-item limit
+4. EMPHASIS AMPLIFICATION (SECOND PRIORITY):
+   - Prioritize emphasized categories when selecting within available options
+   - If user emphasizes chicken and chicken is available, select chicken
+   - Ensure emphasized categories are well-represented within the 1-item limit per category
 
 5. NORMAL DISTRIBUTION (NO SPECIAL REQUESTS):
-   - Distribute exactly 3 main courses across available categories
-   - Try to include variety: 1 from Menu 1 (beef/pork), 1 from Menu 2 (chicken), 1 from Menu 3 (seafood/vegetables)
-   - If a category is restricted, redistribute to remaining categories
-   - NEVER exceed 3 main courses total
-
-6. SPECIAL DIETARY HANDLING:
-   - Vegetarian: All 3 main courses from vegetables (Menu 3), exclude all meat/seafood
-   - Pescatarian: All 3 main courses from seafood (Menu 3), exclude meat
-   - Halal: Exclude pork completely, distribute 3 items among beef, chicken, seafood, vegetables
-   - Keto: Emphasize meat/seafood, exclude pasta if requested
-   - Gluten-free: Exclude pasta if requested, emphasize other categories
+   - Distribute exactly 1 item per available main course category
+   - Try to include variety across all non-restricted categories
+   - NEVER exceed 1 item per main course category
 
 CRITICAL SUCCESS FACTORS:
-- User satisfaction is paramount - follow their preferences exactly
-- ALWAYS provide exactly 3 main courses total, 1 pasta, 1 dessert, 1 beverage
+- User satisfaction is paramount - follow their restrictions exactly
+- ALWAYS provide exactly 0 or 1 item per main course category
 - NEVER exceed these quantities under any circumstances
-- Ensure variety within constraints
+- Respect all dietary restrictions completely
 - Provide clear reasoning for all selections
 - MAXIMUM RANDOMIZATION for generation #${generationCount}
 
 RESPONSE FORMAT REQUIREMENTS:
 Respond with a JSON object containing:
 {
-  "menu1": ["selected beef/pork items - EMPTY array [] if user restricted these or requested only other categories"],
-  "menu2": ["selected chicken items - EMPTY array [] if user restricted chicken or requested only other categories"], 
-  "menu3": ["selected seafood/vegetable items - EMPTY array [] if user restricted these or requested only other categories"],
+  "beef": ["selected beef item - EMPTY array [] if user restricted beef"],
+  "pork": ["selected pork item - EMPTY array [] if user restricted pork"],
+  "chicken": ["selected chicken item - EMPTY array [] if user restricted chicken"], 
+  "seafood": ["selected seafood item - EMPTY array [] if user restricted seafood"],
+  "vegetables": ["selected vegetable item - EMPTY array [] if user restricted vegetables"],
   "pasta": ["exactly 1 pasta item - EMPTY array [] if user restricted pasta"],
   "dessert": ["exactly 1 dessert item"],
   "beverage": ["exactly 1 beverage item"],
-  "reasoning": "Detailed explanation of how user preferences were interpreted and applied, including how the fixed structure of exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage was maintained",
-  "explanation": "Step-by-step breakdown of selection process and any trade-offs made to maintain the fixed structure while honoring preferences"
+  "reasoning": "Detailed explanation of how user preferences were interpreted and applied, including how restrictions were respected",
+  "explanation": "Step-by-step breakdown of selection process and any trade-offs made to respect user restrictions"
 }
 
 VALIDATION RULES:
-- menu1.length + menu2.length + menu3.length MUST EQUAL exactly 3
-- pasta.length MUST EQUAL exactly 1 (unless restricted)
+- beef.length MUST BE 0 or 1 (0 if beef is restricted, 1 otherwise)
+- pork.length MUST BE 0 or 1 (0 if pork is restricted, 1 otherwise)
+- chicken.length MUST BE 0 or 1 (0 if chicken is restricted, 1 otherwise)
+- seafood.length MUST BE 0 or 1 (0 if seafood is restricted, 1 otherwise)
+- vegetables.length MUST BE 0 or 1 (0 if vegetables is restricted, 1 otherwise)
+- pasta.length MUST BE 0 or 1 (0 if pasta is restricted, 1 otherwise)
 - dessert.length MUST EQUAL exactly 1
 - beverage.length MUST EQUAL exactly 1
+- NEVER provide more than 1 item per main course category
+- ALWAYS respect user restrictions completely
 
-EXAMPLE HANDLING FOR "ONLY" REQUESTS:
-- User says "only beef": menu1 = [3 beef items], menu2 = [], menu3 = [], pasta = [1 item], dessert = [1 item], beverage = [1 item]
-- User says "only chicken": menu1 = [], menu2 = [3 chicken items], menu3 = [], pasta = [1 item], dessert = [1 item], beverage = [1 item]
-- User says "vegetarian only": menu1 = [], menu2 = [], menu3 = [3 vegetable items], pasta = [1 item], dessert = [1 item], beverage = [1 item]
-
-Remember: Always maintain the fixed structure of exactly 3 main courses total, 1 pasta, 1 dessert, and 1 beverage while respecting user preferences. Focus on creating the perfect menu within these constraints while ensuring maximum variety for generation #${generationCount}.`
+Remember: Always maintain the fixed structure while respecting user restrictions completely. Focus on creating the perfect menu within these constraints while ensuring maximum variety for generation #${generationCount}.`
 
     const response = await generateText({
       model: google("gemini-1.5-flash"),
@@ -623,6 +659,7 @@ Remember: Always maintain the fixed structure of exactly 3 main courses total, 1
       }
     } catch (parseError) {
       console.error("Error parsing AI response:", parseError)
+      console.log("Raw AI response:", response.text)
       return NextResponse.json({
         success: false,
         message: "Failed to parse AI response",
@@ -630,164 +667,247 @@ Remember: Always maintain the fixed structure of exactly 3 main courses total, 1
       })
     }
 
-    // Validate that all selected items exist in the available menu and respect user preferences
-    const validateSelections = (selections: string[], availableItems: string[], category: string) => {
-      return selections.filter((item) => {
-        const exists = availableItems.some((available) => available.toLowerCase().trim() === item.toLowerCase().trim())
-        if (!exists) {
-          console.warn(`Item "${item}" not found in ${category} menu`)
-        }
-        return exists
-      })
-    }
-
-    // Apply user restrictions and "only" requests to available items
-    const applyUserConstraints = (items: string[], category: string, userPrefs: any) => {
-      // If there are "only" requests and this category is not in the list, return empty
-      if (userPrefs.onlyRequests.length > 0 && !userPrefs.onlyRequests.includes(category.toLowerCase())) {
-        return []
-      }
-
-      // If this category is restricted, return empty
-      if (userPrefs.restrictions.includes(category.toLowerCase())) {
-        return []
-      }
-
-      return items
-    }
-
-    // Filter available items based on user constraints
-    const filteredMenuItems = {
-      beef: applyUserConstraints(randomizedMenuItems.beef, "beef", userPrefs),
-      pork: applyUserConstraints(randomizedMenuItems.pork, "pork", userPrefs),
-      chicken: applyUserConstraints(randomizedMenuItems.chicken, "chicken", userPrefs),
-      seafood: applyUserConstraints(randomizedMenuItems.seafood, "seafood", userPrefs),
-      vegetables: applyUserConstraints(randomizedMenuItems.vegetables, "vegetables", userPrefs),
-      pasta: applyUserConstraints(randomizedMenuItems.pasta, "pasta", userPrefs),
-      dessert: randomizedMenuItems.dessert, // Desserts rarely restricted
-      beverage: randomizedMenuItems.beverage, // Beverages rarely restricted
-    }
-
-    // Validate and clean the AI selections with enhanced user preference enforcement
+    // Validate and clean the AI selections with STRICT enforcement of 1 item per category
     const validatedRecommendations = {
-      menu1: validateSelections(
-        aiRecommendations.menu1 || [],
-        [...filteredMenuItems.beef, ...filteredMenuItems.pork],
-        "Menu 1",
-      ),
-      menu2: validateSelections(aiRecommendations.menu2 || [], filteredMenuItems.chicken, "Menu 2"),
-      menu3: validateSelections(
-        aiRecommendations.menu3 || [],
-        [...filteredMenuItems.seafood, ...filteredMenuItems.vegetables],
-        "Menu 3",
-      ),
-      pasta: validateSelections(aiRecommendations.pasta || [], filteredMenuItems.pasta, "Pasta").slice(0, 1), // Ensure exactly 1
-      dessert: validateSelections(aiRecommendations.dessert || [], filteredMenuItems.dessert, "Dessert").slice(0, 1), // Ensure exactly 1
-      beverage: validateSelections(aiRecommendations.beverage || [], filteredMenuItems.beverage, "Beverage").slice(
-        0,
-        1,
-      ), // Ensure exactly 1
+      beef: [] as string[],
+      pork: [] as string[],
+      chicken: [] as string[],
+      seafood: [] as string[],
+      vegetables: [] as string[],
+      pasta: [] as string[],
+      dessert: [] as string[],
+      beverage: [] as string[],
       reasoning:
         aiRecommendations.reasoning ||
-        `Menu curated with fixed structure: exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage. Your dietary restrictions and preferences: "${preferredMenus}" have been carefully respected.`,
+        `Menu curated with fixed structure: exactly 1 item per main course category (beef, pork, chicken, seafood, vegetables), 1 pasta, 1 dessert, 1 beverage. Your dietary restrictions and preferences: "${preferredMenus}" have been carefully respected.`,
       explanation:
         aiRecommendations.explanation ||
-        `This menu was carefully selected to follow your dietary preferences and restrictions while maintaining our standard structure of exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage.`,
+        `This menu was carefully selected to follow your dietary preferences and restrictions while maintaining our standard structure of exactly 1 item per main course category, 1 pasta, 1 dessert, and 1 beverage.`,
     }
 
-    // CRITICAL: Enforce exactly 3 main courses total
-    const totalMainCourses =
-      validatedRecommendations.menu1.length +
-      validatedRecommendations.menu2.length +
-      validatedRecommendations.menu3.length
+    // Beef: Only add if available and not restricted
+    if (filteredMenuItems.beef.length > 0) {
+      const beefSelections = validateSelections(aiRecommendations.beef || [], filteredMenuItems.beef, "Beef")
 
-    console.log("AI Response validation:", {
-      menu1: validatedRecommendations.menu1.length,
-      menu2: validatedRecommendations.menu2.length,
-      menu3: validatedRecommendations.menu3.length,
-      totalMainCourses,
-      pasta: validatedRecommendations.pasta.length,
-      dessert: validatedRecommendations.dessert.length,
-      beverage: validatedRecommendations.beverage.length,
-    })
-
-    // If AI didn't provide exactly 3 main courses, fix it
-    if (totalMainCourses !== 3) {
-      console.log(`AI provided ${totalMainCourses} main courses instead of 3. Fixing...`)
-
-      // Collect all main course items
-      const allMainItems = [
-        ...validatedRecommendations.menu1.map((item) => ({ item, category: "menu1" })),
-        ...validatedRecommendations.menu2.map((item) => ({ item, category: "menu2" })),
-        ...validatedRecommendations.menu3.map((item) => ({ item, category: "menu3" })),
-      ]
-
-      // Reset main course arrays
-      validatedRecommendations.menu1 = []
-      validatedRecommendations.menu2 = []
-      validatedRecommendations.menu3 = []
-
-      if (totalMainCourses > 3) {
-        // Too many items - take first 3
-        const selectedItems = allMainItems.slice(0, 3)
-        selectedItems.forEach(({ item, category }) => {
-          validatedRecommendations[category as keyof typeof validatedRecommendations].push(item)
-        })
-      } else if (totalMainCourses < 3) {
-        // Too few items - add more
-        // First, add existing items back
-        allMainItems.forEach(({ item, category }) => {
-          validatedRecommendations[category as keyof typeof validatedRecommendations].push(item)
-        })
-
-        // Then add more items to reach exactly 3
-        const needed = 3 - totalMainCourses
-        const availableCategories = [
-          { key: "menu1", items: [...filteredMenuItems.beef, ...filteredMenuItems.pork] },
-          { key: "menu2", items: filteredMenuItems.chicken },
-          { key: "menu3", items: [...filteredMenuItems.seafood, ...filteredMenuItems.vegetables] },
-        ].filter((cat) => cat.items.length > 0)
-
-        for (let i = 0; i < needed && availableCategories.length > 0; i++) {
-          const category = availableCategories[i % availableCategories.length]
-          const currentItems = validatedRecommendations[
-            category.key as keyof typeof validatedRecommendations
-          ] as string[]
-          const availableItems = category.items.filter((item) => !currentItems.includes(item))
-
-          if (availableItems.length > 0) {
-            const randomItem = availableItems[Math.floor(Math.random() * availableItems.length)]
-            currentItems.push(randomItem)
-          }
-        }
+      if (beefSelections.length > 0) {
+        // Take ONLY the first item, even if AI provided multiple
+        validatedRecommendations.beef = [beefSelections[0]]
+        console.log(
+          `Beef: Selected "${beefSelections[0]}" (AI provided ${beefSelections.length} items, took first only)`,
+        )
+      } else if (filteredMenuItems.beef.length > 0) {
+        // Fallback: pick one random item
+        const randomItem = filteredMenuItems.beef[Math.floor(Math.random() * filteredMenuItems.beef.length)]
+        validatedRecommendations.beef = [randomItem]
+        console.log(`Beef: Fallback selected "${randomItem}"`)
       }
     }
 
-    // Ensure we have exactly 1 pasta, 1 dessert, 1 beverage
-    if (validatedRecommendations.pasta.length === 0 && filteredMenuItems.pasta.length > 0) {
-      validatedRecommendations.pasta = [filteredMenuItems.pasta[0]]
-    }
-    if (validatedRecommendations.dessert.length === 0 && filteredMenuItems.dessert.length > 0) {
-      validatedRecommendations.dessert = [filteredMenuItems.dessert[0]]
-    }
-    if (validatedRecommendations.beverage.length === 0 && filteredMenuItems.beverage.length > 0) {
-      validatedRecommendations.beverage = [filteredMenuItems.beverage[0]]
+    // Pork: Only add if available and not restricted
+    if (filteredMenuItems.pork.length > 0) {
+      const porkSelections = validateSelections(aiRecommendations.pork || [], filteredMenuItems.pork, "Pork")
+
+      if (porkSelections.length > 0) {
+        // Take ONLY the first item, even if AI provided multiple
+        validatedRecommendations.pork = [porkSelections[0]]
+        console.log(
+          `Pork: Selected "${porkSelections[0]}" (AI provided ${porkSelections.length} items, took first only)`,
+        )
+      } else if (filteredMenuItems.pork.length > 0) {
+        // Fallback: pick one random item
+        const randomItem = filteredMenuItems.pork[Math.floor(Math.random() * filteredMenuItems.pork.length)]
+        validatedRecommendations.pork = [randomItem]
+        console.log(`Pork: Fallback selected "${randomItem}"`)
+      }
     }
 
-    // Final validation
-    const finalMainCourses =
-      validatedRecommendations.menu1.length +
-      validatedRecommendations.menu2.length +
-      validatedRecommendations.menu3.length
-    console.log("Final validation:", {
-      menu1: validatedRecommendations.menu1.length,
-      menu2: validatedRecommendations.menu2.length,
-      menu3: validatedRecommendations.menu3.length,
-      totalMainCourses: finalMainCourses,
-      pasta: validatedRecommendations.pasta.length,
-      dessert: validatedRecommendations.dessert.length,
-      beverage: validatedRecommendations.beverage.length,
+    // Chicken: Only add if available and not restricted
+    if (filteredMenuItems.chicken.length > 0) {
+      const chickenSelections = validateSelections(
+        aiRecommendations.chicken || [],
+        filteredMenuItems.chicken,
+        "Chicken",
+      )
+
+      if (chickenSelections.length > 0) {
+        // Take ONLY the first item, even if AI provided multiple
+        validatedRecommendations.chicken = [chickenSelections[0]]
+        console.log(
+          `Chicken: Selected "${chickenSelections[0]}" (AI provided ${chickenSelections.length} items, took first only)`,
+        )
+      } else {
+        // Fallback: pick one random chicken item
+        const randomItem = filteredMenuItems.chicken[Math.floor(Math.random() * filteredMenuItems.chicken.length)]
+        validatedRecommendations.chicken = [randomItem]
+        console.log(`Chicken: Fallback selected "${randomItem}"`)
+      }
+    }
+
+    // Seafood: Only add if available and not restricted
+    if (filteredMenuItems.seafood.length > 0) {
+      const seafoodSelections = validateSelections(
+        aiRecommendations.seafood || [],
+        filteredMenuItems.seafood,
+        "Seafood",
+      )
+
+      if (seafoodSelections.length > 0) {
+        // Take ONLY the first item, even if AI provided multiple
+        validatedRecommendations.seafood = [seafoodSelections[0]]
+        console.log(
+          `Seafood: Selected "${seafoodSelections[0]}" (AI provided ${seafoodSelections.length} items, took first only)`,
+        )
+      } else if (filteredMenuItems.seafood.length > 0) {
+        // Fallback: pick one random item
+        const randomItem = filteredMenuItems.seafood[Math.floor(Math.random() * filteredMenuItems.seafood.length)]
+        validatedRecommendations.seafood = [randomItem]
+        console.log(`Seafood: Fallback selected "${randomItem}"`)
+      }
+    }
+
+    // Vegetables: Only add if available and not restricted
+    if (filteredMenuItems.vegetables.length > 0) {
+      const vegetableSelections = validateSelections(
+        aiRecommendations.vegetables || [],
+        filteredMenuItems.vegetables,
+        "Vegetables",
+      )
+
+      if (vegetableSelections.length > 0) {
+        // Take ONLY the first item, even if AI provided multiple
+        validatedRecommendations.vegetables = [vegetableSelections[0]]
+        console.log(
+          `Vegetables: Selected "${vegetableSelections[0]}" (AI provided ${vegetableSelections.length} items, took first only)`,
+        )
+      } else if (filteredMenuItems.vegetables.length > 0) {
+        // Fallback: pick one random item
+        const randomItem = filteredMenuItems.vegetables[Math.floor(Math.random() * filteredMenuItems.vegetables.length)]
+        validatedRecommendations.vegetables = [randomItem]
+        console.log(`Vegetables: Fallback selected "${randomItem}"`)
+      }
+    }
+
+    // Pasta: Exactly 1 item (if not restricted)
+    if (filteredMenuItems.pasta.length > 0) {
+      const pastaSelections = validateSelections(aiRecommendations.pasta || [], filteredMenuItems.pasta, "Pasta")
+
+      if (pastaSelections.length > 0) {
+        // Take ONLY the first item, even if AI provided multiple
+        validatedRecommendations.pasta = [pastaSelections[0]]
+        console.log(
+          `Pasta: Selected "${pastaSelections[0]}" (AI provided ${pastaSelections.length} items, took first only)`,
+        )
+      } else {
+        // Fallback: pick one random pasta
+        const randomItem = filteredMenuItems.pasta[Math.floor(Math.random() * filteredMenuItems.pasta.length)]
+        validatedRecommendations.pasta = [randomItem]
+        console.log(`Pasta: Fallback selected "${randomItem}"`)
+      }
+    }
+
+    // Dessert: Exactly 1 item (always required)
+    if (filteredMenuItems.dessert.length > 0) {
+      const dessertSelections = validateSelections(
+        aiRecommendations.dessert || [],
+        filteredMenuItems.dessert,
+        "Dessert",
+      )
+
+      if (dessertSelections.length > 0) {
+        // Take ONLY the first item, even if AI provided multiple
+        validatedRecommendations.dessert = [dessertSelections[0]]
+        console.log(
+          `Dessert: Selected "${dessertSelections[0]}" (AI provided ${dessertSelections.length} items, took first only)`,
+        )
+      } else {
+        // Fallback: pick one random dessert
+        const randomItem = filteredMenuItems.dessert[Math.floor(Math.random() * filteredMenuItems.dessert.length)]
+        validatedRecommendations.dessert = [randomItem]
+        console.log(`Dessert: Fallback selected "${randomItem}"`)
+      }
+    }
+
+    // Beverage: Exactly 1 item (always required)
+    if (filteredMenuItems.beverage.length > 0) {
+      const beverageSelections = validateSelections(
+        aiRecommendations.beverage || [],
+        filteredMenuItems.beverage,
+        "Beverage",
+      )
+
+      if (beverageSelections.length > 0) {
+        // Take ONLY the first item, even if AI provided multiple
+        validatedRecommendations.beverage = [beverageSelections[0]]
+        console.log(
+          `Beverage: Selected "${beverageSelections[0]}" (AI provided ${beverageSelections.length} items, took first only)`,
+        )
+      } else {
+        // Fallback: pick one random beverage
+        const randomItem = filteredMenuItems.beverage[Math.floor(Math.random() * filteredMenuItems.beverage.length)]
+        validatedRecommendations.beverage = [randomItem]
+        console.log(`Beverage: Fallback selected "${randomItem}"`)
+      }
+    }
+
+    // FINAL ENFORCEMENT: Double-check that we never exceed 1 item per category
+    validatedRecommendations.beef = validatedRecommendations.beef.slice(0, 1)
+    validatedRecommendations.pork = validatedRecommendations.pork.slice(0, 1)
+    validatedRecommendations.chicken = validatedRecommendations.chicken.slice(0, 1)
+    validatedRecommendations.seafood = validatedRecommendations.seafood.slice(0, 1)
+    validatedRecommendations.vegetables = validatedRecommendations.vegetables.slice(0, 1)
+    validatedRecommendations.pasta = validatedRecommendations.pasta.slice(0, 1)
+    validatedRecommendations.dessert = validatedRecommendations.dessert.slice(0, 1)
+    validatedRecommendations.beverage = validatedRecommendations.beverage.slice(0, 1)
+
+    // Final validation with detailed logging
+    console.log("FINAL STRICT VALIDATION:", {
+      beef: `${validatedRecommendations.beef.length} items: [${validatedRecommendations.beef.join(", ")}]`,
+      pork: `${validatedRecommendations.pork.length} items: [${validatedRecommendations.pork.join(", ")}]`,
+      chicken: `${validatedRecommendations.chicken.length} items: [${validatedRecommendations.chicken.join(", ")}]`,
+      seafood: `${validatedRecommendations.seafood.length} items: [${validatedRecommendations.seafood.join(", ")}]`,
+      vegetables: `${validatedRecommendations.vegetables.length} items: [${validatedRecommendations.vegetables.join(", ")}]`,
+      pasta: `${validatedRecommendations.pasta.length} items: [${validatedRecommendations.pasta.join(", ")}]`,
+      dessert: `${validatedRecommendations.dessert.length} items: [${validatedRecommendations.dessert.join(", ")}]`,
+      beverage: `${validatedRecommendations.beverage.length} items: [${validatedRecommendations.beverage.join(", ")}]`,
     })
+
+    // Verify strict compliance
+    const totalMainCourses =
+      validatedRecommendations.beef.length +
+      validatedRecommendations.pork.length +
+      validatedRecommendations.chicken.length +
+      validatedRecommendations.seafood.length +
+      validatedRecommendations.vegetables.length
+    const totalItems =
+      totalMainCourses +
+      validatedRecommendations.pasta.length +
+      validatedRecommendations.dessert.length +
+      validatedRecommendations.beverage.length
+
+    console.log(`COMPLIANCE CHECK: ${totalMainCourses} main courses, ${totalItems} total items`)
+
+    // Ensure we never have more than 1 item in any category
+    if (
+      validatedRecommendations.beef.length > 1 ||
+      validatedRecommendations.pork.length > 1 ||
+      validatedRecommendations.chicken.length > 1 ||
+      validatedRecommendations.seafood.length > 1 ||
+      validatedRecommendations.vegetables.length > 1 ||
+      validatedRecommendations.pasta.length > 1 ||
+      validatedRecommendations.dessert.length > 1 ||
+      validatedRecommendations.beverage.length > 1
+    ) {
+      console.error("CRITICAL ERROR: More than 1 item detected in a category!")
+      // Force compliance by taking only first item
+      validatedRecommendations.beef = validatedRecommendations.beef.slice(0, 1)
+      validatedRecommendations.pork = validatedRecommendations.pork.slice(0, 1)
+      validatedRecommendations.chicken = validatedRecommendations.chicken.slice(0, 1)
+      validatedRecommendations.seafood = validatedRecommendations.seafood.slice(0, 1)
+      validatedRecommendations.vegetables = validatedRecommendations.vegetables.slice(0, 1)
+      validatedRecommendations.pasta = validatedRecommendations.pasta.slice(0, 1)
+      validatedRecommendations.dessert = validatedRecommendations.dessert.slice(0, 1)
+      validatedRecommendations.beverage = validatedRecommendations.beverage.slice(0, 1)
+    }
 
     return NextResponse.json({
       success: true,
@@ -795,7 +915,11 @@ Remember: Always maintain the fixed structure of exactly 3 main courses total, 1
       userPreferences: userPrefs, // Include parsed preferences for debugging
       sessionId: sessionId, // Include session ID for tracking variety
       fixedStructure: {
-        mainCourses: finalMainCourses,
+        beef: validatedRecommendations.beef.length,
+        pork: validatedRecommendations.pork.length,
+        chicken: validatedRecommendations.chicken.length,
+        seafood: validatedRecommendations.seafood.length,
+        vegetables: validatedRecommendations.vegetables.length,
         pasta: validatedRecommendations.pasta.length,
         dessert: validatedRecommendations.dessert.length,
         beverage: validatedRecommendations.beverage.length,

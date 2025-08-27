@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Settings, LogOut } from "lucide-react"
+import { LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -28,18 +28,10 @@ export default function AdminNavbar({ user }: AdminNavbarProps) {
   return (
     <header className="h-16 border-b bg-white px-6 flex items-center justify-between">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Jo-ACMS Admin Dashboard</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Jo-AIMS Admin Dashboard</h1>
       </div>
 
       <div className="flex items-center space-x-4">
-        <Button variant="ghost" size="sm">
-          <Bell className="h-4 w-4" />
-        </Button>
-
-        <Button variant="ghost" size="sm">
-          <Settings className="h-4 w-4" />
-        </Button>
-
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -57,7 +49,6 @@ export default function AdminNavbar({ user }: AdminNavbarProps) {
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />

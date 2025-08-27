@@ -86,7 +86,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
   const router = useRouter()
   const { toast } = useToast()
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isBooking, setIsBooking] = useState(false)
+  const [isBooking, setIsBooking] = useState(isBooking)
   const [isBookingComplete, setIsBookingComplete] = useState(false)
   const [bookingResponse, setBookingResponse] = useState<any>(null)
   const [countdown, setCountdown] = useState(10)
@@ -702,191 +702,169 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     }
   }
 
-  // Enhanced function to enforce exactly 3 main courses
+  // Enhanced function to enforce exactly 1 main course from each menu category
   const enforceFixedStructure = (aiRecommendations: any, userPrefs: any, filteredMenuItems: any) => {
     console.log("Enforcing fixed structure - Input:", aiRecommendations)
 
     const finalMenu = {
-      menu1: [] as string[],
-      menu2: [] as string[],
-      menu3: [] as string[],
+      menu1: [] as string[], // Exactly 1 from beef/pork
+      menu2: [] as string[], // Exactly 1 from chicken
+      menu3: [] as string[], // Exactly 1 from seafood/vegetables
       pasta: aiRecommendations.pasta?.slice(0, 1) || [],
       dessert: aiRecommendations.dessert?.slice(0, 1) || [],
       beverage: aiRecommendations.beverage?.slice(0, 1) || [],
     }
 
-    // Collect all main course items from AI response
-    const allMainCourses = [
-      ...(aiRecommendations.menu1 || []),
-      ...(aiRecommendations.menu2 || []),
-      ...(aiRecommendations.menu3 || []),
-    ]
+    console.log("User preferences:", userPrefs)
 
-    console.log("All main courses from AI:", allMainCourses)
-
-    // Handle "only" requests - fill all 3 slots with the requested category
+    // Handle "only" requests - but still maintain 1 from each available category
     if (userPrefs.onlyRequests.length > 0) {
       console.log("Processing 'only' requests:", userPrefs.onlyRequests)
 
-      if (userPrefs.onlyRequests.includes("beef")) {
-        finalMenu.menu1 = shuffleArray([...filteredMenuItems.beef])
-          .slice(0, 3)
-          .map((item: any) => item.name || item)
-      } else if (userPrefs.onlyRequests.includes("pork")) {
-        finalMenu.menu1 = shuffleArray([...filteredMenuItems.pork])
-          .slice(0, 3)
-          .map((item: any) => item.name || item)
-      } else if (userPrefs.onlyRequests.includes("chicken")) {
-        finalMenu.menu2 = shuffleArray([...filteredMenuItems.chicken])
-          .slice(0, 3)
-          .map((item: any) => item.name || item)
-      } else if (userPrefs.onlyRequests.includes("seafood")) {
-        finalMenu.menu3 = shuffleArray([...filteredMenuItems.seafood])
-          .slice(0, 3)
-          .map((item: any) => item.name || item)
-      } else if (userPrefs.onlyRequests.includes("vegetables")) {
-        finalMenu.menu3 = shuffleArray([...filteredMenuItems.vegetables])
-          .slice(0, 3)
-          .map((item: any) => item.name || item)
-      } else {
-        // Multiple "only" categories - distribute among them
-        const availableOnlyCategories = []
-        if (userPrefs.onlyRequests.includes("beef") || userPrefs.onlyRequests.includes("pork")) {
-          availableOnlyCategories.push({
-            key: "menu1",
-            items: [...filteredMenuItems.beef, ...filteredMenuItems.pork],
-          })
-        }
-        if (userPrefs.onlyRequests.includes("chicken")) {
-          availableOnlyCategories.push({ key: "menu2", items: filteredMenuItems.chicken })
-        }
-        if (userPrefs.onlyRequests.includes("seafood") || userPrefs.onlyRequests.includes("vegetables")) {
-          availableOnlyCategories.push({
-            key: "menu3",
-            items: [...filteredMenuItems.seafood, ...filteredMenuItems.vegetables],
-          })
-        }
+      // For "only" requests, we still try to provide variety but prioritize the requested category
+      // Menu 1 (Beef & Pork) - only if beef or pork is in "only" requests
+      if (userPrefs.onlyRequests.includes("beef") && filteredMenuItems.beef.length > 0) {
+        finalMenu.menu1 = [
+          shuffleArray([...filteredMenuItems.beef])[0].name || shuffleArray([...filteredMenuItems.beef])[0],
+        ]
+      } else if (userPrefs.onlyRequests.includes("pork") && filteredMenuItems.pork.length > 0) {
+        finalMenu.menu1 = [
+          shuffleArray([...filteredMenuItems.pork])[0].name || shuffleArray([...filteredMenuItems.pork])[0],
+        ]
+      }
 
-        // Distribute 3 items across the "only" categories
-        const itemsPerCategory = Math.floor(3 / availableOnlyCategories.length)
-        const extraItems = 3 % availableOnlyCategories.length
+      // Menu 2 (Chicken) - only if chicken is in "only" requests
+      if (userPrefs.onlyRequests.includes("chicken") && filteredMenuItems.chicken.length > 0) {
+        finalMenu.menu2 = [
+          shuffleArray([...filteredMenuItems.chicken])[0].name || shuffleArray([...filteredMenuItems.chicken])[0],
+        ]
+      }
 
-        availableOnlyCategories.forEach((category, index) => {
-          const itemCount = itemsPerCategory + (index < extraItems ? 1 : 0)
-          const selectedItems = shuffleArray([...category.items])
-            .slice(0, itemCount)
-            .map((item: any) => item.name || item)
-          finalMenu[category.key as keyof typeof finalMenu] = selectedItems as any
-        })
+      // Menu 3 (Seafood & Vegetables) - only if seafood or vegetables is in "only" requests
+      if (userPrefs.onlyRequests.includes("seafood") && filteredMenuItems.seafood.length > 0) {
+        finalMenu.menu3 = [
+          shuffleArray([...filteredMenuItems.seafood])[0].name || shuffleArray([...filteredMenuItems.seafood])[0],
+        ]
+      } else if (userPrefs.onlyRequests.includes("vegetables") && filteredMenuItems.vegetables.length > 0) {
+        finalMenu.menu3 = [
+          shuffleArray([...filteredMenuItems.vegetables])[0].name || shuffleArray([...filteredMenuItems.vegetables])[0],
+        ]
+      }
+
+      // Special handling for vegetarian - only vegetables
+      if (
+        userPrefs.onlyRequests.includes("vegetables") &&
+        (userPrefs.restrictions.includes("beef") ||
+          userPrefs.restrictions.includes("pork") ||
+          userPrefs.restrictions.includes("chicken") ||
+          userPrefs.restrictions.includes("seafood"))
+      ) {
+        finalMenu.menu1 = []
+        finalMenu.menu2 = []
+        if (filteredMenuItems.vegetables.length > 0) {
+          finalMenu.menu3 = [
+            shuffleArray([...filteredMenuItems.vegetables])[0].name ||
+              shuffleArray([...filteredMenuItems.vegetables])[0],
+          ]
+        }
       }
     } else {
-      // Normal distribution - ensure exactly 3 main courses total
-      console.log("Processing normal distribution")
+      // Normal distribution - exactly 1 from each menu category, respecting restrictions
+      console.log("Processing normal distribution - 1 from each menu, respecting restrictions")
 
-      // Get available categories (not restricted)
-      const availableCategories = []
-      if (
-        !userPrefs.restrictions.includes("beef") &&
-        !userPrefs.restrictions.includes("pork") &&
-        (filteredMenuItems.beef.length > 0 || filteredMenuItems.pork.length > 0)
-      ) {
-        availableCategories.push({
-          key: "menu1",
-          items: [...filteredMenuItems.beef, ...filteredMenuItems.pork],
-          priority: userPrefs.emphasis.includes("beef") || userPrefs.emphasis.includes("pork") ? 2 : 1,
-        })
-      }
-      if (!userPrefs.restrictions.includes("chicken") && filteredMenuItems.chicken.length > 0) {
-        availableCategories.push({
-          key: "menu2",
-          items: filteredMenuItems.chicken,
-          priority: userPrefs.emphasis.includes("chicken") ? 2 : 1,
-        })
-      }
-      if (
-        !userPrefs.restrictions.includes("seafood") &&
-        !userPrefs.restrictions.includes("vegetables") &&
-        (filteredMenuItems.seafood.length > 0 || filteredMenuItems.vegetables.length > 0)
-      ) {
-        availableCategories.push({
-          key: "menu3",
-          items: [...filteredMenuItems.seafood, ...filteredMenuItems.vegetables],
-          priority: userPrefs.emphasis.includes("seafood") || userPrefs.emphasis.includes("vegetables") ? 2 : 1,
-        })
-      }
+      // Menu 1: Select 1 from beef/pork (skip if both are restricted)
+      if (!userPrefs.restrictions.includes("beef") || !userPrefs.restrictions.includes("pork")) {
+        let menu1Items = []
 
-      console.log(
-        "Available categories:",
-        availableCategories.map((c) => c.key),
-      )
-
-      if (availableCategories.length === 0) {
-        console.warn("No available categories for main courses!")
-        return finalMenu
-      }
-
-      // Sort by priority (emphasized categories first)
-      availableCategories.sort((a, b) => b.priority - a.priority)
-
-      // Distribute exactly 3 items across available categories
-      let remainingItems = 3
-      let categoryIndex = 0
-
-      while (remainingItems > 0 && categoryIndex < availableCategories.length) {
-        const category = availableCategories[categoryIndex]
-        const maxItemsForCategory = Math.min(
-          remainingItems,
-          category.items.length,
-          category.priority === 2 ? 2 : 1, // Emphasized categories can get up to 2 items
-        )
-
-        if (maxItemsForCategory > 0) {
-          const selectedItems = shuffleArray([...category.items])
-            .slice(0, maxItemsForCategory)
-            .map((item: any) => item.name || item)
-
-          finalMenu[category.key as keyof typeof finalMenu] = selectedItems as any
-          remainingItems -= maxItemsForCategory
-          console.log(`Assigned ${maxItemsForCategory} items to ${category.key}:`, selectedItems)
+        // Add beef items if not restricted
+        if (!userPrefs.restrictions.includes("beef") && filteredMenuItems.beef.length > 0) {
+          menu1Items.push(...filteredMenuItems.beef)
         }
 
-        categoryIndex++
-
-        // If we've gone through all categories and still have items to assign, loop back
-        if (categoryIndex >= availableCategories.length && remainingItems > 0) {
-          categoryIndex = 0
-          // On second pass, allow any category to get additional items
-          availableCategories.forEach((cat) => (cat.priority = 1))
+        // Add pork items if not restricted
+        if (!userPrefs.restrictions.includes("pork") && filteredMenuItems.pork.length > 0) {
+          menu1Items.push(...filteredMenuItems.pork)
         }
-      }
 
-      // If we still don't have exactly 3, fill remaining slots
-      const currentMainCourseCount = finalMenu.menu1.length + finalMenu.menu2.length + finalMenu.menu3.length
-      if (currentMainCourseCount < 3) {
-        const needed = 3 - currentMainCourseCount
-        console.log(`Need ${needed} more main courses`)
+        if (menu1Items.length > 0) {
+          // Prioritize emphasized items
+          if (userPrefs.emphasis.includes("beef") || userPrefs.emphasis.includes("pork")) {
+            const emphasizedItems = menu1Items.filter((item) => {
+              const itemName = (item.name || item).toLowerCase()
+              return (
+                (userPrefs.emphasis.includes("beef") && itemName.includes("beef")) ||
+                (userPrefs.emphasis.includes("pork") && itemName.includes("pork"))
+              )
+            })
 
-        for (const category of availableCategories) {
-          if (needed <= 0) break
-
-          const currentItems = finalMenu[category.key as keyof typeof finalMenu] as string[]
-          const availableItems = category.items.filter((item: any) => !currentItems.includes(item.name || item))
-
-          if (availableItems.length > 0) {
-            const additionalItems = shuffleArray([...availableItems])
-              .slice(0, Math.min(needed, availableItems.length))
-              .map((item: any) => item.name || item)
-
-            finalMenu[category.key as keyof typeof finalMenu] = [...currentItems, ...additionalItems] as any
-            console.log(`Added ${additionalItems.length} more items to ${category.key}:`, additionalItems)
-            break
+            if (emphasizedItems.length > 0) {
+              menu1Items = emphasizedItems
+            }
           }
+
+          const selectedItem = shuffleArray(menu1Items)[0]
+          finalMenu.menu1 = [selectedItem.name || selectedItem]
+        }
+      }
+
+      // Menu 2: Select 1 from chicken (skip if restricted)
+      if (!userPrefs.restrictions.includes("chicken") && filteredMenuItems.chicken.length > 0) {
+        let chickenItems = [...filteredMenuItems.chicken]
+
+        // Prioritize if emphasized
+        if (userPrefs.emphasis.includes("chicken")) {
+          // All chicken items are already emphasized, so just shuffle
+          chickenItems = shuffleArray(chickenItems)
+        }
+
+        const selectedItem = shuffleArray(chickenItems)[0]
+        finalMenu.menu2 = [selectedItem.name || selectedItem]
+      }
+
+      // Menu 3: Select 1 from seafood/vegetables (skip if both are restricted)
+      if (!userPrefs.restrictions.includes("seafood") || !userPrefs.restrictions.includes("vegetables")) {
+        let menu3Items = []
+
+        // Add seafood items if not restricted
+        if (!userPrefs.restrictions.includes("seafood") && filteredMenuItems.seafood.length > 0) {
+          menu3Items.push(...filteredMenuItems.seafood)
+        }
+
+        // Add vegetable items if not restricted
+        if (!userPrefs.restrictions.includes("vegetables") && filteredMenuItems.vegetables.length > 0) {
+          menu3Items.push(...filteredMenuItems.vegetables)
+        }
+
+        if (menu3Items.length > 0) {
+          // Prioritize emphasized items
+          if (userPrefs.emphasis.includes("seafood") || userPrefs.emphasis.includes("vegetables")) {
+            const emphasizedItems = menu3Items.filter((item) => {
+              const itemName = (item.name || item).toLowerCase()
+              return (
+                (userPrefs.emphasis.includes("seafood") &&
+                  (itemName.includes("fish") || itemName.includes("seafood") || itemName.includes("camaron"))) ||
+                (userPrefs.emphasis.includes("vegetables") &&
+                  (itemName.includes("vegetable") || itemName.includes("chopsuey") || itemName.includes("lumpiang")))
+              )
+            })
+
+            if (emphasizedItems.length > 0) {
+              menu3Items = emphasizedItems
+            }
+          }
+
+          const selectedItem = shuffleArray(menu3Items)[0]
+          finalMenu.menu3 = [selectedItem.name || selectedItem]
         }
       }
     }
 
-    // Ensure we have exactly 1 pasta, 1 dessert, 1 beverage
-    if (finalMenu.pasta.length === 0 && filteredMenuItems.pasta.length > 0) {
+    // Ensure we have exactly 1 pasta, 1 dessert, 1 beverage (respecting restrictions)
+    if (
+      finalMenu.pasta.length === 0 &&
+      !userPrefs.restrictions.includes("pasta") &&
+      filteredMenuItems.pasta.length > 0
+    ) {
       finalMenu.pasta = [
         shuffleArray([...filteredMenuItems.pasta])[0].name || shuffleArray([...filteredMenuItems.pasta])[0],
       ]
@@ -988,7 +966,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           beverage: shuffleArray(menuItems.beverage),
         }
 
-        // Enforce fixed structure: exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage
+        // Enforce fixed structure: exactly 1 main course from each menu category
         const finalMenu = enforceFixedStructure(result.recommendations, userPrefs, filteredMenuItems)
 
         // Update the state with the final menu
@@ -1143,7 +1121,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           features.push(`${numGuests} guests`)
           features.push(`AI-personalized based on your preferences`)
           features.push(`Generation #${generationCount} - Fresh variety`)
-          features.push(`Fixed structure: exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage`)
+          features.push(`Fixed structure: exactly 1 main course, 1 pasta, 1 dessert, 1 beverage`)
 
           return features
         }
@@ -1152,13 +1130,13 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           packages: [
             {
               name: `AI-Curated ${eventInfo.eventType.charAt(0).toUpperCase() + eventInfo.eventType.slice(1)} Package`,
-              description: `A personalized package for your ${eventInfo.eventType} featuring AI-selected menu items that strictly follow your dietary preferences with our standard structure of exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage.`,
+              description: `A personalized package for your ${eventInfo.eventType} featuring AI-selected menu items that strictly follow your dietary preferences with our standard structure of exactly 1 main course, 1 pasta, 1 dessert, and 1 beverage.`,
               price: `₱${finalTotalAmount.toLocaleString()}`,
               features: createPackageFeatures(finalMenu),
               isRecommended: true,
               reasoning:
                 result.recommendations.reasoning ||
-                `This AI-curated package strictly follows your menu preferences: "${formData.preferredMenus}". Your dietary restrictions have been carefully respected while maintaining our standard menu structure of exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage.`,
+                `This AI-curated package strictly follows your menu preferences: "${formData.preferredMenus}". Your dietary restrictions have been carefully respected while maintaining our standard menu structure of exactly 1 main course, 1 pasta, 1 dessert, and 1 beverage.`,
               menuTotal: menuPricing.total,
               serviceFee: serviceFee,
               serviceFeeInclusions: serviceFeeInclusions,
@@ -1323,7 +1301,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       // Add other standard features
       features.push(`${numGuests} guests`)
       features.push(`Generation #${generationCount} - Standard structure`)
-      features.push(`Fixed structure: exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage`)
+      features.push(`Fixed structure: exactly 1 main course, 1 pasta, 1 dessert, 1 beverage`)
 
       return features
     }
@@ -1332,11 +1310,11 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       packages: [
         {
           name: `${eventInfo.eventType.charAt(0).toUpperCase() + eventInfo.eventType.slice(1)} Celebration Package`,
-          description: `A standard package for your ${eventInfo.eventType} featuring menu selection that follows our fixed structure of exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage.`,
+          description: `A standard package for your ${eventInfo.eventType} featuring menu selection that follows our fixed structure of exactly 1 main course, 1 pasta, 1 dessert, and 1 beverage.`,
           price: `₱${finalTotalAmount.toLocaleString()}`,
           features: createFallbackPackageFeatures(finalMenu),
           isRecommended: true,
-          reasoning: `This package has been customized to follow your preferences: "${formData.preferredMenus}". Your dietary restrictions have been respected while maintaining our standard menu structure of exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage.`,
+          reasoning: `This package has been customized to follow your preferences: "${formData.preferredMenus}". Your dietary restrictions have been respected while maintaining our standard menu structure of exactly 1 main course, 1 pasta, 1 dessert, and 1 beverage.`,
           menuTotal: finalMenuCost,
           serviceFee: serviceFee,
           serviceFeeInclusions: serviceFeeInclusions,
@@ -1465,7 +1443,12 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
               <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
                 Fill in your preferences below and our AI will recommend the perfect menu for your{" "}
                 <span className="font-medium text-rose-600">{eventInfo.eventType}</span> event using our standard
-                structure: <strong>exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage</strong>.
+                structure:{" "}
+                <strong>
+                  1 main course from each category (Menu 1: Beef/Pork, Menu 2: Chicken, Menu 3: Seafood/Vegetables), 1
+                  pasta, 1 dessert, 1 beverage
+                </strong>
+                .
               </p>
             </div>
 
@@ -1506,7 +1489,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                       disabled={isFormDisabled}
                       value={formData.preferredMenus}
                       onChange={handleInputChange}
-                      placeholder="Tell our AI your specific menu preferences and dietary restrictions. Examples: 'No beef', 'Add more chicken', 'More seafood', 'No pork', 'Prefer vegetables', 'Only chicken dishes', 'Vegetarian only', 'Halal requirements', 'No shellfish allergy', 'Gluten-free options', 'Keto diet', 'Pescatarian', etc. Our AI will maintain exactly 3 main courses, 1 pasta, 1 dessert, and 1 beverage while respecting your preferences."
+                      placeholder="Tell our AI your specific menu preferences and dietary restrictions. Examples: 'No beef', 'Add more chicken', 'More seafood', 'No pork', 'Prefer vegetables', 'Only chicken dishes', 'Vegetarian only', 'Halal requirements', 'No shellfish allergy', 'Gluten-free options', 'Keto diet', 'Pescatarian', etc. Our AI will maintain exactly 1 main course, 1 pasta, 1 dessert, and 1 beverage while respecting your preferences."
                       className="min-h-[120px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 resize-none pr-12"
                     />
                     <Send className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
@@ -1553,9 +1536,10 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
 
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                     <p className="text-xs text-blue-700 dark:text-blue-300">
-                      💡 <strong>Fixed Menu Structure:</strong> Our AI will always provide exactly 3 main courses, 1
-                      pasta, 1 dessert, and 1 beverage. You can specify preferences for specific dishes or categories,
-                      and our AI will respect your dietary restrictions while maintaining this structure.
+                      💡 <strong>Fixed Menu Structure:</strong> Our AI will always provide exactly 1 main course from
+                      each category (Menu 1: Beef/Pork, Menu 2: Chicken, Menu 3: Seafood/Vegetables), 1 pasta, 1
+                      dessert, and 1 beverage. You can specify preferences for specific dishes or categories, and our AI
+                      will respect your dietary restrictions while maintaining this structure.
                     </p>
                     <ul className="text-xs text-blue-600 dark:text-blue-400 mt-2 space-y-1 ml-4">
                       <li>
@@ -1917,7 +1901,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                         <div className="flex items-start space-x-3">
                           <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
                           <span className="text-gray-700 dark:text-gray-300">
-                            Fixed structure: exactly 3 main courses, 1 pasta, 1 dessert, 1 beverage
+                            Fixed structure: exactly 1 main course, 1 pasta, 1 dessert, 1 beverage
                           </span>
                         </div>
                         {pkg.userPreferences &&
