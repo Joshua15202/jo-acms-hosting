@@ -86,7 +86,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
   const router = useRouter()
   const { toast } = useToast()
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isBooking, setIsBooking] = useState(isBooking)
+  const [isBooking, setIsBooking] = useState(false)
   const [isBookingComplete, setIsBookingComplete] = useState(false)
   const [bookingResponse, setBookingResponse] = useState<any>(null)
   const [countdown, setCountdown] = useState(10)
