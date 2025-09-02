@@ -7,13 +7,12 @@ import {
   LayoutDashboard,
   Calendar,
   Package,
-  BarChart,
-  Users,
-  ShoppingCart,
   TrendingUp,
+  Users,
   CreditCard,
   LogOut,
-  Menu,
+  Package2,
+  ChefHat,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -34,10 +33,10 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
     { name: "Appointments", href: "/admin/appointments", icon: Calendar },
     { name: "Payments", href: "/admin/payments", icon: CreditCard },
     { name: "Customers", href: "/admin/customers", icon: Users },
-    { name: "Menu Management", href: "/admin/inventory", icon: Menu },
+    { name: "Menu Management", href: "/admin/inventory", icon: Package },
+    { name: "Equipment Management", href: "/admin/equipment-inventory", icon: Package2 },
+    { name: "Event Ingredients Overview", href: "/admin/event-ingredients", icon: ChefHat },
     { name: "Forecasting", href: "/admin/forecasting", icon: TrendingUp },
-    { name: "Orders", href: "/admin/orders", icon: ShoppingCart },
-    { name: "Analytics", href: "/admin/analytics", icon: BarChart },
   ]
 
   const handleLogout = () => {

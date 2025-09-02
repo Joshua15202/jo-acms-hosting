@@ -1,34 +1,35 @@
-import { NextResponse } from "next/server"
-import { supabaseAdmin } from "@/lib/supabase"
+import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@supabase/supabase-js"
 
-export async function GET() {
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+export async function GET(request: NextRequest) {
   try {
-    console.log("=== Monthly Revenue API ===")
+    console.log("Fetching monthly revenue data...")
 
-    // Get current month date range
+    // Get current month and previous month dates
     const now = new Date()
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-
-    // Get previous month date range for comparison
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
     const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
+    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
 
-    console.log("Current month range:", currentMonthStart.toISOString(), "to", currentMonthEnd.toISOString())
-    console.log("Previous month range:", previousMonthStart.toISOString(), "to", previousMonthEnd.toISOString())
+    console.log("Date ranges:", {
+      currentMonthStart: currentMonthStart.toISOString(),
+      currentMonthEnd: currentMonthEnd.toISOString(),
+      previousMonthStart: previousMonthStart.toISOString(),
+      previousMonthEnd: previousMonthEnd.toISOString(),
+    })
 
-    // Fetch completed appointments with payment data for current month
-    const { data: currentMonthAppointments, error: currentError } = await supabaseAdmin
-      .from("tbl_appointments")
+    // Fetch current month completed events from comprehensive appointments table
+    const { data: currentMonthEvents, error: currentError } = await supabase
+      .from("tbl_comprehensive_appointments")
       .select(`
         id,
-        event_date,
         event_type,
+        event_date,
         guest_count,
-        status,
-        payment_status,
         total_package_amount,
-        total_amount,
         created_at,
         updated_at,
         tbl_users!inner(
@@ -38,105 +39,113 @@ export async function GET() {
         )
       `)
       .eq("status", "completed")
-      .eq("payment_status", "fully_paid")
-      .gte("event_date", currentMonthStart.toISOString())
-      .lte("event_date", currentMonthEnd.toISOString())
+      .gte("event_date", currentMonthStart.toISOString().split("T")[0])
+      .lte("event_date", currentMonthEnd.toISOString().split("T")[0])
       .order("event_date", { ascending: false })
 
     if (currentError) {
-      console.error("Error fetching current month appointments:", currentError)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Failed to fetch current month revenue data",
-          details: currentError.message,
-        },
-        { status: 500 },
-      )
+      console.error("Error fetching current month events:", currentError)
+      throw currentError
     }
 
-    // Fetch completed appointments for previous month
-    const { data: previousMonthAppointments, error: previousError } = await supabaseAdmin
-      .from("tbl_appointments")
-      .select("total_package_amount, total_amount")
+    // Fetch previous month completed events
+    const { data: previousMonthEvents, error: previousError } = await supabase
+      .from("tbl_comprehensive_appointments")
+      .select("total_package_amount")
       .eq("status", "completed")
-      .eq("payment_status", "fully_paid")
-      .gte("event_date", previousMonthStart.toISOString())
-      .lte("event_date", previousMonthEnd.toISOString())
+      .gte("event_date", previousMonthStart.toISOString().split("T")[0])
+      .lte("event_date", previousMonthEnd.toISOString().split("T")[0])
 
     if (previousError) {
-      console.error("Error fetching previous month appointments:", previousError)
+      console.error("Error fetching previous month events:", previousError)
+      throw previousError
     }
 
+    console.log("Raw data:", {
+      currentMonthEvents: currentMonthEvents?.length || 0,
+      previousMonthEvents: previousMonthEvents?.length || 0,
+    })
+
     // Calculate current month revenue
-    const currentMonthRevenue = (currentMonthAppointments || []).reduce((total, appointment) => {
-      const amount = appointment.total_package_amount || appointment.total_amount || 0
-      return total + amount
-    }, 0)
+    const currentMonthRevenue =
+      currentMonthEvents?.reduce((sum, event) => {
+        const amount = Number.parseFloat(event.total_package_amount || "0")
+        return sum + amount
+      }, 0) || 0
 
     // Calculate previous month revenue
-    const previousMonthRevenue = (previousMonthAppointments || []).reduce((total, appointment) => {
-      const amount = appointment.total_package_amount || appointment.total_amount || 0
-      return total + amount
-    }, 0)
+    const previousMonthRevenue =
+      previousMonthEvents?.reduce((sum, event) => {
+        const amount = Number.parseFloat(event.total_package_amount || "0")
+        return sum + amount
+      }, 0) || 0
 
     // Calculate percentage change
     let percentageChange = 0
     if (previousMonthRevenue > 0) {
       percentageChange = ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100
     } else if (currentMonthRevenue > 0) {
-      percentageChange = 100 // If no previous revenue but current revenue exists
+      percentageChange = 100 // If no previous month data but current month has revenue
     }
 
-    // Format the detailed breakdown
-    const revenueBreakdown = (currentMonthAppointments || []).map((appointment) => ({
-      id: appointment.id,
-      customerName: appointment.tbl_users?.full_name || "Unknown Customer",
-      customerEmail: appointment.tbl_users?.email || "",
-      eventType: appointment.event_type,
-      eventDate: appointment.event_date,
-      guestCount: appointment.guest_count,
-      revenue: appointment.total_package_amount || appointment.total_amount || 0,
-      completedDate: appointment.updated_at,
-    }))
+    // Format revenue breakdown for display
+    const revenueBreakdown =
+      currentMonthEvents?.map((event) => ({
+        id: event.id,
+        customerName: event.tbl_users?.full_name || "Unknown Customer",
+        customerEmail: event.tbl_users?.email || "No email",
+        eventType: event.event_type,
+        eventDate: event.event_date,
+        guestCount: event.guest_count || 0,
+        amount: Number.parseFloat(event.total_package_amount || "0"),
+        paymentStatus: "Fully Paid",
+        completedAt: event.updated_at || event.created_at,
+      })) || []
+
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ]
 
     const response = {
       success: true,
-      currentMonth: {
-        month: now.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-        revenue: currentMonthRevenue,
-        completedEvents: currentMonthAppointments?.length || 0,
-      },
-      previousMonth: {
-        month: new Date(now.getFullYear(), now.getMonth() - 1).toLocaleDateString("en-US", {
-          month: "long",
-          year: "numeric",
-        }),
-        revenue: previousMonthRevenue,
-        completedEvents: previousMonthAppointments?.length || 0,
-      },
-      comparison: {
+      data: {
+        totalRevenue: currentMonthRevenue,
+        prevMonthRevenue: previousMonthRevenue,
         percentageChange: Math.round(percentageChange * 100) / 100,
-        isIncrease: percentageChange > 0,
-        isDecrease: percentageChange < 0,
+        completedEvents: currentMonthEvents?.length || 0,
+        revenueBreakdown,
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        monthName: monthNames[now.getMonth()],
       },
-      breakdown: revenueBreakdown,
+      message: "Monthly revenue data fetched successfully",
     }
 
-    console.log("Monthly revenue response:", {
+    console.log("Response summary:", {
       currentRevenue: currentMonthRevenue,
       previousRevenue: previousMonthRevenue,
-      percentageChange,
-      eventsCount: currentMonthAppointments?.length || 0,
+      percentageChange: response.data.percentageChange,
+      completedEvents: response.data.completedEvents,
     })
 
     return NextResponse.json(response)
   } catch (error) {
-    console.error("Unexpected error in monthly revenue API:", error)
+    console.error("Error in monthly revenue API:", error)
     return NextResponse.json(
       {
         success: false,
-        error: "An unexpected error occurred",
+        error: "Failed to fetch monthly revenue data",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },

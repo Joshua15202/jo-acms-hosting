@@ -480,10 +480,78 @@ export default function AdminDashboard() {
     return emailRegex.test(email)
   }
 
+  const testCreateCompletedEvent = async () => {
+    try {
+      console.log("Creating test completed event...")
+
+      // First create a test completed event
+      const createResponse = await fetch("/api/admin/create-test-completed-event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          eventType: "Wedding",
+          guestCount: 50,
+          totalPackageAmount: 75000,
+          eventDate: new Date().toISOString().split("T")[0], // Today's date
+        }),
+      })
+
+      const createResult = await createResponse.json()
+      console.log("Create event result:", createResult)
+
+      if (!createResult.success) {
+        alert(`Failed to create test event: ${createResult.error}`)
+        return
+      }
+
+      // Wait a moment then fetch updated revenue
+      setTimeout(async () => {
+        const revenueResponse = await fetch("/api/admin/monthly-revenue")
+        const revenueResult = await revenueResponse.json()
+        console.log("Updated revenue result:", revenueResult)
+
+        if (revenueResult.success) {
+          const data = revenueResult.data
+          alert(`✅ Test Completed Event Created!
+          
+Event ID: ${createResult.eventId}
+Total Package Amount: ₱${createResult.totalPackageAmount.toLocaleString()}
+
+Updated Monthly Revenue:
+- Total Revenue: ₱${data.totalRevenue.toLocaleString()}
+- Completed Events: ${data.completedEvents}
+- Month: ${data.monthName} ${data.year}
+
+Check console for full details!`)
+
+          // Refresh the dashboard data
+          await fetchMonthlyRevenue()
+        } else {
+          alert(`Event created but failed to fetch updated revenue: ${revenueResult.error}`)
+        }
+      }, 1000)
+    } catch (error) {
+      console.error("Error testing completed event:", error)
+      alert(`Error: ${error}`)
+    }
+  }
+
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
-      <p className="text-gray-600 mb-8">Welcome to the Jo-AIMS admin dashboard.</p>
+      <p className="text-gray-600 mb-4">Welcome to the Jo-ACMS admin dashboard.</p>
+
+      {/* Test Button for Monthly Revenue */}
+      <div className="mb-6">
+        <Button onClick={testCreateCompletedEvent} className="bg-green-600 hover:bg-green-700 text-white">
+          🧪 Test Create Completed Event (₱75,000)
+        </Button>
+        <p className="text-sm text-gray-500 mt-2">
+          Creates a test completed event to verify monthly revenue calculation
+        </p>
+      </div>
 
       {/* Debug Info - Remove this in production */}
       {debugInfo && (
@@ -647,7 +715,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
+                            <Calendar className="h-3 w-3" />
                             Joined: {formatDate(customer.created_at)}
                           </div>
                           <Badge variant="secondary" className="text-xs">

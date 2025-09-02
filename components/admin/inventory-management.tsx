@@ -1,13 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, MoreVertical, AlertTriangle, BarChart } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -15,427 +12,492 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Plus, Search, MoreHorizontal, Edit, Trash2, Package } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 
 type InventoryItem = {
   id: string
-  name: string
-  category: "food" | "equipment"
-  quantity: number
-  unit: string
-  status: "in-stock" | "low-stock" | "out-of-stock"
-  lastUpdated: string
-  reorderPoint: number
-  optimalStock: number
-  usageRate: string
+  item_name: string
+  category: string
+  condition: string
+  notes?: string
+  created_at: string
+  updated_at: string
 }
 
+const categories = [
+  "Glassware",
+  "Dinnerware",
+  "Dessert Items",
+  "Serving Equipment",
+  "Chafing Dishes",
+  "Furniture",
+  "Machines",
+  "Cooling Equipment",
+  "Display Equipment",
+  "Accessories",
+  "Silverware",
+  "Bar Equipment",
+  "Electrical",
+  "Kitchen Tools",
+  "Transport",
+  "Food Pans",
+  "Kids Furniture",
+  "Table Accessories",
+  "Centerpieces",
+  "Seating",
+  "Linens",
+]
+
+const conditions = ["excellent", "good", "fair", "needs repair", "out of service"]
+
 export default function InventoryManagement() {
-  const [activeTab, setActiveTab] = useState<string>("food")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [showAIInsights, setShowAIInsights] = useState(false)
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
-
-  // Mock data
-  const inventoryItems: InventoryItem[] = [
-    {
-      id: "INV-F-001",
-      name: "Rice",
-      category: "food",
-      quantity: 50,
-      unit: "kg",
-      status: "in-stock",
-      lastUpdated: "2023-11-15",
-      reorderPoint: 30,
-      optimalStock: 100,
-      usageRate: "15 kg/week",
-    },
-    {
-      id: "INV-F-002",
-      name: "Chicken",
-      category: "food",
-      quantity: 20,
-      unit: "kg",
-      status: "in-stock",
-      lastUpdated: "2023-11-16",
-      reorderPoint: 25,
-      optimalStock: 80,
-      usageRate: "20 kg/week",
-    },
-    {
-      id: "INV-F-003",
-      name: "Beef",
-      category: "food",
-      quantity: 5,
-      unit: "kg",
-      status: "low-stock",
-      lastUpdated: "2023-11-14",
-      reorderPoint: 15,
-      optimalStock: 60,
-      usageRate: "12 kg/week",
-    },
-    {
-      id: "INV-F-004",
-      name: "Pasta",
-      category: "food",
-      quantity: 0,
-      unit: "kg",
-      status: "out-of-stock",
-      lastUpdated: "2023-11-10",
-      reorderPoint: 10,
-      optimalStock: 30,
-      usageRate: "8 kg/week",
-    },
-    {
-      id: "INV-E-001",
-      name: "Round Tables",
-      category: "equipment",
-      quantity: 25,
-      unit: "pcs",
-      status: "in-stock",
-      lastUpdated: "2023-10-20",
-      reorderPoint: 10,
-      optimalStock: 30,
-      usageRate: "15 pcs/month",
-    },
-    {
-      id: "INV-E-002",
-      name: "Chairs",
-      category: "equipment",
-      quantity: 200,
-      unit: "pcs",
-      status: "in-stock",
-      lastUpdated: "2023-10-20",
-      reorderPoint: 100,
-      optimalStock: 250,
-      usageRate: "150 pcs/month",
-    },
-    {
-      id: "INV-E-003",
-      name: "Table Cloths",
-      category: "equipment",
-      quantity: 10,
-      unit: "pcs",
-      status: "low-stock",
-      lastUpdated: "2023-11-05",
-      reorderPoint: 15,
-      optimalStock: 30,
-      usageRate: "10 pcs/month",
-    },
-    {
-      id: "INV-E-004",
-      name: "Serving Trays",
-      category: "equipment",
-      quantity: 15,
-      unit: "pcs",
-      status: "in-stock",
-      lastUpdated: "2023-11-01",
-      reorderPoint: 10,
-      optimalStock: 25,
-      usageRate: "12 pcs/month",
-    },
-  ]
-
-  const filteredItems = inventoryItems.filter((item) => {
-    // Filter by category
-    if (item.category !== activeTab) {
-      return false
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      return item.name.toLowerCase().includes(query) || item.id.toLowerCase().includes(query)
-    }
-
-    return true
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("all")
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
+  const [formData, setFormData] = useState({
+    item_name: "",
+    category: "",
+    condition: "good",
+    notes: "",
   })
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "in-stock":
-        return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            In Stock
-          </Badge>
-        )
-      case "low-stock":
-        return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-            Low Stock
-          </Badge>
-        )
-      case "out-of-stock":
-        return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-            Out of Stock
-          </Badge>
-        )
-      default:
-        return <Badge variant="outline">{status}</Badge>
+  useEffect(() => {
+    fetchInventory()
+  }, [])
+
+  useEffect(() => {
+    filterInventory()
+  }, [inventory, searchTerm, selectedCategory])
+
+  const fetchInventory = async () => {
+    try {
+      const response = await fetch("/api/admin/inventory")
+      const data = await response.json()
+
+      if (response.ok) {
+        setInventory(data.inventory || [])
+      } else {
+        console.error("Failed to fetch inventory:", data.error)
+      }
+    } catch (error) {
+      console.error("Error fetching inventory:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const viewItemDetails = (item: InventoryItem) => {
-    setSelectedItem(item)
+  const filterInventory = () => {
+    let filtered = inventory
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (item) =>
+          item.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.category.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    }
+
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter((item) => item.category === selectedCategory)
+    }
+
+    setFilteredInventory(filtered)
+  }
+
+  const handleAddItem = async () => {
+    try {
+      const response = await fetch("/api/admin/inventory", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (response.ok) {
+        await fetchInventory()
+        setIsAddDialogOpen(false)
+        resetForm()
+      } else {
+        const data = await response.json()
+        console.error("Failed to add item:", data.error)
+      }
+    } catch (error) {
+      console.error("Error adding item:", error)
+    }
+  }
+
+  const handleEditItem = async () => {
+    if (!editingItem) return
+
+    try {
+      const response = await fetch(`/api/admin/inventory/${editingItem.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (response.ok) {
+        await fetchInventory()
+        setIsEditDialogOpen(false)
+        setEditingItem(null)
+        resetForm()
+      } else {
+        const data = await response.json()
+        console.error("Failed to update item:", data.error)
+      }
+    } catch (error) {
+      console.error("Error updating item:", error)
+    }
+  }
+
+  const handleDeleteItem = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this item?")) return
+
+    try {
+      const response = await fetch(`/api/admin/inventory/${id}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        await fetchInventory()
+      } else {
+        const data = await response.json()
+        console.error("Failed to delete item:", data.error)
+      }
+    } catch (error) {
+      console.error("Error deleting item:", error)
+    }
+  }
+
+  const openEditDialog = (item: InventoryItem) => {
+    setEditingItem(item)
+    setFormData({
+      item_name: item.item_name,
+      category: item.category,
+      condition: item.condition,
+      notes: item.notes || "",
+    })
+    setIsEditDialogOpen(true)
+  }
+
+  const resetForm = () => {
+    setFormData({
+      item_name: "",
+      category: "",
+      condition: "good",
+      notes: "",
+    })
+  }
+
+  const getConditionColor = (condition: string) => {
+    switch (condition) {
+      case "excellent":
+        return "bg-green-100 text-green-800"
+      case "good":
+        return "bg-blue-100 text-blue-800"
+      case "fair":
+        return "bg-yellow-100 text-yellow-800"
+      case "needs repair":
+        return "bg-orange-100 text-orange-800"
+      case "out of service":
+        return "bg-red-100 text-red-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const getCategoryStats = () => {
+    const stats = categories
+      .map((category) => {
+        const items = inventory.filter((item) => item.category === category)
+        return {
+          category,
+          itemCount: items.length,
+        }
+      })
+      .filter((stat) => stat.itemCount > 0)
+
+    return stats
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-600"></div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <Tabs defaultValue="food" onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="food">Food Service</TabsTrigger>
-            <TabsTrigger value="equipment">Catering Equipment</TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowAIInsights(true)}>
-            <BarChart className="mr-2 h-4 w-4" />
-            AI Insights
-          </Button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Equipment Management</h1>
+          <p className="text-gray-600">Manage your catering equipment and supplies</p>
         </div>
-      </div>
-
-      <div className="flex justify-between items-center">
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            placeholder="Search inventory..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Unit</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Reorder Point</TableHead>
-              <TableHead>Last Updated</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredItems.length > 0 ? (
-              filteredItems.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.id}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      {item.status === "low-stock" && <AlertTriangle className="h-4 w-4 text-yellow-500 mr-2" />}
-                      {item.name}
-                    </div>
-                  </TableCell>
-                  <TableCell>{item.quantity}</TableCell>
-                  <TableCell>{item.unit}</TableCell>
-                  <TableCell>{getStatusBadge(item.status)}</TableCell>
-                  <TableCell>{item.reorderPoint}</TableCell>
-                  <TableCell>{item.lastUpdated}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => viewItemDetails(item)}>View Details</DropdownMenuItem>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem>Update Stock</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
-                  No items found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Item Details Dialog */}
-      {selectedItem && (
-        <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
-          <DialogContent className="sm:max-w-md">
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={resetForm}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Item
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Inventory Item Details</DialogTitle>
-              <DialogDescription>Detailed information about {selectedItem.name}</DialogDescription>
+              <DialogTitle>Add New Inventory Item</DialogTitle>
+              <DialogDescription>Add a new item to your catering equipment inventory.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Item ID</p>
-                  <p>{selectedItem.id}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Name</p>
-                  <p>{selectedItem.name}</p>
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="item_name">Item Name</Label>
+                <Input
+                  id="item_name"
+                  value={formData.item_name}
+                  onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
+                  placeholder="Enter item name"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Category</p>
-                  <p className="capitalize">{selectedItem.category}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Status</p>
-                  <p>{getStatusBadge(selectedItem.status)}</p>
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Current Quantity</p>
-                  <p>
-                    {selectedItem.quantity} {selectedItem.unit}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Optimal Stock</p>
-                  <p>
-                    {selectedItem.optimalStock} {selectedItem.unit}
-                  </p>
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="condition">Condition</Label>
+                <Select
+                  value={formData.condition}
+                  onValueChange={(value) => setFormData({ ...formData, condition: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {conditions.map((condition) => (
+                      <SelectItem key={condition} value={condition}>
+                        {condition.charAt(0).toUpperCase() + condition.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Reorder Point</p>
-                  <p>
-                    {selectedItem.reorderPoint} {selectedItem.unit}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Usage Rate</p>
-                  <p>{selectedItem.usageRate}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">Last Updated</p>
-                <p>{selectedItem.lastUpdated}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-500">AI Recommendation</p>
-                <p className="text-sm">
-                  {selectedItem.status === "low-stock" || selectedItem.status === "out-of-stock"
-                    ? `Order ${selectedItem.optimalStock - selectedItem.quantity} ${selectedItem.unit} to reach optimal stock level.`
-                    : "Current stock levels are adequate based on forecasted demand."}
-                </p>
+              <div className="grid gap-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Optional notes about this item"
+                />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setSelectedItem(null)}>
-                Close
+              <Button type="submit" onClick={handleAddItem}>
+                Add Item
               </Button>
-              <Button className="bg-rose-600 hover:bg-rose-700">Update Stock</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      )}
+      </div>
 
-      {/* AI Insights Dialog */}
-      <Dialog open={showAIInsights} onOpenChange={setShowAIInsights}>
-        <DialogContent className="sm:max-w-4xl">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{inventory.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Categories</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{getCategoryStats().length}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Inventory Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Inventory Items</CardTitle>
+          <CardDescription>
+            {filteredInventory.length} of {inventory.length} items
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-4 font-medium">Item Name</th>
+                  <th className="text-left py-3 px-4 font-medium">Category</th>
+                  <th className="text-left py-3 px-4 font-medium">Condition</th>
+                  <th className="text-left py-3 px-4 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredInventory.map((item) => (
+                  <tr key={item.id} className="border-b hover:bg-gray-50">
+                    <td className="py-3 px-4 font-medium">{item.item_name}</td>
+                    <td className="py-3 px-4">
+                      <Badge variant="outline">{item.category}</Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <Badge className={getConditionColor(item.condition)}>{item.condition}</Badge>
+                    </td>
+                    <td className="py-3 px-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(item)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteItem(item.id)} className="text-red-600">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>AI Inventory Insights</DialogTitle>
-            <DialogDescription>
-              Smart analysis of your inventory data to optimize stock levels and reduce waste
-            </DialogDescription>
+            <DialogTitle>Edit Inventory Item</DialogTitle>
+            <DialogDescription>Update the details of this inventory item.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Stock Optimization</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[200px] bg-gray-50 rounded-md flex items-center justify-center">
-                    <p className="text-sm text-gray-500">(Stock optimization chart)</p>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <p className="text-xs text-gray-500">Based on historical usage patterns and upcoming events</p>
-                </CardFooter>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Usage Trends</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[200px] bg-gray-50 rounded-md flex items-center justify-center">
-                    <p className="text-sm text-gray-500">(Usage trends chart)</p>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <p className="text-xs text-gray-500">Consumption patterns over the last 90 days</p>
-                </CardFooter>
-              </Card>
+            <div className="grid gap-2">
+              <Label htmlFor="edit_item_name">Item Name</Label>
+              <Input
+                id="edit_item_name"
+                value={formData.item_name}
+                onChange={(e) => setFormData({ ...formData, item_name: e.target.value })}
+                placeholder="Enter item name"
+              />
             </div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">AI Recommendations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="text-sm flex items-start">
-                    <span className="bg-yellow-100 text-yellow-800 p-1 rounded-full mr-2">
-                      <AlertTriangle className="h-3 w-3" />
-                    </span>
-                    <span>
-                      <span className="font-medium">Beef stock is critically low.</span> Order at least 55kg to meet
-                      upcoming demand for the next 14 days.
-                    </span>
-                  </li>
-                  <li className="text-sm flex items-start">
-                    <span className="bg-yellow-100 text-yellow-800 p-1 rounded-full mr-2">
-                      <AlertTriangle className="h-3 w-3" />
-                    </span>
-                    <span>
-                      <span className="font-medium">Pasta is out of stock.</span> Order 30kg immediately to fulfill
-                      upcoming orders.
-                    </span>
-                  </li>
-                  <li className="text-sm flex items-start">
-                    <span className="bg-green-100 text-green-800 p-1 rounded-full mr-2">
-                      <BarChart className="h-3 w-3" />
-                    </span>
-                    <span>
-                      <span className="font-medium">Rice consumption has increased by 20%</span> in the last month.
-                      Consider adjusting your reorder point.
-                    </span>
-                  </li>
-                  <li className="text-sm flex items-start">
-                    <span className="bg-green-100 text-green-800 p-1 rounded-full mr-2">
-                      <BarChart className="h-3 w-3" />
-                    </span>
-                    <span>
-                      <span className="font-medium">Table cloths are below optimal levels.</span> Current stock will be
-                      insufficient for December events.
-                    </span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
+            <div className="grid gap-2">
+              <Label htmlFor="edit_category">Category</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit_condition">Condition</Label>
+              <Select
+                value={formData.condition}
+                onValueChange={(value) => setFormData({ ...formData, condition: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {conditions.map((condition) => (
+                    <SelectItem key={condition} value={condition}>
+                      {condition.charAt(0).toUpperCase() + condition.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit_notes">Notes</Label>
+              <Textarea
+                id="edit_notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Optional notes about this item"
+              />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAIInsights(false)}>
-              Close
+            <Button type="submit" onClick={handleEditItem}>
+              Update Item
             </Button>
-            <Button className="bg-rose-600 hover:bg-rose-700">Generate Full Report</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

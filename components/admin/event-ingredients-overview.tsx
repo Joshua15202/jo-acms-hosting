@@ -1,0 +1,381 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
+import { ChefHat, Calendar, Users, Weight, CheckCircle, Clock, AlertTriangle, Package } from "lucide-react"
+
+interface MainCourseItem {
+  name: string
+  category: string
+  weight_kg: number
+}
+
+interface EventIngredient {
+  id: string
+  appointment_id: string
+  event_date: string
+  event_type: string
+  customer_name: string
+  guest_count: number
+  main_course_items: MainCourseItem[]
+  total_weight_kg: number
+  status: string
+  days_until_event: number
+  can_confirm: boolean
+  urgency_level: "critical" | "high" | "medium" | "low"
+}
+
+interface Summary {
+  total_events: number
+  total_guests: number
+  total_weight_kg: number
+  ready_to_confirm: number
+  by_urgency: {
+    critical: number
+    high: number
+    medium: number
+    low: number
+  }
+}
+
+export default function EventIngredientsOverview() {
+  const [events, setEvents] = useState<EventIngredient[]>([])
+  const [summary, setSummary] = useState<Summary | null>(null)
+  const [categoryBreakdown, setCategoryBreakdown] = useState<Record<string, number>>({})
+  const [loading, setLoading] = useState(true)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchEventIngredients = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await fetch("/api/admin/event-ingredients")
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch event ingredients")
+      }
+
+      setEvents(data.events || [])
+      setSummary(data.summary || null)
+      setCategoryBreakdown(data.category_breakdown || {})
+    } catch (err) {
+      console.error("Error fetching event ingredients:", err)
+      setError(err instanceof Error ? err.message : "Failed to load event ingredients")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const confirmIngredients = async (appointmentId: string) => {
+    try {
+      setConfirmingId(appointmentId)
+
+      const response = await fetch(`/api/admin/event-ingredients/${appointmentId}/confirm`, {
+        method: "POST",
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to confirm ingredients")
+      }
+
+      // Remove the confirmed event from the list
+      setEvents((prev) => prev.filter((event) => event.appointment_id !== appointmentId))
+
+      // Update summary
+      if (summary) {
+        setSummary((prev) =>
+          prev
+            ? {
+                ...prev,
+                total_events: prev.total_events - 1,
+                ready_to_confirm: prev.ready_to_confirm - 1,
+              }
+            : null,
+        )
+      }
+    } catch (err) {
+      console.error("Error confirming ingredients:", err)
+      setError(err instanceof Error ? err.message : "Failed to confirm ingredients")
+    } finally {
+      setConfirmingId(null)
+    }
+  }
+
+  useEffect(() => {
+    fetchEventIngredients()
+  }, [])
+
+  const getUrgencyColor = (urgencyLevel: string) => {
+    switch (urgencyLevel) {
+      case "critical":
+        return "bg-red-100 text-red-800 border-red-200"
+      case "high":
+        return "bg-orange-100 text-orange-800 border-orange-200"
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "low":
+        return "bg-green-100 text-green-800 border-green-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case "beef":
+        return "🥩"
+      case "pork":
+        return "🥓"
+      case "chicken":
+        return "🍗"
+      case "seafood":
+        return "🐟"
+      case "vegetables":
+        return "🥬"
+      default:
+        return "🍽️"
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-48" />
+                <Skeleton className="h-4 w-32" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert className="border-red-200 bg-red-50">
+        <AlertTriangle className="h-4 w-4 text-red-600" />
+        <AlertDescription className="text-red-800">
+          {error}
+          <Button variant="outline" size="sm" onClick={fetchEventIngredients} className="ml-2 bg-transparent">
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Event Ingredients Overview</h1>
+          <p className="text-gray-600 mt-1">Track and manage ingredients for upcoming events</p>
+        </div>
+        <Button onClick={fetchEventIngredients} variant="outline">
+          <Clock className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Summary Cards */}
+      {summary && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Events</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                <span className="text-2xl font-bold">{summary.total_events}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Guests</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-green-600" />
+                <span className="text-2xl font-bold">{summary.total_guests}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Weight</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Weight className="h-5 w-5 text-purple-600" />
+                <span className="text-2xl font-bold">{summary.total_weight_kg} kg</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Ready to Confirm</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-red-600" />
+                <span className="text-2xl font-bold">{summary.ready_to_confirm}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Category Breakdown */}
+      {Object.keys(categoryBreakdown).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Ingredient Categories Breakdown
+            </CardTitle>
+            <CardDescription>Total weight needed by ingredient category</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {Object.entries(categoryBreakdown).map(([category, weight]) => (
+                <div key={category} className="text-center p-3 bg-gray-50 rounded-lg">
+                  <div className="text-2xl mb-1">{getCategoryIcon(category)}</div>
+                  <div className="font-semibold capitalize">{category}</div>
+                  <div className="text-sm text-gray-600">{weight} kg</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Events List */}
+      {events.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <ChefHat className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No upcoming events</h3>
+            <p className="text-gray-600">All events have been confirmed or there are no upcoming events.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {events.map((event) => (
+            <Card key={event.id} className="relative">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{event.customer_name}</CardTitle>
+                    <CardDescription>
+                      {event.event_type} • {new Date(event.event_date).toLocaleDateString()} • {event.guest_count}{" "}
+                      guests
+                    </CardDescription>
+                  </div>
+                  <Badge className={getUrgencyColor(event.urgency_level)}>
+                    {event.days_until_event === 0
+                      ? "Today"
+                      : event.days_until_event === 1
+                        ? "Tomorrow"
+                        : `${event.days_until_event} days`}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Main Course Items */}
+                  <div>
+                    <h4 className="font-medium text-sm text-gray-700 mb-2">Main Course Items:</h4>
+                    {event.main_course_items.length > 0 ? (
+                      <div className="space-y-2">
+                        {event.main_course_items.map((item, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div className="flex items-center gap-2">
+                              <span>{getCategoryIcon(item.category)}</span>
+                              <span className="text-sm">{item.name}</span>
+                            </div>
+                            <div className="text-sm font-medium">{item.weight_kg} kg</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic">No main course items selected</div>
+                    )}
+                  </div>
+
+                  {/* Total Weight */}
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <span className="font-medium">Total Weight:</span>
+                    <span className="font-bold text-lg">{event.total_weight_kg} kg</span>
+                  </div>
+
+                  {/* Confirm Button */}
+                  {event.can_confirm && (
+                    <div className="pt-2">
+                      <Alert className="border-red-200 bg-red-50 mb-3">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-red-800">
+                          This event is within 1 day and can be confirmed for ingredient preparation.
+                        </AlertDescription>
+                      </Alert>
+                      <Button
+                        onClick={() => confirmIngredients(event.appointment_id)}
+                        disabled={confirmingId === event.appointment_id}
+                        className="w-full bg-red-600 hover:bg-red-700"
+                      >
+                        {confirmingId === event.appointment_id ? (
+                          <>
+                            <Clock className="h-4 w-4 mr-2 animate-spin" />
+                            Confirming...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Confirm Ingredients
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
