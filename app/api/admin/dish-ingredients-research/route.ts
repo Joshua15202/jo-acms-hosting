@@ -43,6 +43,8 @@ For example:
 
 Please provide ONLY the main ingredients (proteins, vegetables, starches, dairy, etc.) that are SPECIFICALLY used in "${dishName}" - DO NOT include seasonings, spices, garnishes, or condiments.
 
+IMPORTANT: Do NOT automatically include rice unless it is specifically part of the dish recipe (like in fried rice dishes). Many Filipino dishes are served with rice separately, but rice is not an ingredient OF the dish itself.
+
 Return the response in this exact JSON format:
 {
   "dishName": "${dishName}",
@@ -57,11 +59,12 @@ Return the response in this exact JSON format:
 }
 
 Focus on:
-- SPECIFIC ingredients for "${dishName}" recipe
+- SPECIFIC ingredients for "${dishName}" recipe ONLY
 - Accurate quantities for ${guestCount} people
 - Philippine market prices and availability
 - Professional catering standards for this specific dish
 - Main ingredients only (no seasonings/spices)
+- Do NOT include rice unless it's part of the actual dish recipe
 - Realistic cost estimates in PHP for this particular dish
 
 Research the specific Filipino dish "${dishName}" and provide ingredients that are actually used in this recipe.`
@@ -154,12 +157,11 @@ function getSpecificFallbackIngredients(dishName: string, guestCount: number) {
   const totalStarch = Math.round(starchPerGuest * guestCount * 10) / 10
   const totalVegetables = Math.round(vegetablePerGuest * guestCount * 10) / 10
 
-  // Specific ingredients for specific dishes
+  // Specific ingredients for specific dishes - NO AUTOMATIC RICE
   if (lowerDishName.includes("buttered chicken") || lowerDishName.includes("butter chicken")) {
     return [
       { name: "Chicken (cut into serving pieces)", quantity: `${totalProtein} kg` },
       { name: "Butter (unsalted)", quantity: `${Math.round(guestCount * 0.03 * 10) / 10} kg` },
-      { name: "Rice (jasmine or regular)", quantity: `${totalStarch} kg` },
       { name: "Potatoes (for sides)", quantity: `${Math.round(totalVegetables * 0.6 * 10) / 10} kg` },
       { name: "Cooking oil", quantity: "500 ml" },
       { name: "Onions", quantity: "1 kg" },
@@ -172,7 +174,6 @@ function getSpecificFallbackIngredients(dishName: string, guestCount: number) {
       { name: "Carrots (diced)", quantity: `${Math.round(totalVegetables * 0.4 * 10) / 10} kg` },
       { name: "Green peas", quantity: `${Math.round(totalVegetables * 0.2 * 10) / 10} kg` },
       { name: "Raisins", quantity: "500 g" },
-      { name: "Rice", quantity: `${totalStarch} kg` },
       { name: "Aluminum foil", quantity: "2 rolls" },
     ]
   } else if (lowerDishName.includes("fish fillet") && lowerDishName.includes("tartar")) {
@@ -183,7 +184,6 @@ function getSpecificFallbackIngredients(dishName: string, guestCount: number) {
       { name: "Breadcrumbs", quantity: "500 g" },
       { name: "Mayonnaise (for tartar sauce)", quantity: "500 g" },
       { name: "Pickles (for tartar sauce)", quantity: "200 g" },
-      { name: "Rice", quantity: `${totalStarch} kg` },
       { name: "Cooking oil (for frying)", quantity: "1 liter" },
     ]
   } else if (
@@ -199,7 +199,6 @@ function getSpecificFallbackIngredients(dishName: string, guestCount: number) {
       { name: "Bell peppers (mixed colors)", quantity: `${Math.round(totalVegetables * 0.5 * 10) / 10} kg` },
       { name: "Onions", quantity: "1 kg" },
       { name: "Tomato sauce", quantity: "500 g" },
-      { name: "Rice", quantity: `${totalStarch} kg` },
       { name: "Cooking oil", quantity: "1 liter" },
     ]
   } else if (lowerDishName.includes("roast beef") && lowerDishName.includes("mashed")) {
@@ -217,23 +216,30 @@ function getSpecificFallbackIngredients(dishName: string, guestCount: number) {
       { name: "Beef chuck roast or beef brisket", quantity: `${totalProtein} kg` },
       { name: "Mixed vegetables (carrots, green beans, corn)", quantity: `${totalVegetables} kg` },
       { name: "Potatoes", quantity: `${Math.round(totalStarch * 0.7 * 10) / 10} kg` },
-      { name: "Rice", quantity: `${Math.round(totalStarch * 0.3 * 10) / 10} kg` },
       { name: "Cooking oil", quantity: "500 ml" },
       { name: "Onions", quantity: "1 kg" },
+    ]
+  } else if (lowerDishName.includes("fried rice") || lowerDishName.includes("rice")) {
+    // Only include rice if it's specifically a rice dish
+    return [
+      { name: "Rice (jasmine or regular)", quantity: `${totalStarch} kg` },
+      { name: `Main protein for ${dishName}`, quantity: `${totalProtein} kg` },
+      { name: "Mixed vegetables", quantity: `${totalVegetables} kg` },
+      { name: "Cooking oil", quantity: "500 ml" },
+      { name: "Onions", quantity: "1 kg" },
+      { name: "Eggs", quantity: `${Math.round(guestCount * 0.1)} pieces` },
     ]
   } else if (lowerDishName.includes("pork")) {
     return [
       { name: "Pork (shoulder or loin)", quantity: `${totalProtein} kg` },
-      { name: "Rice", quantity: `${totalStarch} kg` },
       { name: "Mixed vegetables", quantity: `${totalVegetables} kg` },
       { name: "Cooking oil", quantity: "500 ml" },
       { name: "Onions", quantity: "1 kg" },
     ]
   } else {
-    // Generic fallback for unknown dishes
+    // Generic fallback for unknown dishes - NO AUTOMATIC RICE
     return [
       { name: `Main protein for ${dishName}`, quantity: `${totalProtein} kg` },
-      { name: "Rice or potatoes", quantity: `${totalStarch} kg` },
       { name: "Mixed vegetables", quantity: `${totalVegetables} kg` },
       { name: "Cooking oil", quantity: "500 ml" },
       { name: "Onions", quantity: "1 kg" },
@@ -246,17 +252,17 @@ function getSpecificCookingNotes(dishName: string, guestCount: number) {
   const lowerDishName = dishName.toLowerCase()
 
   if (lowerDishName.includes("buttered chicken")) {
-    return `For Buttered Chicken: Season chicken pieces and pan-fry until golden. In the same pan, melt butter and sauté garlic. Return chicken to pan and simmer in butter sauce. Serve with steamed rice. Cooking time: 45 minutes for ${guestCount} guests.`
+    return `For Buttered Chicken: Season chicken pieces and pan-fry until golden. In the same pan, melt butter and sauté garlic. Return chicken to pan and simmer in butter sauce. Serve with steamed rice (served separately). Cooking time: 45 minutes for ${guestCount} guests.`
   } else if (lowerDishName.includes("chicken galantina")) {
     return `For Chicken Galantina: Debone whole chicken carefully. Mix ground pork with diced vegetables. Stuff chicken with mixture and hard-boiled eggs. Wrap tightly in aluminum foil and steam for 1.5-2 hours. Cool before slicing. Prep time: 2 hours, cooking time: 2 hours for ${guestCount} guests.`
   } else if (lowerDishName.includes("fish fillet") && lowerDishName.includes("tartar")) {
-    return `For Fish Fillet with Tartar Sauce: Coat fish in flour, egg, then breadcrumbs. Deep fry until golden and crispy. For tartar sauce, mix mayonnaise with chopped pickles and herbs. Serve immediately with rice. Cooking time: 30 minutes for ${guestCount} guests.`
+    return `For Fish Fillet with Tartar Sauce: Coat fish in flour, egg, then breadcrumbs. Deep fry until golden and crispy. For tartar sauce, mix mayonnaise with chopped pickles and herbs. Serve immediately with rice (served separately). Cooking time: 30 minutes for ${guestCount} guests.`
   } else if (
     lowerDishName.includes("fish fillet") &&
     lowerDishName.includes("sweet") &&
     lowerDishName.includes("sour")
   ) {
-    return `For Fish Fillet Sweet and Sour: Coat and fry fish until crispy. Prepare sweet and sour sauce with pineapple juice, tomato sauce, and vinegar. Stir-fry vegetables, add sauce and fried fish. Serve with rice. Cooking time: 40 minutes for ${guestCount} guests.`
+    return `For Fish Fillet Sweet and Sour: Coat and fry fish until crispy. Prepare sweet and sour sauce with pineapple juice, tomato sauce, and vinegar. Stir-fry vegetables, add sauce and fried fish. Serve with rice (served separately). Cooking time: 40 minutes for ${guestCount} guests.`
   } else if (lowerDishName.includes("roast beef")) {
     return `For Roast Beef: Season beef and sear all sides. Roast in oven at 160°C until desired doneness (internal temp 60°C for medium-rare). Rest for 15 minutes before slicing. Prepare mashed potatoes or vegetables as sides. Cooking time: 3-4 hours for ${guestCount} guests.`
   } else {

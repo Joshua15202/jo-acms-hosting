@@ -1041,11 +1041,33 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         const menuPricing = calculateMenuPricing(finalMenu)
         const numGuests = Number.parseInt(formData.guestCount) || 50
 
-        // Service fee based on guest count (except for wedding & debut)
+        // Wedding package pricing based on guest count
         let serviceFee = 0
-        const isWeddingOrDebut = eventInfo.eventType === "wedding" || eventInfo.eventType === "debut"
+        const isWeddingEvent = eventInfo.eventType === "wedding"
+        const isDebutEvent = eventInfo.eventType === "debut"
 
-        if (!isWeddingOrDebut) {
+        if (isWeddingEvent) {
+          // Wedding package pricing
+          const weddingPackagePricing: { [key: string]: number } = {
+            "50": 56500,
+            "100": 63000,
+            "150": 74500,
+            "200": 86000,
+            "300": 109000,
+          }
+          serviceFee = weddingPackagePricing[formData.guestCount] || 56500
+        } else if (isDebutEvent) {
+          // Debut package pricing
+          const debutPackagePricing: { [key: string]: number } = {
+            "50": 21500,
+            "80": 26400,
+            "100": 28000,
+            "150": 36500,
+            "200": 36000,
+          }
+          serviceFee = debutPackagePricing[formData.guestCount] || 21500
+        } else {
+          // Regular service fee for other events
           const serviceFees: { [key: string]: number } = {
             "50": 11500,
             "80": 10400,
@@ -1060,21 +1082,50 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         const finalTotalAmount = menuPricing.total + serviceFee
         const finalDownPayment = Math.round(finalTotalAmount * 0.5)
 
-        // Service fee inclusions for non-wedding/debut events
-        const isWeddingOrDebutEvent = eventInfo.eventType === "wedding" || eventInfo.eventType === "debut"
-        const serviceFeeInclusions = !isWeddingOrDebutEvent
+        // Wedding package inclusions
+        const weddingPackageInclusions = isWeddingEvent
           ? [
-              "Steamed Rice",
-              "Purified Mineral Water",
-              "1 Choice of Drink",
-              "Elegant Buffet Table",
-              "Guest Chairs & Tables",
-              "With Complete Setup",
-              "Table Centerpiece",
-              "Friendly Waiters & Food Attendant",
-              "4 Hours Service",
+              "Rice & Drinks",
+              "Full Skirted Buffet Table w/ Faux Floral Centerpiece",
+              "Guest Chairs & Tables with Complete Linens & Themed Centerpiece",
+              "2 (10) Presidential Tables with mix of Artificial & floral runners + Complete Table setup & Glasswares + Crystal Chairs",
+              "Couple's Table w/ Fresh Floral centerpiece & Couple's Couch",
+              "Cake Cylinder Plinth",
+              "White Carpet Aisle",
+              "Waiters & Food Attendant in Complete Uniform",
+              "Semi Customized Backdrop Styling with full faux Flower design, Couples Couch + 6x6 Round Flatform Stage with decor + Thematic Tunnel Entrance",
             ]
           : []
+
+        // Debut package inclusions
+        const debutPackageInclusions = isDebutEvent
+          ? [
+              "Rice & Drinks",
+              "Buffet Table with Complete Set-up",
+              "Tables & Chairs with Complete Linens & Covers",
+              "Themed Table Centerpiece",
+              "Basic Backdrop Styling (Free: Letter Cut)",
+              "Waiters & Food Attendant in complete Uniforms",
+              "4 Hours Service Time",
+              "Free Fresh 18 Red Roses & 18 Candles",
+            ]
+          : []
+
+        // Service fee inclusions for regular events
+        const serviceFeeInclusions =
+          !isWeddingEvent && !isDebutEvent
+            ? [
+                "Steamed Rice",
+                "Purified Mineral Water",
+                "1 Choice of Drink",
+                "Elegant Buffet Table",
+                "Guest Chairs & Tables",
+                "With Complete Setup",
+                "Table Centerpiece",
+                "Friendly Waiters & Food Attendant",
+                "4 Hours Service",
+              ]
+            : []
 
         // Create detailed package features with actual menu items
         const createPackageFeatures = (selections: any) => {
@@ -1140,8 +1191,11 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
               menuTotal: menuPricing.total,
               serviceFee: serviceFee,
               serviceFeeInclusions: serviceFeeInclusions,
+              weddingPackageInclusions: weddingPackageInclusions,
+              debutPackageInclusions: debutPackageInclusions,
               downPayment: finalDownPayment,
-              isWeddingOrDebut: isWeddingOrDebut,
+              isWeddingEvent: isWeddingEvent,
+              isDebutEvent: isDebutEvent,
               userPreferences: userPrefs,
               menuSelections: finalMenu,
               generationCount: generationCount,
@@ -1212,7 +1266,8 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       beverage: [...finalMenu.beverage],
     })
 
-    const isWeddingOrDebutEvent = eventInfo.eventType === "wedding" || eventInfo.eventType === "debut"
+    const isWeddingEvent = eventInfo.eventType === "wedding"
+    const isDebutEvent = eventInfo.eventType === "debut"
 
     // Calculate final menu cost with fixed pricing
     const costs = { menu1: 70, menu2: 60, menu3: 50, pasta: 40, dessert: 25, beverage: 25 }
@@ -1227,7 +1282,28 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
 
     // Service fee calculation
     let serviceFee = 0
-    if (!isWeddingOrDebutEvent) {
+    if (isWeddingEvent) {
+      // Wedding package pricing
+      const weddingPackagePricing: { [key: string]: number } = {
+        "50": 56500,
+        "100": 63000,
+        "150": 74500,
+        "200": 86000,
+        "300": 109000,
+      }
+      serviceFee = weddingPackagePricing[formData.guestCount] || 56500
+    } else if (isDebutEvent) {
+      // Debut package pricing
+      const debutPackagePricing: { [key: string]: number } = {
+        "50": 21500,
+        "80": 26400,
+        "100": 28000,
+        "150": 36500,
+        "200": 36000,
+      }
+      serviceFee = debutPackagePricing[formData.guestCount] || 21500
+    } else {
+      // Regular service fee
       const serviceFees: { [key: string]: number } = {
         "50": 11500,
         "80": 10400,
@@ -1242,20 +1318,50 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     const finalTotalAmount = finalMenuCost + serviceFee
     const finalDownPayment = Math.round(finalTotalAmount * 0.5)
 
-    // Service fee inclusions for non-wedding/debut events
-    const serviceFeeInclusions = !isWeddingOrDebutEvent
+    // Wedding package inclusions
+    const weddingPackageInclusions = isWeddingEvent
       ? [
-          "Steamed Rice",
-          "Purified Mineral Water",
-          "1 Choice of Drink",
-          "Elegant Buffet Table",
-          "Guest Chairs & Tables",
-          "With Complete Setup",
-          "Table Centerpiece",
-          "Friendly Waiters & Food Attendant",
-          "4 Hours Service",
+          "Rice & Drinks",
+          "Full Skirted Buffet Table w/ Faux Floral Centerpiece",
+          "Guest Chairs & Tables with Complete Linens & Themed Centerpiece",
+          "2 (10) Presidential Tables with mix of Artificial & floral runners + Complete Table setup & Glasswares + Crystal Chairs",
+          "Couple's Table w/ Fresh Floral centerpiece & Couple's Couch",
+          "Cake Cylinder Plinth",
+          "White Carpet Aisle",
+          "Waiters & Food Attendant in Complete Uniform",
+          "Semi Customized Backdrop Styling with full faux Flower design, Couples Couch + 6x6 Round Flatform Stage with decor + Thematic Tunnel Entrance",
         ]
       : []
+
+    // Debut package inclusions
+    const debutPackageInclusions = isDebutEvent
+      ? [
+          "Rice & Drinks",
+          "Buffet Table with Complete Set-up",
+          "Tables & Chairs with Complete Linens & Covers",
+          "Themed Table Centerpiece",
+          "Basic Backdrop Styling (Free: Letter Cut)",
+          "Waiters & Food Attendant in complete Uniforms",
+          "4 Hours Service Time",
+          "Free Fresh 18 Red Roses & 18 Candles",
+        ]
+      : []
+
+    // Service fee inclusions for regular events
+    const serviceFeeInclusions =
+      !isWeddingEvent && !isDebutEvent
+        ? [
+            "Steamed Rice",
+            "Purified Mineral Water",
+            "1 Choice of Drink",
+            "Elegant Buffet Table",
+            "Guest Chairs & Tables",
+            "With Complete Setup",
+            "Table Centerpiece",
+            "Friendly Waiters & Food Attendant",
+            "4 Hours Service",
+          ]
+        : []
 
     // Create detailed package features with actual menu items for fallback
     const createFallbackPackageFeatures = (selections: any) => {
@@ -1318,8 +1424,11 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           menuTotal: finalMenuCost,
           serviceFee: serviceFee,
           serviceFeeInclusions: serviceFeeInclusions,
+          weddingPackageInclusions: weddingPackageInclusions,
+          debutPackageInclusions: debutPackageInclusions,
           downPayment: finalDownPayment,
-          isWeddingOrDebut: isWeddingOrDebutEvent,
+          isWeddingEvent: isWeddingEvent,
+          isDebutEvent: isDebutEvent,
           userPreferences: userPrefs,
           menuSelections: finalMenu,
           generationCount: generationCount,
@@ -1926,22 +2035,59 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                       </div>
                     </div>
 
-                    {/* Service Fee Inclusions for non-wedding/debut */}
-                    {!pkg.isWeddingOrDebut && pkg.serviceFeeInclusions && pkg.serviceFeeInclusions.length > 0 && (
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                        <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
-                          Service Fee Includes:
+                    {/* Wedding Package Inclusions */}
+                    {pkg.isWeddingEvent && pkg.weddingPackageInclusions && pkg.weddingPackageInclusions.length > 0 && (
+                      <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-4">
+                        <h4 className="text-lg font-semibold text-rose-900 dark:text-rose-100 mb-3">
+                          Wedding Package Includes:
                         </h4>
                         <div className="grid gap-2">
-                          {pkg.serviceFeeInclusions.map((inclusion: string, inclusionIndex: number) => (
+                          {pkg.weddingPackageInclusions.map((inclusion: string, inclusionIndex: number) => (
                             <div key={inclusionIndex} className="flex items-start space-x-3">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
-                              <span className="text-blue-800 dark:text-blue-200">{inclusion}</span>
+                              <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
+                              <span className="text-rose-800 dark:text-rose-200">{inclusion}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
+
+                    {/* Debut Package Inclusions */}
+                    {pkg.isDebutEvent && pkg.debutPackageInclusions && pkg.debutPackageInclusions.length > 0 && (
+                      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                        <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">
+                          Debut Package Includes:
+                        </h4>
+                        <div className="grid gap-2">
+                          {pkg.debutPackageInclusions.map((inclusion: string, inclusionIndex: number) => (
+                            <div key={inclusionIndex} className="flex items-start space-x-3">
+                              <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0" />
+                              <span className="text-purple-800 dark:text-purple-200">{inclusion}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Service Fee Inclusions for regular events */}
+                    {!pkg.isWeddingEvent &&
+                      !pkg.isDebutEvent &&
+                      pkg.serviceFeeInclusions &&
+                      pkg.serviceFeeInclusions.length > 0 && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                          <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
+                            Service Fee Includes:
+                          </h4>
+                          <div className="grid gap-2">
+                            {pkg.serviceFeeInclusions.map((inclusion: string, inclusionIndex: number) => (
+                              <div key={inclusionIndex} className="flex items-start space-x-3">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                                <span className="text-blue-800 dark:text-blue-200">{inclusion}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                     {/* Pricing Breakdown */}
                     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
@@ -1955,14 +2101,18 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                             ₱{pkg.menuTotal.toLocaleString()}
                           </span>
                         </div>
-                        {!pkg.isWeddingOrDebut && (
-                          <div className="flex justify-between items-center py-2">
-                            <span className="text-gray-600 dark:text-gray-400">Service Fee:</span>
-                            <span className="font-semibold text-gray-900 dark:text-gray-100">
-                              ₱{pkg.serviceFee.toLocaleString()}
-                            </span>
-                          </div>
-                        )}
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-gray-600 dark:text-gray-400">
+                            {pkg.isWeddingEvent
+                              ? "Wedding Package Fee:"
+                              : pkg.isDebutEvent
+                                ? "Debut Package Fee:"
+                                : "Service Fee:"}
+                          </span>
+                          <span className="font-semibold text-gray-900 dark:text-gray-100">
+                            ₱{pkg.serviceFee.toLocaleString()}
+                          </span>
+                        </div>
                         <div className="border-t border-gray-200 dark:border-gray-600 pt-3 flex justify-between items-center">
                           <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">Total Amount:</span>
                           <span className="text-xl font-bold text-rose-600">{pkg.price}</span>

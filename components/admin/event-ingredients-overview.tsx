@@ -282,7 +282,7 @@ export default function EventIngredientsOverview() {
             <CardContent>
               <div className="flex items-center gap-2">
                 <Weight className="h-5 w-5 text-purple-600" />
-                <span className="text-2xl font-bold">{summary.total_weight_kg} kg</span>
+                <span className="text-2xl font-bold">est {summary.total_weight_kg} kg</span>
               </div>
             </CardContent>
           </Card>
@@ -309,7 +309,7 @@ export default function EventIngredientsOverview() {
               <Package className="h-5 w-5" />
               Ingredient Categories Breakdown
             </CardTitle>
-            <CardDescription>Total weight needed by ingredient category</CardDescription>
+            <CardDescription>Estimated total weight needed by ingredient category</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -317,7 +317,7 @@ export default function EventIngredientsOverview() {
                 <div key={category} className="text-center p-3 bg-gray-50 rounded-lg">
                   <div className="text-2xl mb-1">{getCategoryIcon(category)}</div>
                   <div className="font-semibold capitalize">{category}</div>
-                  <div className="text-sm text-gray-600">{weight} kg</div>
+                  <div className="text-sm text-gray-600">est {weight} kg</div>
                 </div>
               ))}
             </div>
@@ -384,7 +384,7 @@ export default function EventIngredientsOverview() {
                                 <span className="text-xs text-gray-500">Click for ingredient breakdown</span>
                               </div>
                             </div>
-                            <div className="text-sm font-medium text-gray-700">{item.weight_kg} kg</div>
+                            <div className="text-sm font-medium text-gray-700">est {item.weight_kg} kg</div>
                           </div>
                         ))}
                       </div>
@@ -396,7 +396,7 @@ export default function EventIngredientsOverview() {
                   {/* Total Weight */}
                   <div className="flex items-center justify-between pt-2 border-t">
                     <span className="font-medium">Total Weight:</span>
-                    <span className="font-bold text-lg">{event.total_weight_kg} kg</span>
+                    <span className="font-bold text-lg">est {event.total_weight_kg} kg</span>
                   </div>
 
                   {/* Confirm Button */}
