@@ -49,6 +49,10 @@ export default function EventIngredientsOverview() {
   const [loading, setLoading] = useState(true)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [selectedDish, setSelectedDish] = useState<string | null>(null)
+  const [dishIngredients, setDishIngredients] = useState<any>(null)
+  const [researchingDish, setResearchingDish] = useState<string | null>(null)
+  const [showIngredientsModal, setShowIngredientsModal] = useState(false)
 
   const fetchEventIngredients = async () => {
     try {
@@ -107,6 +111,42 @@ export default function EventIngredientsOverview() {
       setError(err instanceof Error ? err.message : "Failed to confirm ingredients")
     } finally {
       setConfirmingId(null)
+    }
+  }
+
+  const researchDishIngredients = async (dishName: string, guestCount: number) => {
+    try {
+      setResearchingDish(dishName)
+      setSelectedDish(dishName)
+      setError(null) // Clear any previous errors
+
+      console.log(`Researching specific ingredients for: "${dishName}" (${guestCount} guests)`)
+
+      const response = await fetch("/api/admin/dish-ingredients-research", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dishName: dishName.trim(), // Ensure clean dish name
+          guestCount,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to research ingredients for ${dishName}`)
+      }
+
+      console.log(`Ingredient research successful for "${dishName}":`, data)
+      setDishIngredients(data)
+      setShowIngredientsModal(true)
+    } catch (err) {
+      console.error("Error researching dish ingredients:", err)
+      setError(err instanceof Error ? err.message : "Failed to research ingredients")
+    } finally {
+      setResearchingDish(null)
     }
   }
 
@@ -198,7 +238,9 @@ export default function EventIngredientsOverview() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Event Ingredients Overview</h1>
-          <p className="text-gray-600 mt-1">Track and manage ingredients for upcoming events</p>
+          <p className="text-gray-600 mt-1">
+            Track and manage ingredients for upcoming events - Click any dish for detailed ingredient analysis
+          </p>
         </div>
         <Button onClick={fetchEventIngredients} variant="outline">
           <Clock className="h-4 w-4 mr-2" />
@@ -318,16 +360,31 @@ export default function EventIngredientsOverview() {
                 <div className="space-y-4">
                   {/* Main Course Items */}
                   <div>
-                    <h4 className="font-medium text-sm text-gray-700 mb-2">Main Course Items:</h4>
+                    <h4 className="font-medium text-sm text-gray-700 mb-2">
+                      Main Course Items: <span className="text-xs text-blue-600">(Click for detailed ingredients)</span>
+                    </h4>
                     {event.main_course_items.length > 0 ? (
                       <div className="space-y-2">
                         {event.main_course_items.map((item, index) => (
-                          <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                            <div className="flex items-center gap-2">
-                              <span>{getCategoryIcon(item.category)}</span>
-                              <span className="text-sm">{item.name}</span>
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-blue-50 cursor-pointer transition-all duration-200 group border border-transparent hover:border-blue-200"
+                            onClick={() => researchDishIngredients(item.name, event.guest_count)}
+                            title={`Click to research ingredients for ${item.name}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg">{getCategoryIcon(item.category)}</span>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium group-hover:text-blue-600 transition-colors">
+                                  {item.name}
+                                  {researchingDish === item.name && (
+                                    <Clock className="h-3 w-3 ml-2 inline animate-spin text-blue-600" />
+                                  )}
+                                </span>
+                                <span className="text-xs text-gray-500">Click for ingredient breakdown</span>
+                              </div>
                             </div>
-                            <div className="text-sm font-medium">{item.weight_kg} kg</div>
+                            <div className="text-sm font-medium text-gray-700">{item.weight_kg} kg</div>
                           </div>
                         ))}
                       </div>
@@ -374,6 +431,79 @@ export default function EventIngredientsOverview() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Ingredients Research Modal */}
+      {showIngredientsModal && dishIngredients && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Specific Ingredients for</h3>
+                  <p className="text-lg text-blue-600 font-medium">"{selectedDish}"</p>
+                  <p className="text-sm text-gray-600">For {dishIngredients.guestCount} guests</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowIngredientsModal(false)
+                    setDishIngredients(null)
+                    setSelectedDish(null)
+                  }}
+                >
+                  ✕
+                </Button>
+              </div>
+
+              {dishIngredients.ingredients && (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                      <ChefHat className="h-4 w-4" />
+                      Main Ingredients for "{selectedDish}":
+                    </h4>
+                    <div className="grid grid-cols-1 gap-2">
+                      {dishIngredients.ingredients.main.map((ingredient: any, index: number) => (
+                        <div key={index} className="flex justify-between items-center p-3 bg-white rounded border">
+                          <span className="text-sm font-medium">{ingredient.name}</span>
+                          <span className="text-sm font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                            {ingredient.quantity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {dishIngredients.cookingNotes && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Cooking Notes for "{selectedDish}":
+                      </h4>
+                      <p className="text-sm text-gray-700 leading-relaxed">{dishIngredients.cookingNotes}</p>
+                    </div>
+                  )}
+
+                  {dishIngredients.totalEstimatedCost && (
+                    <div className="bg-red-50 p-4 rounded-lg">
+                      <h4 className="font-semibold text-red-900 mb-2 flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        Estimated Cost for "{selectedDish}":
+                      </h4>
+                      <p className="text-2xl font-bold text-red-600">₱{dishIngredients.totalEstimatedCost}</p>
+                      <p className="text-sm text-red-700">
+                        For {dishIngredients.guestCount} guests (₱
+                        {Math.round(dishIngredients.totalEstimatedCost / dishIngredients.guestCount)} per guest)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

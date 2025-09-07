@@ -33,51 +33,73 @@ export async function GET() {
 
     console.log(`Filtered to ${validCustomers.length} valid customers`)
 
-    // Fetch payment data for all customers
-    const { data: payments, error: paymentsError } = await supabaseAdmin
-      .from("tbl_payment_transactions")
-      .select(`
+    // Fetch ALL payment transactions (not just verified ones for now)
+    const { data: allPayments, error: paymentsError } = await supabaseAdmin.from("tbl_payment_transactions").select(`
         user_id,
         amount,
         status,
         appointment_payment_status,
         created_at
       `)
-      .in("status", ["verified", "completed"])
-      .in("appointment_payment_status", ["fully_paid", "paid"])
 
     if (paymentsError) {
       console.error("Error fetching payments:", paymentsError)
-      // Continue without payment data rather than failing completely
     }
 
-    console.log(`Found ${payments?.length || 0} verified payments`)
+    console.log(`Found ${allPayments?.length || 0} total payment transactions`)
 
-    // Fetch appointment data for counting
+    // Fetch ALL appointments (from both tables)
     const { data: appointments, error: appointmentsError } = await supabaseAdmin.from("tbl_appointments").select(`
         user_id,
         status,
         created_at
       `)
 
+    const { data: comprehensiveAppointments, error: comprehensiveError } = await supabaseAdmin
+      .from("tbl_comprehensive_appointments")
+      .select(`
+        user_id,
+        status,
+        payment_status,
+        created_at
+      `)
+
     if (appointmentsError) {
       console.error("Error fetching appointments:", appointmentsError)
-      // Continue without appointment data
+    }
+    if (comprehensiveError) {
+      console.error("Error fetching comprehensive appointments:", comprehensiveError)
     }
 
-    console.log(`Found ${appointments?.length || 0} appointments`)
+    // Combine all appointments
+    const allAppointments = [...(appointments || []), ...(comprehensiveAppointments || [])]
+
+    console.log(`Found ${allAppointments.length} total appointments`)
+
+    // Debug: Check for specific user
+    const debugUserId = validCustomers.find((u) => u.email === "blacksights99@gmail.com")?.id
+    if (debugUserId) {
+      console.log(`Debug user ID: ${debugUserId}`)
+      const userPayments = (allPayments || []).filter((p) => p.user_id === debugUserId)
+      const userAppointments = allAppointments.filter((a) => a.user_id === debugUserId)
+      console.log(`Debug user payments: ${userPayments.length}`, userPayments)
+      console.log(`Debug user appointments: ${userAppointments.length}`, userAppointments)
+    }
 
     // Calculate spending and appointment counts for each customer
     const customersWithSpending = validCustomers.map((customer) => {
       // Calculate total spent from verified payments
-      const customerPayments = (payments || []).filter((payment) => payment.user_id === customer.id)
+      const customerPayments = (allPayments || []).filter((payment) => payment.user_id === customer.id)
 
-      const totalSpent = customerPayments.reduce((sum, payment) => {
+      // Only count verified payments for spending
+      const verifiedPayments = customerPayments.filter((p) => p.status === "verified")
+
+      const totalSpent = verifiedPayments.reduce((sum, payment) => {
         return sum + (Number.parseFloat(payment.amount) || 0)
       }, 0)
 
       // Count appointments
-      const customerAppointments = (appointments || []).filter((appointment) => appointment.user_id === customer.id)
+      const customerAppointments = allAppointments.filter((appointment) => appointment.user_id === customer.id)
 
       const totalAppointments = customerAppointments.length
       const completedAppointments = customerAppointments.filter(
@@ -101,10 +123,39 @@ export async function GET() {
 
       const status = hasRecentPayment || hasRecentAppointment ? "active" : "inactive"
 
-      // Find last login (use last payment or appointment as proxy)
+      // Find last activity (use last payment or appointment as proxy)
       const lastActivity = [...customerPayments, ...customerAppointments]
         .map((item) => new Date(item.created_at))
         .sort((a, b) => b.getTime() - a.getTime())[0]
+
+      // Debug logging for specific user
+      if (customer.email === "blacksights99@gmail.com") {
+        console.log(`=== DEBUG FOR ${customer.email} ===`)
+        console.log(`Customer ID: ${customer.id}`)
+        console.log(`Total payments found: ${customerPayments.length}`)
+        console.log(`Verified payments: ${verifiedPayments.length}`)
+        console.log(`Total spent: ${totalSpent}`)
+        console.log(`Total appointments: ${totalAppointments}`)
+        console.log(`Completed appointments: ${completedAppointments}`)
+        console.log(`Status: ${status}`)
+        console.log(`Last activity: ${lastActivity}`)
+        console.log(
+          `Payment details:`,
+          customerPayments.map((p) => ({
+            id: p.user_id,
+            amount: p.amount,
+            status: p.status,
+          })),
+        )
+        console.log(
+          `Appointment details:`,
+          customerAppointments.map((a) => ({
+            user_id: a.user_id,
+            status: a.status,
+            created_at: a.created_at,
+          })),
+        )
+      }
 
       return {
         ...customer,
@@ -113,7 +164,7 @@ export async function GET() {
         completedAppointments,
         status: status as "active" | "inactive",
         lastLogin: lastActivity ? lastActivity.toISOString() : null,
-        paymentCount: customerPayments.length,
+        paymentCount: verifiedPayments.length, // Only count verified payments
       }
     })
 
@@ -139,6 +190,13 @@ export async function GET() {
       totalRevenue,
     })
 
+    // Debug: Log the specific customer we're looking for
+    const debugCustomer = customersWithSpending.find((c) => c.email === "blacksights99@gmail.com")
+    if (debugCustomer) {
+      console.log(`=== FINAL DEBUG CUSTOMER DATA ===`)
+      console.log(JSON.stringify(debugCustomer, null, 2))
+    }
+
     return NextResponse.json({
       success: true,
       customers: customersWithSpending,
@@ -148,6 +206,23 @@ export async function GET() {
         activeCustomers,
         newThisMonth,
         totalRevenue,
+      },
+      debug: {
+        totalUsersInDb: users?.length || 0,
+        validCustomers: validCustomers.length,
+        totalPayments: allPayments?.length || 0,
+        totalAppointments: allAppointments.length,
+        debugCustomerFound: !!debugCustomer,
+        debugCustomerData: debugCustomer
+          ? {
+              id: debugCustomer.id,
+              email: debugCustomer.email,
+              totalSpent: debugCustomer.totalSpent,
+              totalAppointments: debugCustomer.totalAppointments,
+              paymentCount: debugCustomer.paymentCount,
+              status: debugCustomer.status,
+            }
+          : null,
       },
     })
   } catch (error) {

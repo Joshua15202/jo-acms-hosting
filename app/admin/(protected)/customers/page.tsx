@@ -6,7 +6,6 @@ import {
   Download,
   MoreHorizontal,
   Eye,
-  Edit,
   Trash2,
   Users,
   UserCheck,
@@ -60,6 +59,40 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all")
+
+  const deleteCustomer = async (customerId: string, customerName: string) => {
+    if (!confirm(`Are you sure you want to delete ${customerName}? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/admin/customers/${customerId}`, {
+        method: "DELETE",
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Remove customer from local state
+        setCustomers(customers.filter((c) => c.id !== customerId))
+        // Update stats
+        setStats((prev) => ({
+          ...prev,
+          totalCustomers: prev.totalCustomers - 1,
+          activeCustomers:
+            customers.find((c) => c.id === customerId)?.status === "active"
+              ? prev.activeCustomers - 1
+              : prev.activeCustomers,
+        }))
+        alert("Customer deleted successfully")
+      } else {
+        alert("Failed to delete customer: " + data.message)
+      }
+    } catch (error) {
+      console.error("Error deleting customer:", error)
+      alert("Error deleting customer")
+    }
+  }
 
   useEffect(() => {
     fetchCustomers()
@@ -323,7 +356,7 @@ export default function CustomersPage() {
                         {customer.status}
                       </Badge>
                       <div className="mt-2">
-                        <p className="text-sm font-medium text-rose-600">{formatCurrency(customer.totalSpent)}</p>
+                        <div className="text-sm font-medium text-rose-600">{formatCurrency(customer.totalSpent)}</div>
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span>{customer.totalAppointments} appointments</span>
                           {customer.paymentCount > 0 && (
@@ -359,11 +392,10 @@ export default function CustomersPage() {
                               View Details
                             </DropdownMenuItem>
                           </DialogTrigger>
-                          <DropdownMenuItem>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Customer
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={() => deleteCustomer(customer.id, customer.full_name)}
+                          >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete Customer
                           </DropdownMenuItem>
