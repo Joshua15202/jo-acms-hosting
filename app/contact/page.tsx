@@ -171,7 +171,19 @@ export default function ContactPage() {
                 </a>
               </div>
 
-             
+              {/* Get Directions Button */}
+              <div className="p-4 bg-gray-50 border-t">
+                <a
+                  href={googleMapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-lg transition-colors duration-200"
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Get Directions
+                  <ExternalLink className="h-4 w-4 ml-2" />
+                </a>
+              </div>
             </div>
           </div>
 

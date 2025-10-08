@@ -40,16 +40,16 @@ function calculateTastingDate(eventDate: string): { date: string; time: string }
   const event = new Date(eventDate)
   const now = new Date()
 
-  // Calculate 7 days before the event
-  const sevenDaysBeforeEvent = new Date(event)
-  sevenDaysBeforeEvent.setDate(event.getDate() - 7)
+  // Calculate 3 days before the event
+  const threeDaysBeforeEvent = new Date(event)
+  threeDaysBeforeEvent.setDate(event.getDate() - 3)
 
-  // If 7 days before event is in the past or too soon, use 7 days from now
-  const sevenDaysFromNow = new Date()
-  sevenDaysFromNow.setDate(now.getDate() + 7)
+  // If 3 days before event is in the past or too soon, use 3 days from now
+  const threeDaysFromNow = new Date()
+  threeDaysFromNow.setDate(now.getDate() + 3)
 
   // Use whichever is later (but ensure it's before the event)
-  let proposedDate = sevenDaysBeforeEvent > sevenDaysFromNow ? sevenDaysBeforeEvent : sevenDaysFromNow
+  let proposedDate = threeDaysBeforeEvent > threeDaysFromNow ? threeDaysBeforeEvent : threeDaysFromNow
 
   // Ensure the tasting date is before the event date
   if (proposedDate >= event) {
@@ -403,8 +403,9 @@ export async function POST(request: NextRequest) {
 
     // Send tasting confirmation email to the user's registered email
     try {
-      const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://jo-acms-git-main-nickoclarkson0624-gmailcoms-projects.vercel.app").replace(/\/+$/, "")
-      const confirmationUrl = `${baseUrl}/tasting/confirm?token=${tastingToken}&email=${encodeURIComponent(email)}`
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+      const confirmUrl = `${baseUrl}/tasting/confirm?token=${tastingToken}`
+      const skipUrl = `${baseUrl}/api/tasting/skip?token=${tastingToken}`
 
       const emailContent = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -422,9 +423,16 @@ export async function POST(request: NextRequest) {
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${confirmationUrl}" 
-               style="background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+            <a href="${confirmUrl}" 
+               style="display: inline-block; background-color: #e11d48; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-bottom: 10px;">
               ✅ Confirm This Date
+            </a>
+            
+            <br><br>
+            
+            <a href="${skipUrl}" 
+               style="display: inline-block; background-color: #6b7280; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              ⏭️ Skip Food Tasting & Proceed to Payment
             </a>
           </div>
           
@@ -439,7 +447,7 @@ export async function POST(request: NextRequest) {
             <p><strong>Down Payment Required:</strong> ₱${finalDownPayment.toLocaleString()}</p>
           </div>
           
-          <p><strong>Important:</strong> Please click the "Confirm This Date" button above to secure your tasting appointment slot.</p>
+          <p><strong>Important:</strong> Please click the "Confirm This Date" button above to secure your tasting appointment slot, or skip directly to payment if you prefer.</p>
           
           <p>If you have any questions, feel free to contact us.</p>
           

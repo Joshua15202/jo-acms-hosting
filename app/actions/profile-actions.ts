@@ -1,73 +1,52 @@
 "use server"
 
-import { query } from "@/lib/db"
-import { getCurrentUser } from "./auth-actions"
 import { revalidatePath } from "next/cache"
+import { supabaseAdmin } from "@/lib/supabase"
 
-export async function updateProfile(formData: FormData) {
+export type UpdateProfileData = {
+  firstName: string
+  lastName: string
+  phone: string
+  addressLine1: string
+  addressLine2: string
+  city: string
+  province: string
+  postalCode: string
+}
+
+export async function updateProfile(userId: string, data: UpdateProfileData) {
   try {
-    const currentUser = await getCurrentUser()
+    console.log("Updating profile for user:", userId)
+    console.log("Update data:", data)
 
-    if (!currentUser) {
-      return { success: false, message: "Not authenticated" }
+    const { error } = await supabaseAdmin
+      .from("tbl_users")
+      .update({
+        first_name: data.firstName,
+        last_name: data.lastName,
+        phone: data.phone,
+        address_line1: data.addressLine1,
+        address_line2: data.addressLine2,
+        city: data.city,
+        province: data.province,
+        postal_code: data.postalCode,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId)
+
+    if (error) {
+      console.error("Error updating profile:", error)
+      return { success: false, message: error.message }
     }
 
-    const name = formData.get("name") as string
-    const email = formData.get("email") as string
-    const phone = formData.get("phone") as string
-    const address = formData.get("address") as string
-    const bio = formData.get("bio") as string
+    console.log("Profile updated successfully")
 
-    // Validate required fields
-    if (!name || !email) {
-      return { success: false, message: "Name and email are required" }
-    }
-
-    // Check if email is already taken by another user
-    const existingUsers = await query("SELECT id FROM tbl_users WHERE email = ? AND id != ?", [email, currentUser.id])
-
-    // Handle different return types from query function
-    const hasExistingUser = Array.isArray(existingUsers) ? existingUsers.length > 0 : !!existingUsers
-
-    if (hasExistingUser) {
-      return { success: false, message: "Email is already taken" }
-    }
-
-    // Update user profile - using your existing table name 'tbl_users'
-    await query(
-      `UPDATE tbl_users 
-       SET full_name = ?, email = ?, phone = ?, address = ?, bio = ?
-       WHERE id = ?`,
-      [name, email, phone || null, address || null, bio || null, currentUser.id],
-    )
-
-    // Revalidate the profile page
+    // Revalidate the profile page to show updated data
     revalidatePath("/profile")
 
     return { success: true, message: "Profile updated successfully" }
-  } catch (error) {
-    console.error("Profile update error:", error)
-    return { success: false, message: "An error occurred while updating profile" }
-  }
-}
-
-export async function getUserProfile(userId: string) {
-  try {
-    const users = await query(
-      "SELECT id, full_name as name, email, phone, address, bio, role, created_at FROM tbl_users WHERE id = ?",
-      [userId],
-    )
-
-    // Handle different return types from query function
-    if (Array.isArray(users) && users.length > 0) {
-      return users[0]
-    } else if (users && !Array.isArray(users)) {
-      return users
-    }
-
-    return null
-  } catch (error) {
-    console.error("Get user profile error:", error)
-    return null
+  } catch (error: any) {
+    console.error("Update profile error:", error)
+    return { success: false, message: error.message || "An error occurred while updating profile" }
   }
 }

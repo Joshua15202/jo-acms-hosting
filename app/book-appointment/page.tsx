@@ -376,7 +376,7 @@ export default function BookAppointmentPage() {
                       placeholder="Enter your first name"
                       className="bg-gray-50"
                       required
-                      
+                      disabled
                     />
                   </div>
                   <div className="grid gap-2">
@@ -389,7 +389,7 @@ export default function BookAppointmentPage() {
                       placeholder="Enter your last name"
                       className="bg-gray-50"
                       required
-                      
+                      disabled
                     />
                   </div>
                 </div>
@@ -405,7 +405,7 @@ export default function BookAppointmentPage() {
                       placeholder="Enter your email address"
                       className="bg-gray-50"
                       required
-                      
+                      disabled
                     />
                   </div>
                   <div className="grid gap-2">
@@ -418,7 +418,7 @@ export default function BookAppointmentPage() {
                       placeholder="e.g., 09xxxxxxxxx or +639xxxxxxxxx"
                       className="bg-gray-50"
                       required
-                      
+                      disabled
                     />
                   </div>
                 </div>

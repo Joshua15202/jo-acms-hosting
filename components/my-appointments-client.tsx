@@ -15,9 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar as CalendarComponent } from "@/components/ui/calendar"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
@@ -70,13 +67,6 @@ export default function MyAppointmentsClient() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Reschedule dialog state
-  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false)
-  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
-  const [newDate, setNewDate] = useState<Date>()
-  const [newTimeSlot, setNewTimeSlot] = useState<string>("")
-  const [rescheduleLoading, setRescheduleLoading] = useState(false)
 
   // Cancel dialog state
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
@@ -285,48 +275,14 @@ export default function MyAppointmentsClient() {
   }
 
   const handleReschedule = (appointment: Appointment) => {
-    setSelectedAppointment(appointment)
-    setNewDate(new Date(appointment.event_date))
-    setNewTimeSlot(appointment.event_time)
-    setRescheduleDialogOpen(true)
+    // Navigate to dedicated reschedule page with smart calendar
+    window.location.href = `/my-appointments/reschedule?id=${appointment.id}`
   }
 
   const handleCancel = (appointment: Appointment) => {
     setSelectedAppointment(appointment)
     setCancelReason("")
     setCancelDialogOpen(true)
-  }
-
-  const submitReschedule = async () => {
-    if (!selectedAppointment || !newDate || !newTimeSlot) return
-
-    setRescheduleLoading(true)
-    try {
-      const response = await fetch(`/api/scheduling/appointments/${selectedAppointment.id}/reschedule`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          new_date: newDate.toISOString().split("T")[0],
-          new_time: newTimeSlot,
-        }),
-      })
-
-      if (response.ok) {
-        // Refresh appointments to show updated data
-        await fetchAppointments()
-        setRescheduleDialogOpen(false)
-      } else {
-        throw new Error("Failed to reschedule appointment")
-      }
-    } catch (error) {
-      console.error("Error rescheduling appointment:", error)
-      alert("Failed to reschedule appointment. Please try again.")
-    } finally {
-      setRescheduleLoading(false)
-    }
   }
 
   const submitCancel = async () => {
@@ -362,6 +318,8 @@ export default function MyAppointmentsClient() {
       }
     }
   }
+
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
 
   if (loading) {
     return (
@@ -755,68 +713,6 @@ export default function MyAppointmentsClient() {
           })}
         </div>
       )}
-
-      {/* Reschedule Dialog */}
-      <Dialog open={rescheduleDialogOpen} onOpenChange={setRescheduleDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reschedule Appointment</DialogTitle>
-            <DialogDescription>Select a new date and time for your appointment.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <label htmlFor="newDate">New Date</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn("w-full justify-start text-left font-normal", !newDate && "text-muted-foreground")}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {newDate ? format(newDate, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <CalendarComponent
-                    mode="single"
-                    selected={newDate}
-                    onSelect={setNewDate}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="grid gap-2">
-              <label htmlFor="newTimeSlot">New Time Slot</label>
-              <Select value={newTimeSlot} onValueChange={setNewTimeSlot}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select time slot" />
-                </SelectTrigger>
-                <SelectContent>
-                  {timeSlots.map((slot) => (
-                    <SelectItem key={slot} value={slot}>
-                      {slot}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRescheduleDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={submitReschedule}
-              disabled={!newDate || !newTimeSlot || rescheduleLoading}
-              className="bg-rose-600 hover:bg-rose-700"
-            >
-              {rescheduleLoading ? "Rescheduling..." : "Confirm Reschedule"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Cancel Dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>

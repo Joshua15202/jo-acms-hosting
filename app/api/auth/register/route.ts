@@ -20,6 +20,12 @@ export async function POST(request: Request) {
     const email = formData.get("email") as string
     const phone = formData.get("phone") as string
     const password = formData.get("password") as string
+    const addressLine1 = formData.get("addressLine1") as string
+    const addressLine2 = formData.get("addressLine2") as string
+    const city = formData.get("city") as string
+    const province = formData.get("province") as string
+    const postalCode = formData.get("postalCode") as string
+    const agreedToTerms = formData.get("agreedToTerms") as string
 
     console.log("Registration attempt for:", {
       firstName,
@@ -27,16 +33,32 @@ export async function POST(request: Request) {
       email,
       hasPhone: !!phone,
       hasPassword: !!password,
+      hasAddress: !!addressLine1,
+      city,
+      province,
+      agreedToTerms,
     })
 
-    if (!firstName || !lastName || !email || !password) {
-      console.log("Missing fields:", {
-        hasFirstName: !!firstName,
-        hasLastName: !!lastName,
-        hasEmail: !!email,
-        hasPassword: !!password,
-      })
-      return NextResponse.json({ success: false, message: "All fields are required" }, { status: 400 })
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !password ||
+      !phone ||
+      !addressLine1 ||
+      !city ||
+      !province ||
+      !postalCode
+    ) {
+      console.log("Missing required fields")
+      return NextResponse.json({ success: false, message: "All required fields must be filled" }, { status: 400 })
+    }
+
+    if (agreedToTerms !== "true") {
+      return NextResponse.json(
+        { success: false, message: "You must agree to the terms and conditions" },
+        { status: 400 },
+      )
     }
 
     // Check if user already exists
@@ -69,7 +91,7 @@ export async function POST(request: Request) {
     console.log("Generated verification code:", verificationCode)
     console.log("Expiration time:", verificationExpires.toISOString())
 
-    // Insert the new user - DON'T include full_name since it's generated
+    // Insert the new user with address information
     console.log("Inserting new user...")
     const { data: newUser, error: insertError } = await supabaseAdmin
       .from("tbl_users")
@@ -77,12 +99,18 @@ export async function POST(request: Request) {
         first_name: firstName,
         last_name: lastName,
         email: email,
-        phone: phone || null,
+        phone: phone,
         password_hash: hashedPassword,
         role: "user",
         is_verified: false,
         verification_code: verificationCode,
         verification_expires: verificationExpires.toISOString(),
+        address_line1: addressLine1,
+        address_line2: addressLine2 || null,
+        city: city,
+        province: province,
+        postal_code: postalCode,
+        country: "Philippines",
       })
       .select()
       .single()

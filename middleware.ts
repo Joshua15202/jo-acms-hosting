@@ -28,6 +28,7 @@ export async function middleware(request: NextRequest) {
 
   console.log("=== MIDDLEWARE DEBUG ===")
   console.log("Checking path:", pathname)
+  console.log("Cookies:", request.cookies.getAll())
 
   // Skip middleware for admin login and root admin page
   if (pathname === "/admin/login" || pathname === "/admin") {
@@ -52,6 +53,7 @@ export async function middleware(request: NextRequest) {
 
   const sessionId = request.cookies.get("session-id")?.value
   console.log("Session ID found:", sessionId ? "Yes" : "No")
+  console.log("Session ID value:", sessionId)
 
   if (!sessionId) {
     console.log("No session found, redirecting to login")

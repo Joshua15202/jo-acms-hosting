@@ -5,13 +5,19 @@ import { v4 as uuidv4 } from "uuid"
 import { supabaseAdmin } from "@/lib/supabase"
 import { hashPassword, verifyPassword } from "@/lib/auth-utils"
 
-// Define user type for better type safety
 export type User = {
   id: string
-  name: string
+  first_name: string
+  last_name: string
   email: string
   role: string
   phone?: string
+  address_line1?: string
+  address_line2?: string
+  city?: string
+  province?: string
+  postal_code?: string
+  created_at?: string
 }
 
 // Register a new user
@@ -45,10 +51,16 @@ export async function registerUser(formData: FormData) {
     const hashedPassword = await hashPassword(password)
     const userId = uuidv4()
 
+    // Split full name into first and last name
+    const nameParts = fullName.trim().split(" ")
+    const firstName = nameParts[0] || ""
+    const lastName = nameParts.slice(1).join(" ") || ""
+
     // Create user
     const { error: insertError } = await supabaseAdmin.from("tbl_users").insert({
       id: userId,
-      full_name: fullName,
+      first_name: firstName,
+      last_name: lastName,
       email: email,
       phone: phone || "",
       password_hash: hashedPassword,
@@ -94,7 +106,8 @@ export async function registerUser(formData: FormData) {
       message: "Registration successful",
       user: {
         id: userId,
-        name: fullName,
+        first_name: firstName,
+        last_name: lastName,
         email: email,
         role: "user",
         phone: phone || "",
@@ -170,7 +183,8 @@ export async function loginUser(formData: FormData) {
       message: "Login successful",
       user: {
         id: user.id,
-        name: user.full_name,
+        first_name: user.first_name,
+        last_name: user.last_name,
         email: user.email,
         role: user.role,
         phone: user.phone || "",
@@ -239,57 +253,70 @@ export async function clearExpiredSession() {
 }
 
 // Get the current user (read-only, no cookie modification)
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<User | null> {
   try {
     const cookieStore = await cookies()
     const sessionId = cookieStore.get("session-id")?.value
 
-    console.log("Getting current user, session ID:", sessionId)
+    console.log("getCurrentUser - sessionId:", sessionId)
 
     if (!sessionId) {
       console.log("No session ID found")
       return null
     }
 
-    // Get session with user
-    const { data: sessions, error } = await supabaseAdmin
+    // Get session from database
+    const { data: session, error: sessionError } = await supabaseAdmin
       .from("tbl_sessions")
-      .select(`
-        *,
-        tbl_users (id, full_name, email, role, phone)
-      `)
+      .select("user_id, expires_at")
       .eq("id", sessionId)
-      .gt("expires_at", new Date().toISOString())
+      .single()
 
-    if (error) {
-      console.error("Error fetching session:", error)
+    if (sessionError || !session) {
+      console.log("Session not found:", sessionError)
       return null
     }
 
-    if (!sessions || sessions.length === 0) {
-      console.log("No valid session found - session may be expired")
+    // Check if session is expired
+    if (new Date(session.expires_at) < new Date()) {
+      console.log("Session expired")
       return null
     }
 
-    const session = sessions[0]
-    const user = session.tbl_users
+    console.log("Session valid, getting user:", session.user_id)
 
-    if (!user) {
-      console.log("No user found for session")
+    // Get user data with address fields
+    const { data: user, error: userError } = await supabaseAdmin
+      .from("tbl_users")
+      .select(
+        "id, first_name, last_name, email, role, phone, address_line1, address_line2, city, province, postal_code, created_at",
+      )
+      .eq("id", session.user_id)
+      .single()
+
+    if (userError || !user) {
+      console.log("User not found:", userError)
       return null
     }
 
-    console.log("User found:", user.email, "Phone:", user.phone)
+    console.log("User found:", user.email)
 
     return {
       id: user.id,
-      name: user.full_name,
+      first_name: user.first_name,
+      last_name: user.last_name,
       email: user.email,
       role: user.role,
       phone: user.phone || "",
+      address_line1: user.address_line1 || "",
+      address_line2: user.address_line2 || "",
+      city: user.city || "",
+      province: user.province || "",
+      postal_code: user.postal_code || "",
+      created_at: user.created_at || new Date().toISOString(),
     }
   } catch (error) {
-    console.error("Error getting current user:", error)
+    console.error("Error in getCurrentUser:", error)
     return null
   }
 }
