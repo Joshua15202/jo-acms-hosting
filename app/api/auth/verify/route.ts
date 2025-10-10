@@ -4,139 +4,160 @@ import { v4 as uuidv4 } from "uuid"
 
 export async function POST(request: Request) {
   try {
-    console.log("=== VERIFY API CALLED ===")
+    console.log("=== Verification attempt ===")
 
     const { email, code } = await request.json()
 
-    console.log("Verification request:", { email, code })
+    console.log("Email:", email)
+    console.log("Code:", code)
 
     if (!email || !code) {
       return NextResponse.json({ success: false, message: "Email and verification code are required" }, { status: 400 })
     }
 
-    console.log("Looking up user...")
-
-    // Find user by email
-    const { data: user, error: userError } = await supabaseAdmin
-      .from("tbl_users")
+    // Look for pending registration
+    const { data: pendingReg, error: pendingError } = await supabaseAdmin
+      .from("tbl_pending_registrations")
       .select("*")
       .eq("email", email)
       .single()
 
-    if (userError || !user) {
-      console.log("User not found:", userError)
-      return NextResponse.json({ success: false, message: "User not found" }, { status: 404 })
-    }
-
-    console.log("=== USER DATA ===")
-    console.log("User ID:", user.id)
-    console.log("User email:", user.email)
-    console.log("Is verified:", user.is_verified)
-    console.log("Stored code:", user.verification_code)
-    console.log("Provided code:", code)
-    console.log("Code match:", user.verification_code === code)
-    console.log("Raw expiration from DB:", user.verification_expires)
-
-    // Check if already verified
-    if (user.is_verified) {
-      return NextResponse.json({ success: false, message: "Account is already verified" }, { status: 400 })
-    }
-
-    // Check verification code
-    if (user.verification_code !== code) {
-      return NextResponse.json({ success: false, message: "Invalid verification code" }, { status: 400 })
-    }
-
-    // Check if code has expired
-    const now = new Date()
-    const expirationDate = new Date(user.verification_expires)
-
-    console.log("=== TIME COMPARISON ===")
-    console.log("Current UTC time:", now.toISOString())
-    console.log("Expiration UTC time:", expirationDate.toISOString())
-    console.log("Time difference (minutes):", (now.getTime() - expirationDate.getTime()) / (1000 * 60))
-    console.log("Is expired?", now > expirationDate)
-
-    if (now > expirationDate) {
-      console.log("Code has expired")
+    if (pendingError || !pendingReg) {
+      console.error("Pending registration not found:", pendingError)
       return NextResponse.json(
         {
           success: false,
-          message: `Verification code has expired. Please request a new code.`,
+          message: "No pending registration found. Please register again.",
+        },
+        { status: 404 },
+      )
+    }
+
+    console.log("Pending registration found:", {
+      id: pendingReg.id,
+      email: pendingReg.email,
+      has_code: !!pendingReg.verification_code,
+      code_expires: pendingReg.verification_expires,
+    })
+
+    // Check if code matches FIRST
+    if (pendingReg.verification_code !== code) {
+      console.log("Code mismatch")
+      return NextResponse.json({ success: false, message: "Invalid verification code" }, { status: 400 })
+    }
+
+    // Check if code is expired
+    const now = new Date()
+    const expiresAt = new Date(pendingReg.verification_expires)
+
+    console.log("Code expiration check:", {
+      expires_at_utc: expiresAt.toISOString(),
+      now_utc: now.toISOString(),
+      is_expired: now > expiresAt,
+      time_diff_seconds: Math.round((expiresAt.getTime() - now.getTime()) / 1000),
+    })
+
+    if (now > expiresAt) {
+      console.log("Verification code expired")
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Verification code has expired. Please request a new code.",
+          expired: true,
         },
         { status: 400 },
       )
     }
 
-    console.log("Code is valid, updating user...")
+    console.log("Code verified successfully! Creating user account...")
 
-    // Update user as verified
-    const { error: updateError } = await supabaseAdmin
+    // Create the actual user account in tbl_users
+    const { data: newUser, error: createUserError } = await supabaseAdmin
       .from("tbl_users")
-      .update({
+      .insert({
+        first_name: pendingReg.first_name,
+        last_name: pendingReg.last_name,
+        email: pendingReg.email,
+        phone: pendingReg.phone,
+        password_hash: pendingReg.password_hash,
+        address_line1: pendingReg.address_line1,
+        address_line2: pendingReg.address_line2,
+        city: pendingReg.city,
+        province: pendingReg.province,
+        postal_code: pendingReg.postal_code,
+        country: pendingReg.country,
+        role: "user",
         is_verified: true,
         verification_code: null,
         verification_expires: null,
       })
-      .eq("id", user.id)
+      .select()
+      .single()
 
-    if (updateError) {
-      console.error("Update error:", updateError)
-      return NextResponse.json({ success: false, message: "Failed to verify account" }, { status: 500 })
+    if (createUserError) {
+      console.error("Error creating user:", createUserError)
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to create user account",
+          error: createUserError.message,
+        },
+        { status: 500 },
+      )
     }
 
-    console.log("User verified successfully, creating session...")
+    console.log("User account created successfully:", newUser.id)
 
-    // Create session
+    // Delete the pending registration
+    await supabaseAdmin.from("tbl_pending_registrations").delete().eq("id", pendingReg.id)
+    console.log("Pending registration deleted")
+
+    // Create session for automatic login
     const sessionId = uuidv4()
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7) // 7 days from now
+    const sessionExpiresAt = new Date()
+    sessionExpiresAt.setDate(sessionExpiresAt.getDate() + 7)
 
     const { error: sessionError } = await supabaseAdmin.from("tbl_sessions").insert({
       id: sessionId,
-      user_id: user.id,
-      expires_at: expiresAt.toISOString(),
+      user_id: newUser.id,
+      expires_at: sessionExpiresAt.toISOString(),
     })
 
     if (sessionError) {
       console.error("Error creating session:", sessionError)
-      return NextResponse.json({ success: false, message: "Failed to create session" }, { status: 500 })
     }
 
-    console.log("Session created successfully")
+    console.log("Verification completed successfully!")
 
     const response = NextResponse.json({
       success: true,
-      message: "Account verified successfully",
+      message: "Email verified successfully! Your account has been created.",
       user: {
-        id: user.id,
-        name: user.full_name,
-        email: user.email,
-        role: user.role,
-        phone: user.phone || "",
+        id: newUser.id,
+        name: `${newUser.first_name} ${newUser.last_name}`,
+        email: newUser.email,
+        role: newUser.role,
+        phone: newUser.phone || "",
         is_verified: true,
       },
     })
 
-    // Set the session cookie for automatic login
-    response.cookies.set({
-      name: "session-id",
-      value: sessionId,
-      httpOnly: true,
-      path: "/",
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    })
+    // Set session cookie for automatic login
+    if (!sessionError) {
+      response.cookies.set({
+        name: "session-id",
+        value: sessionId,
+        httpOnly: true,
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      })
+    }
 
-    console.log("Verification completed successfully")
     return response
   } catch (error) {
-    console.error("=== VERIFICATION ERROR ===")
-    console.error("Error type:", error?.constructor?.name)
-    console.error("Error message:", error instanceof Error ? error.message : String(error))
-    console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace")
-
+    console.error("Verification error:", error)
     return NextResponse.json(
       {
         success: false,

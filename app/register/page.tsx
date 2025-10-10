@@ -1,13 +1,13 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/components/user-auth-provider"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -19,19 +19,107 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const verifyEmail = searchParams.get("verify")
   const { setUser } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [verificationStep, setVerificationStep] = useState(false)
   const [verificationCode, setVerificationCode] = useState("")
-  const [timeLeft, setTimeLeft] = useState(1800) // 30 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(300) // 5 minutes in seconds
+  const [resendTimeLeft, setResendTimeLeft] = useState(60) // 60 seconds until resend is available
+  const [canResend, setCanResend] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState("")
   const [showTerms, setShowTerms] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
+
+  // Check if user came from login with pending verification
+  useEffect(() => {
+    if (verifyEmail) {
+      checkPendingRegistration(verifyEmail)
+    }
+  }, [verifyEmail])
+
+  const checkPendingRegistration = async (email: string) => {
+    try {
+      const response = await fetch("/api/auth/check-pending", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.hasPending) {
+        // Show verification step
+        setRegisteredEmail(email)
+        setVerificationStep(true)
+        setCanResend(false)
+        setResendTimeLeft(60)
+
+        // Calculate time left until expiration
+        const expiresAt = new Date(result.expiresAt)
+        const now = new Date()
+        const secondsLeft = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000))
+        setTimeLeft(secondsLeft)
+
+        // Start countdown timer
+        const expirationTimer = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(expirationTimer)
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+
+        // Start resend availability countdown
+        const resendTimer = setInterval(() => {
+          setResendTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(resendTimer)
+              setCanResend(true)
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+      } else if (result.expired) {
+        setError("Your verification code has expired. Please register again.")
+      }
+    } catch (error) {
+      console.error("Check pending error:", error)
+    }
+  }
+
+  // Add beforeunload warning when on registration or verification page
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!verificationStep && !showTerms) {
+        // On the main registration form
+        e.preventDefault()
+        e.returnValue = ""
+        return ""
+      } else if (verificationStep) {
+        // On verification step
+        e.preventDefault()
+        e.returnValue = "You haven't verified your email yet. Are you sure you want to leave?"
+        return "You haven't verified your email yet. Are you sure you want to leave?"
+      }
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [verificationStep, showTerms])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -74,7 +162,6 @@ export default function RegisterPage() {
       const province = pendingFormData.get("province") as string
       const postalCode = pendingFormData.get("postalCode") as string
 
-      // Create new FormData with the correct field names for the API
       const apiFormData = new FormData()
       apiFormData.set("firstName", firstName)
       apiFormData.set("lastName", lastName)
@@ -88,17 +175,7 @@ export default function RegisterPage() {
       apiFormData.set("postalCode", postalCode)
       apiFormData.set("agreedToTerms", "true")
 
-      console.log("Sending registration data:", {
-        firstName,
-        lastName,
-        email,
-        phone: phone || "",
-        hasPassword: !!password,
-        addressLine1,
-        city,
-        province,
-        postalCode,
-      })
+      console.log("Sending registration data...")
 
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -109,30 +186,43 @@ export default function RegisterPage() {
       console.log("Registration result:", result)
 
       if (result.success) {
-        if (result.requiresVerification) {
-          // Show verification step
-          setRegisteredEmail(email)
-          setVerificationStep(true)
+        // Show verification step
+        setRegisteredEmail(result.email || email)
+        setVerificationStep(true)
+        setCanResend(false)
+        setResendTimeLeft(60)
 
-          // Start countdown timer
-          const timer = setInterval(() => {
-            setTimeLeft((prev) => {
-              if (prev <= 1) {
-                clearInterval(timer)
-                return 0
-              }
-              return prev - 1
-            })
-          }, 1000)
-        } else {
-          // Direct login (if verification not required)
-          if (result.user) {
-            setUser(result.user)
-          }
-          router.push("/")
-        }
+        // Start OTP expiration countdown timer (5 minutes)
+        const expirationTimer = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(expirationTimer)
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+
+        // Start resend availability countdown (60 seconds)
+        const resendTimer = setInterval(() => {
+          setResendTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(resendTimer)
+              setCanResend(true)
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
       } else {
-        setError(result.message || "Registration failed")
+        if (result.requiresVerification) {
+          // Already has pending registration - go to verification
+          setRegisteredEmail(result.email || email)
+          setVerificationStep(true)
+          setCanResend(true)
+        } else {
+          setError(result.message || "Registration failed")
+        }
       }
     } catch (error) {
       console.error("Registration error:", error)
@@ -167,7 +257,7 @@ export default function RegisterPage() {
         if (result.user) {
           setUser(result.user)
         }
-        // Redirect to dashboard or home page
+        // Redirect to home page
         router.push("/")
       } else {
         setError(result.message || "Verification failed")
@@ -183,6 +273,8 @@ export default function RegisterPage() {
   const resendCode = async () => {
     setIsLoading(true)
     setError("")
+    setCanResend(false)
+    setResendTimeLeft(60)
 
     try {
       const response = await fetch("/api/auth/resend-code", {
@@ -198,25 +290,40 @@ export default function RegisterPage() {
       const result = await response.json()
 
       if (result.success) {
-        setTimeLeft(1800) // Reset to 30 minutes
-        setError("")
+        setTimeLeft(300) // Reset OTP expiration to 5 minutes
 
-        // Start countdown timer
-        const timer = setInterval(() => {
+        // Start new OTP expiration countdown
+        const expirationTimer = setInterval(() => {
           setTimeLeft((prev) => {
             if (prev <= 1) {
-              clearInterval(timer)
+              clearInterval(expirationTimer)
               return 0
             }
             return prev - 1
           })
         }, 1000)
+
+        // Start new resend countdown (60 seconds)
+        const resendTimer = setInterval(() => {
+          setResendTimeLeft((prev) => {
+            if (prev <= 1) {
+              clearInterval(resendTimer)
+              setCanResend(true)
+              return 0
+            }
+            return prev - 1
+          })
+        }, 1000)
+
+        setError("")
       } else {
         setError(result.message || "Failed to resend code")
+        setCanResend(true)
       }
     } catch (error) {
       console.error("Resend error:", error)
       setError("An unexpected error occurred")
+      setCanResend(true)
     } finally {
       setIsLoading(false)
     }
@@ -236,6 +343,14 @@ export default function RegisterPage() {
             <h1 className="text-2xl font-semibold tracking-tight">Verify your email</h1>
             <p className="text-sm text-gray-500">We&apos;ve sent a 6-digit verification code to {registeredEmail}</p>
           </div>
+
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              You must verify your email before you can log in. Please check your inbox and spam folder.
+            </AlertDescription>
+          </Alert>
+
           <Card>
             <form onSubmit={handleVerification}>
               <CardContent className="pt-6">
@@ -252,11 +367,16 @@ export default function RegisterPage() {
                       required
                     />
                   </div>
-                  <div className="text-center text-sm">
+                  <div className="text-center text-sm space-y-1">
                     {timeLeft > 0 ? (
                       <p className="text-gray-500">Code expires in {formatTime(timeLeft)}</p>
                     ) : (
-                      <p className="text-red-500">Code expired</p>
+                      <p className="text-red-500">Code expired. Please request a new code.</p>
+                    )}
+                    {!canResend && resendTimeLeft > 0 && (
+                      <p className="text-gray-400 text-xs">
+                        Resend available in {resendTimeLeft} second{resendTimeLeft !== 1 ? "s" : ""}
+                      </p>
                     )}
                   </div>
                   {error && <p className="text-sm text-red-500">{error}</p>}
@@ -266,7 +386,7 @@ export default function RegisterPage() {
                 <Button
                   className="w-full bg-rose-600 hover:bg-rose-700"
                   type="submit"
-                  disabled={isLoading || !verificationCode || verificationCode.length !== 6}
+                  disabled={isLoading || !verificationCode || verificationCode.length !== 6 || timeLeft === 0}
                 >
                   {isLoading ? "Verifying..." : "Verify Email"}
                 </Button>
@@ -274,10 +394,10 @@ export default function RegisterPage() {
                   variant="link"
                   type="button"
                   onClick={resendCode}
-                  disabled={timeLeft > 60 || isLoading}
-                  className="text-rose-600 hover:text-rose-700"
+                  disabled={!canResend || isLoading}
+                  className="text-rose-600 hover:text-rose-700 disabled:opacity-50"
                 >
-                  {timeLeft > 60 ? `Resend available in ${formatTime(timeLeft - 60)}` : "Resend Code"}
+                  {canResend ? "Resend Code" : `Resend available in ${resendTimeLeft}s`}
                 </Button>
               </CardFooter>
             </form>

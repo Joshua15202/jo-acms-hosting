@@ -403,7 +403,7 @@ export async function POST(request: NextRequest) {
 
     // Send tasting confirmation email to the user's registered email
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://jo-acms.vercel.app"
       const confirmUrl = `${baseUrl}/tasting/confirm?token=${tastingToken}`
       const skipUrl = `${baseUrl}/api/tasting/skip?token=${tastingToken}`
 

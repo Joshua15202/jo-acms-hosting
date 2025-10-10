@@ -1833,7 +1833,7 @@ function BookingFormContent({
               </span>
               <br />
               <br />
-              Click <strong>"Confirm This Date"</strong> in the email to confirm your tasting appointment.
+              Click <strong>"Confirm This Date to secure your tasting slot, or skip diretly to payment if preferred"</strong> in the email to confirm your tasting appointment.
             </p>
           </div>
 
@@ -1844,6 +1844,8 @@ function BookingFormContent({
               1. Check your email for the food tasting confirmation
               <br />
               2. Click "Confirm This Date" to secure your tasting slot
+              <br />
+              3. You can also click "Skip Food Tasting & Proceed to Payment" if you prefer not to have a food tasting day and skip to payment
               <br />
               3. You can view your appointment details in "My Appointments"
             </p>

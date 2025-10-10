@@ -61,56 +61,84 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if user already exists
-    const { data: existingUser, error: checkError } = await supabaseAdmin
+    // Check if user already exists in main users table (already verified)
+    const { data: existingUser, error: checkUserError } = await supabaseAdmin
       .from("tbl_users")
-      .select("id")
+      .select("id, email")
       .eq("email", email)
       .maybeSingle()
 
-    console.log("Existing user check:", { exists: !!existingUser, error: checkError?.message })
-
-    if (checkError && checkError.code !== "PGRST116") {
-      console.error("Error checking existing user:", checkError)
+    if (checkUserError && checkUserError.code !== "PGRST116") {
+      console.error("Error checking existing user:", checkUserError)
       return NextResponse.json({ success: false, message: "Database error occurred" }, { status: 500 })
     }
 
     if (existingUser) {
-      return NextResponse.json({ success: false, message: "User already exists with this email" }, { status: 409 })
+      return NextResponse.json(
+        { success: false, message: "This email is already registered and verified" },
+        { status: 409 },
+      )
+    }
+
+    // Check if pending registration exists
+    const { data: existingPending } = await supabaseAdmin
+      .from("tbl_pending_registrations")
+      .select("id, email, verification_expires")
+      .eq("email", email)
+      .maybeSingle()
+
+    // If pending registration exists and is NOT expired, redirect to verification
+    if (existingPending) {
+      const now = new Date()
+      const expiresAt = new Date(existingPending.verification_expires)
+
+      if (expiresAt > now) {
+        console.log("Pending registration exists and not expired - redirecting to verification")
+        return NextResponse.json({
+          success: false,
+          message: "You already have a pending registration. Please verify your email.",
+          requiresVerification: true,
+          email: email,
+        })
+      } else {
+        // Expired, delete it to allow new registration
+        console.log("Deleting expired pending registration for:", email)
+        await supabaseAdmin.from("tbl_pending_registrations").delete().eq("email", email)
+      }
     }
 
     // Hash the password
     console.log("Hashing password...")
     const hashedPassword = await hashPassword(password)
 
-    // Generate verification code and expiration (30 minutes from now)
+    // Generate verification code
     const verificationCode = generateVerificationCode()
-    const verificationExpires = new Date()
-    verificationExpires.setMinutes(verificationExpires.getMinutes() + 30)
+
+    // Create expiration time (5 minutes from now)
+    const expirationDate = new Date(Date.now() + 5 * 60 * 1000)
+    const expirationISO = expirationDate.toISOString()
 
     console.log("Generated verification code:", verificationCode)
-    console.log("Expiration time:", verificationExpires.toISOString())
+    console.log("Code expires at (UTC):", expirationISO)
 
-    // Insert the new user with address information
-    console.log("Inserting new user...")
-    const { data: newUser, error: insertError } = await supabaseAdmin
-      .from("tbl_users")
+    // Store in pending registrations table
+    console.log("Storing pending registration...")
+    const { data: pendingReg, error: insertError } = await supabaseAdmin
+      .from("tbl_pending_registrations")
       .insert({
         first_name: firstName,
         last_name: lastName,
         email: email,
         phone: phone,
         password_hash: hashedPassword,
-        role: "user",
-        is_verified: false,
-        verification_code: verificationCode,
-        verification_expires: verificationExpires.toISOString(),
         address_line1: addressLine1,
         address_line2: addressLine2 || null,
         city: city,
         province: province,
         postal_code: postalCode,
         country: "Philippines",
+        verification_code: verificationCode,
+        verification_expires: expirationISO,
       })
       .select()
       .single()
@@ -125,25 +153,24 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: "Failed to create user account",
+          message: "Failed to create pending registration",
           error: insertError.message,
-          details: insertError.details,
         },
         { status: 500 },
       )
     }
 
-    if (!newUser) {
-      console.error("No user returned from insert")
+    if (!pendingReg) {
+      console.error("No pending registration returned from insert")
       return NextResponse.json(
-        { success: false, message: "Failed to create user account - no data returned" },
+        { success: false, message: "Failed to create pending registration - no data returned" },
         { status: 500 },
       )
     }
 
-    console.log("User created successfully:", newUser.id)
+    console.log("Pending registration created successfully:", pendingReg.id)
 
-    // Send verification email using Nodemailer
+    // Send verification email
     try {
       console.log("Sending verification email...")
 
@@ -159,21 +186,20 @@ export async function POST(request: Request) {
 
       if (!emailResult.success) {
         console.error("Failed to send verification email:", emailResult.error)
-        // Don't fail registration if email fails, but log it
       }
     } catch (emailError) {
       console.error("Email sending error:", emailError)
-      // Don't fail registration if email fails
     }
 
-    console.log("Registration successful - verification required")
+    console.log("Registration initiated - waiting for verification")
 
     return NextResponse.json({
       success: true,
-      message: "Registration successful. Please check your email for verification code.",
+      message: "Registration initiated. Please check your email for verification code.",
       requiresVerification: true,
+      email: email,
       verificationCode: verificationCode, // Show code for testing - remove in production
-      expiresAt: verificationExpires.toISOString(),
+      expiresAt: expirationISO,
     })
   } catch (error) {
     console.error("Unexpected error in /api/auth/register:", error)

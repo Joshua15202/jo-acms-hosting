@@ -357,7 +357,7 @@ export default function AppointmentsList() {
 
       {/* View Details Dialog */}
       <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Appointment Details</DialogTitle>
             <DialogDescription>Viewing details for appointment {selectedAppointment?.id}</DialogDescription>
@@ -367,37 +367,37 @@ export default function AppointmentsList() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Client Name</p>
-                  <p>{selectedAppointment.tbl_users.full_name}</p>
+                  <p className="font-medium">{selectedAppointment.tbl_users.full_name}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Email</p>
-                  <p>{selectedAppointment.tbl_users.email}</p>
+                  <p className="font-medium">{selectedAppointment.tbl_users.email}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Phone</p>
-                  <p>{selectedAppointment.tbl_users.phone || "Not provided"}</p>
+                  <p className="font-medium">{selectedAppointment.tbl_users.phone || "Not provided"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Event Type</p>
-                  <p>{selectedAppointment.event_type}</p>
+                  <p className="font-medium">{selectedAppointment.event_type}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Event Date</p>
-                  <p>{formatDate(selectedAppointment.event_date)}</p>
+                  <p className="font-medium">{formatDate(selectedAppointment.event_date)}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Event Time</p>
-                  <p>{selectedAppointment.event_time}</p>
+                  <p className="font-medium">{selectedAppointment.event_time}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Guest Count</p>
-                  <p>{selectedAppointment.guest_count}</p>
+                  <p className="font-medium">{selectedAppointment.guest_count}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Status</p>
@@ -407,29 +407,40 @@ export default function AppointmentsList() {
               {selectedAppointment.venue_address && (
                 <div>
                   <p className="text-sm font-medium text-gray-500">Venue Address</p>
-                  <p>{selectedAppointment.venue_address}</p>
+                  <p className="font-medium">{selectedAppointment.venue_address}</p>
                 </div>
               )}
-              {selectedAppointment.special_requests && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Special Requests</p>
-                  <p>{selectedAppointment.special_requests}</p>
-                </div>
-              )}
+
+              {/* Additional Requests Section - Always Show */}
+              <div className="border-t pt-4">
+                <p className="text-sm font-medium text-gray-500 mb-2">Additional Requests</p>
+                {selectedAppointment.special_requests ? (
+                  <div className="bg-gray-50 p-3 rounded-md border">
+                    <p className="text-sm whitespace-pre-wrap">{selectedAppointment.special_requests}</p>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 p-3 rounded-md border">
+                    <p className="text-sm text-gray-400 italic">No additional requests provided</p>
+                  </div>
+                )}
+              </div>
+
               {selectedAppointment.admin_notes && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Admin Notes</p>
-                  <p>{selectedAppointment.admin_notes}</p>
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-gray-500 mb-2">Admin Notes</p>
+                  <div className="bg-blue-50 p-3 rounded-md border border-blue-200">
+                    <p className="text-sm whitespace-pre-wrap">{selectedAppointment.admin_notes}</p>
+                  </div>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 border-t pt-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Created</p>
-                  <p>{formatDateTime(selectedAppointment.created_at)}</p>
+                  <p className="text-sm">{formatDateTime(selectedAppointment.created_at)}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Last Updated</p>
-                  <p>{formatDateTime(selectedAppointment.updated_at)}</p>
+                  <p className="text-sm">{formatDateTime(selectedAppointment.updated_at)}</p>
                 </div>
               </div>
             </div>
