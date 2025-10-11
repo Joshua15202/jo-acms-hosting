@@ -426,6 +426,41 @@ function BookingFormContent({
     }
   }, [])
 
+  // Add this helper function after the getBackdropDetails function
+  const getTimeRange = useCallback((timeString: string): string => {
+    if (!timeString) return "Not selected"
+
+    // Parse the time string (e.g., "3:00 PM" or "15:00")
+    const timeParts = timeString.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i)
+    if (!timeParts) return timeString
+
+    let hours = Number.parseInt(timeParts[1])
+    const minutes = timeParts[2]
+    const period = timeParts[3]?.toUpperCase()
+
+    // Convert to 24-hour format if needed
+    if (period === "PM" && hours !== 12) {
+      hours += 12
+    } else if (period === "AM" && hours === 12) {
+      hours = 0
+    }
+
+    // Add 4 hours
+    const endHours = (hours + 4) % 24
+
+    // Format start time
+    const startHours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours
+    const startPeriod = hours >= 12 ? "PM" : "AM"
+    const startTime = `${startHours12}:${minutes} ${startPeriod}`
+
+    // Format end time
+    const endHours12 = endHours === 0 ? 12 : endHours > 12 ? endHours - 12 : endHours
+    const endPeriod = endHours >= 12 ? "PM" : "AM"
+    const endTime = `${endHours12}:${minutes} ${endPeriod}`
+
+    return `${startTime} - ${endTime}`
+  }, [])
+
   const getBackdropName = useCallback((backdropType: string): string => {
     switch (backdropType) {
       case "SINGLE_PANEL_BACKDROP":
@@ -1466,7 +1501,7 @@ function BookingFormContent({
                 </div>
                 <div className="flex justify-between">
                   <span className="font-medium">Time Slot:</span>
-                  <span>{formData.eventTime || "Not selected"}</span>
+                  <span>{getTimeRange(formData.eventTime)}</span>
                 </div>
               </div>
             </div>
@@ -1833,7 +1868,12 @@ function BookingFormContent({
               </span>
               <br />
               <br />
-              Click <strong>"Confirm This Date to secure your tasting slot, or skip diretly to payment if preferred"</strong> in the email to confirm your tasting appointment.
+              Click{" "}
+              <strong>
+                "Confirm This Date" to secure your tasting slot, or "Skip Food Tasting & Proceed to Payment" to skip
+                directly to payment if preferred"
+              </strong>{" "}
+              in the email to confirm or skip your tasting appointment.
             </p>
           </div>
 
@@ -1845,9 +1885,10 @@ function BookingFormContent({
               <br />
               2. Click "Confirm This Date" to secure your tasting slot
               <br />
-              3. You can also click "Skip Food Tasting & Proceed to Payment" if you prefer not to have a food tasting day and skip to payment
+              3. You can also click "Skip Food Tasting & Proceed to Payment" if you prefer not to have a food tasting
+              day and skip to payment
               <br />
-              3. You can view your appointment details in "My Appointments"
+              4. You can view your appointment details in "My Appointments"
             </p>
           </div>
 

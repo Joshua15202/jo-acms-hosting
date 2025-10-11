@@ -111,7 +111,7 @@ export function generateVerificationEmailHTML(firstName: string, verificationCod
           <!-- Instructions -->
           <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <p style="color: #92400e; margin: 0; font-size: 14px;">
-              <strong>Important:</strong> This code will expire in 30 minutes for security reasons.
+              <strong>Important:</strong> This code will expire in 5 minutes for security reasons.
             </p>
           </div>
           
@@ -215,7 +215,7 @@ export function generateTastingConfirmationEmailHTML(
   proposedTastingTime: string,
   tastingToken: string,
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "jo-acms-git-main-nickoclarkson0624-gmailcoms-projects.vercel.app"
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "jo-acms.vercel.app"
 
   const confirmUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=confirm`
   const rescheduleUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=reschedule`

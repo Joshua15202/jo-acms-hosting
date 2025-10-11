@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
+import { cn, getTimeRange } from "@/lib/utils"
 
 interface Appointment {
   id: string
@@ -423,7 +423,7 @@ export default function MyAppointmentsClient() {
                             <Clock className="h-4 w-4 text-gray-400" />
                             <div>
                               <p className="font-medium text-sm text-gray-500">Time Slot</p>
-                              <p className="text-gray-900">{appointment.event_time}</p>
+                              <p className="text-gray-900">{getTimeRange(appointment.event_time)}</p>
                             </div>
                           </div>
 
@@ -640,36 +640,57 @@ export default function MyAppointmentsClient() {
                     </div>
                   )}
 
-                  {/* Action Buttons */}
-                  <div className="mt-8 flex gap-3 pt-6 border-t">
+                  {/* Action Buttons - UPDATED to show all buttons when TASTING_COMPLETED */}
+                  <div className="mt-8 flex flex-col gap-3 pt-6 border-t">
                     {appointment.status === "TASTING_COMPLETED" && appointment.payment_status === "unpaid" ? (
-                      <Button asChild className="flex-1 bg-green-600 hover:bg-green-700 text-white">
-                        <a href="/payment" className="flex items-center justify-center gap-2">
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          Proceed to Payment
-                        </a>
-                      </Button>
-                    ) : appointment.status !== "cancelled" && appointment.status !== "completed" ? (
                       <>
+                        {/* Primary Payment Button */}
+                        <Button asChild className="w-full bg-green-600 hover:bg-green-700 text-white">
+                          <a href="/payment" className="flex items-center justify-center gap-2">
+                            <CreditCard className="h-4 w-4" />
+                            Proceed to Payment
+                          </a>
+                        </Button>
+
+                        {/* Secondary Action Buttons */}
+                        <div className="flex gap-3">
+                          <Button
+                            variant="outline"
+                            onClick={() => handleReschedule(appointment)}
+                            className="flex-1 border-gray-300 hover:bg-gray-50"
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Reschedule
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleCancel(appointment)}
+                            className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </>
+                    ) : appointment.status !== "cancelled" && appointment.status !== "completed" ? (
+                      <div className="flex gap-3">
                         <Button
                           variant="outline"
                           onClick={() => handleReschedule(appointment)}
                           className="flex-1 border-gray-300 hover:bg-gray-50"
-                          disabled={appointment.status === "TASTING_COMPLETED"}
                         >
                           <Edit className="h-4 w-4 mr-2" />
-                          {appointment.status === "TASTING_COMPLETED" ? "Locked" : "Reschedule"}
+                          Reschedule
                         </Button>
                         <Button
                           variant="outline"
                           onClick={() => handleCancel(appointment)}
                           className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
-                          disabled={appointment.status === "TASTING_COMPLETED"}
                         >
                           <X className="h-4 w-4 mr-2" />
-                          {appointment.status === "TASTING_COMPLETED" ? "Locked" : "Cancel"}
+                          Cancel
                         </Button>
-                      </>
+                      </div>
                     ) : null}
                   </div>
 
@@ -678,7 +699,8 @@ export default function MyAppointmentsClient() {
                     <div className="mt-6 p-4 border border-gray-200 rounded-lg">
                       <p className="font-medium text-gray-900">Tasting Complete - Ready for Payment!</p>
                       <p className="text-gray-600 text-sm mt-1">
-                        Your tasting session is complete! Please proceed to payment to finalize your booking.
+                        Your tasting session is complete! Please proceed to payment to finalize your booking. You can
+                        still reschedule or cancel if needed.
                       </p>
                     </div>
                   )}
@@ -722,10 +744,10 @@ export default function MyAppointmentsClient() {
             <DialogDescription>
               {selectedAppointment?.status === "PENDING_TASTING_CONFIRMATION"
                 ? "Are you sure you want to cancel this appointment? This action cannot be undone."
-                : "Please provide a reason for cancelling this confirmed appointment."}
+                : "Please provide a reason for cancelling this appointment."}
             </DialogDescription>
           </DialogHeader>
-          {selectedAppointment?.status === "TASTING_CONFIRMED" && (
+          {selectedAppointment?.status !== "PENDING_TASTING_CONFIRMATION" && (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <label htmlFor="cancelReason">Reason for Cancellation</label>
@@ -733,7 +755,7 @@ export default function MyAppointmentsClient() {
                   id="cancelReason"
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="Please provide a reason for cancelling your confirmed appointment"
+                  placeholder="Please provide a reason for cancelling your appointment"
                   rows={3}
                 />
               </div>
@@ -746,7 +768,10 @@ export default function MyAppointmentsClient() {
             <Button
               onClick={submitCancel}
               variant="destructive"
-              disabled={cancelLoading || (selectedAppointment?.status === "TASTING_CONFIRMED" && !cancelReason.trim())}
+              disabled={
+                cancelLoading ||
+                (selectedAppointment?.status !== "PENDING_TASTING_CONFIRMATION" && !cancelReason.trim())
+              }
             >
               {cancelLoading ? "Cancelling..." : "Cancel Appointment"}
             </Button>

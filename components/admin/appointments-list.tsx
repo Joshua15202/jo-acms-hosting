@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Search, MoreVertical, Filter, RefreshCw, Eye, Edit } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { getTimeRange } from "@/lib/utils"
 
 type Appointment = {
   id: string
@@ -318,7 +319,7 @@ export default function AppointmentsList() {
                   <TableCell>{appointment.tbl_users.email}</TableCell>
                   <TableCell>{appointment.event_type}</TableCell>
                   <TableCell>{formatDate(appointment.event_date)}</TableCell>
-                  <TableCell>{appointment.event_time}</TableCell>
+                  <TableCell>{getTimeRange(appointment.event_time)}</TableCell>
                   <TableCell>{getStatusBadge(appointment.status)}</TableCell>
                   <TableCell>{appointment.guest_count}</TableCell>
                   <TableCell>{formatDate(appointment.created_at)}</TableCell>
@@ -391,7 +392,7 @@ export default function AppointmentsList() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Event Time</p>
-                  <p className="font-medium">{selectedAppointment.event_time}</p>
+                  <p className="font-medium">{getTimeRange(selectedAppointment.event_time)}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

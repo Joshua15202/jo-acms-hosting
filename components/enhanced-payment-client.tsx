@@ -2228,13 +2228,11 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                           {showQrCode && (
                             <div className="mt-4 flex flex-col items-center">
                               <img
-                                src="/placeholder.svg?height=192&width=192&text=GCash+QR+Code"
+                                src="/qrcodeko.jpg"
                                 alt="GCash QR Code"
                                 className="w-48 h-48 border rounded-lg p-2"
                               />
-                              <p className="text-xs text-gray-500 mt-2">
-                                (This is a placeholder QR code. In a real app, a dynamic QR code would be generated.)
-                              </p>
+
                             </div>
                           )}
                         </>

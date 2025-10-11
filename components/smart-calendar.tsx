@@ -5,7 +5,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { CalendarIcon, Clock, AlertCircle } from "lucide-react"
+import { CalendarIcon, Clock, AlertCircle, RefreshCw } from "lucide-react"
 import { format, isSameDay, isAfter, startOfDay } from "date-fns"
 import { toZonedTime, formatInTimeZone } from "date-fns-tz"
 import { cn } from "@/lib/utils"
@@ -34,6 +34,7 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([])
   const [unavailableDates, setUnavailableDates] = useState<Date[]>([])
   const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [currentPhilippineTime, setCurrentPhilippineTime] = useState<Date>(new Date())
   const [dateAppointmentCount, setDateAppointmentCount] = useState<number>(0)
 
@@ -69,13 +70,20 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
 
   const loadUnavailableDates = async () => {
     try {
-      const response = await fetch("/api/scheduling/available-dates")
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/scheduling/available-dates?t=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
+      })
       const data = await response.json()
 
       if (data.success) {
-        // Convert unavailable date strings to Date objects
         const unavailable = data.unavailableDates?.map((dateStr: string) => new Date(dateStr)) || []
         setUnavailableDates(unavailable)
+        console.log("Loaded unavailable dates:", unavailable.length)
       }
     } catch (error) {
       console.error("Error loading unavailable dates:", error)
@@ -85,20 +93,25 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
   const loadTimeSlots = async (dateStr: string) => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/scheduling/availability?date=${encodeURIComponent(dateStr)}`)
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/scheduling/availability?date=${encodeURIComponent(dateStr)}&t=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+        },
+      })
       const data = await response.json()
 
       if (data.success) {
         const slots = data.availableSlots || []
-        // Filter out time slots that are too late (8:00 PM, 9:00 PM, 10:00 PM)
         const filteredSlots = slots.filter(
           (slot: TimeSlot) => !["8:00 PM", "9:00 PM", "10:00 PM"].includes(slot.time_slot),
         )
-        console.log("Loaded and filtered time slots:", filteredSlots)
+        console.log("Loaded time slots for", dateStr, ":", filteredSlots)
         setAvailableTimeSlots(filteredSlots)
 
-        // Calculate current appointment count for this date
-        const bookedSlots = slots.filter((slot: TimeSlot) => slot.current_bookings > 0)
+        const bookedSlots = filteredSlots.filter((slot: TimeSlot) => slot.current_bookings > 0)
         setDateAppointmentCount(bookedSlots.length)
       } else {
         console.error("Failed to load time slots:", data.error)
@@ -127,7 +140,6 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
       return
     }
 
-    // Check if date is in the past (Philippine time)
     const selectedDateStart = startOfDay(selectedDate)
     const currentPhilippineDate = startOfDay(currentPhilippineTime)
 
@@ -141,7 +153,7 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
     }
 
     setDate(selectedDate)
-    setTimeSlot("") // Reset time slot when date changes
+    setTimeSlot("")
   }
 
   const handleTimeSlotSelect = (selectedTimeSlot: string) => {
@@ -153,20 +165,16 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
   }
 
   const isDateUnavailable = (date: Date) => {
-    // Check if date is within the 1-week (7-day) preparation period
     const dateStart = startOfDay(date)
     const currentPhilippineDate = startOfDay(currentPhilippineTime)
 
-    // Add 7 days to current date for preparation period (including food tasting)
     const minimumBookingDate = new Date(currentPhilippineDate)
-    minimumBookingDate.setDate(minimumBookingDate.getDate() + 7) // Changed from 4 to 7
+    minimumBookingDate.setDate(minimumBookingDate.getDate() + 7)
 
-    // Block dates that are before the minimum booking date (current date + 7 days)
     if (dateStart < minimumBookingDate) {
       return true
     }
 
-    // Check if date is fully booked (4/4 appointments)
     return unavailableDates.some((unavailableDate) => isSameDay(unavailableDate, date))
   }
 
@@ -180,32 +188,61 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
     }
   }
 
+  const refreshCalendar = async () => {
+    setRefreshing(true)
+    try {
+      await loadUnavailableDates()
+      if (date) {
+        await loadTimeSlots(format(date, "yyyy-MM-dd"))
+      }
+      toast({
+        title: "Calendar Refreshed",
+        description: "Availability updated successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh calendar",
+        variant: "destructive",
+      })
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5" />
-            Smart Scheduling Calendar
-          </CardTitle>
-          <div className="text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Current Philippine Time: {formatInTimeZone(currentPhilippineTime, PHILIPPINES_TIMEZONE, "PPP p")}
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5" />
+                Smart Scheduling Calendar
+              </CardTitle>
+              <div className="text-sm text-gray-600 mt-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Current Philippine Time: {formatInTimeZone(currentPhilippineTime, PHILIPPINES_TIMEZONE, "PPP p")}
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  Maximum 4 appointments per day • Service hours: 6:00 AM - 10:00 PM
+                </div>
+                <div className="mt-1 text-xs text-blue-600 font-medium">
+                  ⏱️ Each event lasts approximately 4 hours from the selected start time
+                </div>
+                <div className="mt-1 text-xs text-orange-600 font-medium">
+                  ⚠️ Bookings require 1 week advance notice for event preparation & food tasting
+                </div>
+              </div>
             </div>
-            <div className="mt-1 text-xs text-gray-500">
-              Maximum 4 appointments per day • Service hours: 6:00 AM - 10:00 PM
-            </div>
-            <div className="mt-1 text-xs text-blue-600 font-medium">
-              ⏱️ Each event lasts approximately 4 hours from the selected start time
-            </div>
-            <div className="mt-1 text-xs text-orange-600 font-medium">
-              ⚠️ Bookings require 1 week advance notice for event preparation & food tasting
-            </div>
+            <Button onClick={refreshCalendar} variant="outline" size="sm" disabled={refreshing || loading}>
+              <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
+              Refresh
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Calendar */}
           <div className="flex justify-center">
             <Calendar
               mode="single"
@@ -226,7 +263,6 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
             />
           </div>
 
-          {/* Legend */}
           <div className="flex flex-wrap gap-4 text-sm">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
@@ -242,7 +278,6 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
             </div>
           </div>
 
-          {/* Selected Date Info */}
           {date && (
             <div className="p-4 bg-blue-50 rounded-lg">
               <h3 className="font-medium text-blue-900">Selected Date: {format(date, "EEEE, MMMM d, yyyy")}</h3>
@@ -252,7 +287,6 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
             </div>
           )}
 
-          {/* Time Slots */}
           {date && (
             <div className="space-y-4">
               <h3 className="font-medium flex items-center gap-2">
@@ -278,6 +312,7 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
                 <div className="grid gap-2 grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                   {availableTimeSlots.map((slot) => {
                     const isSelected = timeSlot === slot.time_slot
+                    const isBooked = slot.current_bookings > 0
 
                     return (
                       <Button
@@ -288,12 +323,10 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
                           "h-auto p-3 flex flex-col items-center gap-1",
                           !slot.is_available && "opacity-50 cursor-not-allowed",
                           isSelected && "ring-2 ring-blue-500",
-                          slot.current_bookings > 0 && "bg-red-50 border-red-200 text-red-700",
+                          isBooked && "bg-red-50 border-red-300 text-red-800 cursor-not-allowed hover:bg-red-50",
                         )}
-                        disabled={!slot.is_available || slot.current_bookings > 0}
-                        onClick={() =>
-                          slot.is_available && slot.current_bookings === 0 && handleTimeSlotSelect(slot.time_slot)
-                        }
+                        disabled={!slot.is_available || isBooked}
+                        onClick={() => slot.is_available && !isBooked && handleTimeSlotSelect(slot.time_slot)}
                       >
                         <div className="font-medium text-sm">{slot.time_slot}</div>
                         {getTimeSlotStatus(slot)}
@@ -311,7 +344,6 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
             </div>
           )}
 
-          {/* Selection Summary */}
           {date && timeSlot && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
               <h4 className="font-medium text-green-900">Selection Confirmed</h4>
