@@ -143,7 +143,11 @@ function BookingFormContent({
     guestCount: "",
     eventDate: "",
     eventTime: "",
-    venue: "",
+    venueName: "",
+    venueCity: "",
+    venueStreet: "",
+    venueZipCode: "",
+    venue: "", // Keep for backward compatibility
     theme: "",
     colorMotif: "",
     celebrantName: eventInfo.celebrantName || "",
@@ -357,7 +361,11 @@ function BookingFormContent({
       guestCount: searchParams.get("guestCount") || "",
       eventDate: searchParams.get("eventDate") || schedulingInfo.eventDate || "",
       eventTime: searchParams.get("eventTime") || schedulingInfo.timeSlot || "",
-      venue: searchParams.get("venue") || "",
+      venueName: searchParams.get("venueName") || "",
+      venueCity: searchParams.get("venueCity") || "",
+      venueStreet: searchParams.get("venueStreet") || "",
+      venueZipCode: searchParams.get("venueZipCode") || "",
+      venue: searchParams.get("venue") || "", // Keep for backward compatibility
       theme: searchParams.get("theme") || "",
       colorMotif: searchParams.get("colorMotif") || "",
       celebrantName: searchParams.get("celebrantName") || eventInfo.celebrantName || "",
@@ -590,12 +598,16 @@ function BookingFormContent({
       toast({ title: "Validation Error", description: "Number of Guests is required.", variant: "destructive" })
       return false
     }
-    if (!formData.venue.trim()) {
-      toast({ title: "Validation Error", description: "Venue is required.", variant: "destructive" })
+    if (!formData.venueCity) {
+      toast({ title: "Validation Error", description: "City/Municipality is required.", variant: "destructive" })
+      return false
+    }
+    if (!formData.venueStreet || !formData.venueStreet.trim()) {
+      toast({ title: "Validation Error", description: "Street Address is required.", variant: "destructive" })
       return false
     }
     return true
-  }, [formData.eventType, formData.guestCount, formData.venue, toast])
+  }, [formData.eventType, formData.guestCount, formData.venueCity, formData.venueStreet, toast])
 
   const handleIncreaseLimit = useCallback((menuType: keyof typeof maxSelections) => {
     setMaxSelections((prev) => ({
@@ -733,6 +745,11 @@ function BookingFormContent({
           return
         }
 
+        // Combine venue fields into complete address
+        const venueAddress = [formData.venueName, formData.venueStreet, formData.venueCity, formData.venueZipCode]
+          .filter(Boolean)
+          .join(", ")
+
         // Combine all menu selections for submission
         const allMainCourses = [...formData.menu1Selections, ...formData.menu2Selections, ...formData.menu3Selections]
 
@@ -745,7 +762,7 @@ function BookingFormContent({
           guestCount: Number.parseInt(formData.guestCount),
           eventDate: formData.eventDate,
           eventTime: formData.eventTime,
-          venue: formData.venue,
+          venue: venueAddress, // Use combined venue address
           theme: formData.theme || "",
           colorMotif: formData.colorMotif || "",
           celebrantName: formData.celebrantName || "",
@@ -915,16 +932,79 @@ function BookingFormContent({
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-2 md:col-span-2">
-          <label htmlFor="venue">Venue Address</label>
-          <Input
-            id="venue"
-            name="venue"
-            value={formData.venue}
-            onChange={handleInputChange}
-            placeholder="Enter venue address"
-          />
+
+        {/* Updated Venue Address Section */}
+        <div className="grid gap-4 md:col-span-2">
+          <h4 className="font-medium text-base text-rose-600 border-b pb-2">Venue Information</h4>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-2">
+              <label htmlFor="venueName">Venue/Hall Name</label>
+              <Input
+                id="venueName"
+                name="venueName"
+                value={formData.venueName}
+                onChange={handleInputChange}
+                placeholder="e.g., Blessed Hall, Garden Pavilion"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <label htmlFor="venueCity">City/Municipality *</label>
+              <Select
+                name="venueCity"
+                value={formData.venueCity}
+                onValueChange={(value) => handleSelectChange("venueCity", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select city/municipality" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Fairview">Fairview, Quezon City</SelectItem>
+                  <SelectItem value="Valenzuela">Valenzuela City</SelectItem>
+                  <SelectItem value="Quezon City">Quezon City</SelectItem>
+                  <SelectItem value="Malolos">Malolos, Bulacan</SelectItem>
+                  <SelectItem value="Novaliches">Novaliches, Quezon City</SelectItem>
+                  <SelectItem value="Malabon">Malabon City</SelectItem>
+                  <SelectItem value="Meycauayan">Meycauayan, Bulacan</SelectItem>
+                  <SelectItem value="Pandi">Pandi, Bulacan</SelectItem>
+                  <SelectItem value="Marilao">Marilao, Bulacan</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <label htmlFor="venueStreet">Street Address *</label>
+              <Input
+                id="venueStreet"
+                name="venueStreet"
+                value={formData.venueStreet}
+                onChange={handleInputChange}
+                placeholder="e.g., 123 Main Street, Barangay Name"
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <label htmlFor="venueZipCode">Zip Code</label>
+              <Input
+                id="venueZipCode"
+                name="venueZipCode"
+                value={formData.venueZipCode}
+                onChange={handleInputChange}
+                placeholder="e.g., 1400"
+                maxLength={4}
+              />
+            </div>
+          </div>
+
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>Service Area:</strong> Jo Pacheco serves Fairview, Valenzuela, Quezon City, Malolos, Novaliches,
+              Malabon, Meycauayan, Pandi, and Marilao.
+            </p>
+          </div>
         </div>
+
         <div className="grid gap-2">
           <label htmlFor="theme">Event Theme (Optional)</label>
           <Input
@@ -994,7 +1074,7 @@ function BookingFormContent({
                 <SelectContent>
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="other">Rather not say</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1448,9 +1528,18 @@ function BookingFormContent({
                   <span className="font-medium">Number of Guests:</span>
                   <span>{formData.guestCount ? `${formData.guestCount} guests` : "Not specified"}</span>
                 </div>
-                <div className="flex justify-between">
+                {/* Updated Review Venue Section */}
+                <div className="flex flex-col gap-1">
                   <span className="font-medium">Venue:</span>
-                  <span className="text-right max-w-[300px] break-words">{formData.venue || "Not specified"}</span>
+                  <div className="text-right">
+                    {formData.venueName && <div className="font-medium">{formData.venueName}</div>}
+                    {formData.venueStreet && <div>{formData.venueStreet}</div>}
+                    {formData.venueCity && <div>{formData.venueCity}</div>}
+                    {formData.venueZipCode && <div>{formData.venueZipCode}</div>}
+                    {!formData.venueCity && !formData.venueStreet && (
+                      <span className="text-gray-500">Not specified</span>
+                    )}
+                  </div>
                 </div>
                 {formData.theme && (
                   <div className="flex justify-between">
@@ -1481,7 +1570,7 @@ function BookingFormContent({
                         : formData.celebrantName}
                       {formData.celebrantAge && ` (${formData.celebrantAge} years old)`}
                       {formData.celebrantGender &&
-                        ` - ${formData.celebrantGender.charAt(0).toUpperCase() + formData.celebrantGender.slice(1)}`}
+                        ` - ${formData.celebrantGender === "other" ? "Rather not say" : formData.celebrantGender.charAt(0).toUpperCase() + formData.celebrantGender.slice(1)}`}
                     </span>
                   </div>
                 )}
@@ -1869,10 +1958,10 @@ function BookingFormContent({
               <br />
               <br />
               Click{" "}
-              <strong>
-                "Confirm This Date" to secure your tasting slot, or "Skip Food Tasting & Proceed to Payment" to skip
-                directly to payment if preferred"
-              </strong>{" "}
+              <strong>"Confirm This Date"</strong>{" "}
+                to secure your tasting slot, or{" "}
+              <strong>"Skip Food Tasting & Proceed to Payment"</strong>{" "}
+                to skip directly to payment if preferred.
               in the email to confirm or skip your tasting appointment.
             </p>
           </div>

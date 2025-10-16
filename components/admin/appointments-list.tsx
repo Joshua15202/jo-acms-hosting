@@ -16,9 +16,33 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
-import { Search, MoreVertical, Filter, RefreshCw, Eye, Edit } from "lucide-react"
+import {
+  Search,
+  MoreVertical,
+  Filter,
+  RefreshCw,
+  Eye,
+  Edit,
+  UtensilsCrossed,
+  ChefHat,
+  Cake,
+  Coffee,
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getTimeRange } from "@/lib/utils"
+
+type MenuItem = {
+  id: string
+  name: string
+  category: string
+  description?: string
+  quantity: number
+}
+
+type MenuItems = {
+  main_courses: MenuItem[]
+  extras: MenuItem[]
+}
 
 type Appointment = {
   id: string
@@ -41,6 +65,8 @@ type Appointment = {
     email: string
     phone?: string
   }
+  celebrant_gender?: string
+  menu_items?: MenuItems | null
 }
 
 export default function AppointmentsList() {
@@ -63,8 +89,11 @@ export default function AppointmentsList() {
       const response = await fetch("/api/admin/appointments")
       const data = await response.json()
 
+      console.log("Fetched appointments data:", data)
+
       if (data.success) {
         setAppointments(data.appointments)
+        console.log("Set appointments:", data.appointments)
       } else {
         toast({
           title: "Error",
@@ -111,7 +140,7 @@ export default function AppointmentsList() {
         setStatusUpdateOpen(false)
         setNewStatus("")
         setAdminNotes("")
-        fetchAppointments() // Refresh the list
+        fetchAppointments()
       } else {
         toast({
           title: "Error",
@@ -135,22 +164,19 @@ export default function AppointmentsList() {
     fetchAppointments()
   }, [])
 
-  // Auto-refresh every 30 seconds to catch status updates
   useEffect(() => {
     const interval = setInterval(() => {
       fetchAppointments()
-    }, 30000) // Refresh every 30 seconds
+    }, 30000)
 
     return () => clearInterval(interval)
   }, [])
 
   const filteredAppointments = appointments.filter((appointment) => {
-    // Filter by status
     if (filter !== "all" && appointment.status !== filter) {
       return false
     }
 
-    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       return (
@@ -220,6 +246,15 @@ export default function AppointmentsList() {
   }
 
   const viewDetails = (appointment: Appointment) => {
+    console.log("=== Viewing appointment details ===")
+    console.log("Appointment:", appointment)
+    console.log("Menu items:", appointment.menu_items)
+    if (appointment.menu_items) {
+      console.log("Main courses:", appointment.menu_items.main_courses)
+      console.log("Main courses length:", appointment.menu_items.main_courses?.length)
+      console.log("Extras:", appointment.menu_items.extras)
+      console.log("Extras length:", appointment.menu_items.extras?.length)
+    }
     setSelectedAppointment(appointment)
     setViewDetailsOpen(true)
   }
@@ -247,6 +282,43 @@ export default function AppointmentsList() {
       hour: "2-digit",
       minute: "2-digit",
     })
+  }
+
+  const getCategoryIcon = (category: string) => {
+    if (category.startsWith("main_")) {
+      return <ChefHat className="h-4 w-4" />
+    } else if (category === "dessert") {
+      return <Cake className="h-4 w-4" />
+    } else if (category === "beverage") {
+      return <Coffee className="h-4 w-4" />
+    }
+    return <UtensilsCrossed className="h-4 w-4" />
+  }
+
+  const getCategoryName = (category: string) => {
+    const categoryMap: { [key: string]: string } = {
+      main_beef: "Beef",
+      main_pork: "Pork",
+      main_chicken: "Chicken",
+      main_fish: "Fish/Seafood",
+      main_vegetable: "Vegetables",
+      pasta: "Pasta",
+      dessert: "Dessert",
+      beverage: "Beverage",
+    }
+    return categoryMap[category] || category
+  }
+
+  const hasMenuItems = (appointment: Appointment | null) => {
+    if (!appointment || !appointment.menu_items) {
+      console.log("No appointment or menu_items")
+      return false
+    }
+    const menuItems = appointment.menu_items
+    const hasMain = Array.isArray(menuItems.main_courses) && menuItems.main_courses.length > 0
+    const hasExtras = Array.isArray(menuItems.extras) && menuItems.extras.length > 0
+    console.log("hasMain:", hasMain, "hasExtras:", hasExtras)
+    return hasMain || hasExtras
   }
 
   if (loading) {
@@ -356,9 +428,8 @@ export default function AppointmentsList() {
         </Table>
       </div>
 
-      {/* View Details Dialog */}
       <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Appointment Details</DialogTitle>
             <DialogDescription>Viewing details for appointment {selectedAppointment?.id}</DialogDescription>
@@ -412,7 +483,100 @@ export default function AppointmentsList() {
                 </div>
               )}
 
-              {/* Additional Requests Section - Always Show */}
+              {selectedAppointment.celebrant_gender && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Gender</p>
+                  <p className="font-medium capitalize">
+                    {selectedAppointment.celebrant_gender === "other"
+                      ? "Rather not say"
+                      : selectedAppointment.celebrant_gender}
+                  </p>
+                </div>
+              )}
+
+              {hasMenuItems(selectedAppointment) && (
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <UtensilsCrossed className="h-5 w-5 text-gray-700" />
+                    <h3 className="text-base font-semibold text-gray-900">Selected Menu Items</h3>
+                  </div>
+
+                  {selectedAppointment.menu_items?.main_courses &&
+                    selectedAppointment.menu_items.main_courses.length > 0 && (
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <ChefHat className="h-4 w-4 text-gray-600" />
+                          <p className="text-sm font-medium text-gray-700">Main Courses</p>
+                          <span className="text-xs text-gray-500">(1 of each per guest)</span>
+                        </div>
+                        <div className="space-y-2">
+                          {selectedAppointment.menu_items.main_courses.map((item, index) => (
+                            <div
+                              key={`main-${index}`}
+                              className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                            >
+                              <div className="mt-0.5">{getCategoryIcon(item.category)}</div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="font-medium text-sm text-gray-900">{item.name}</p>
+                                  <span className="text-xs text-gray-500 whitespace-nowrap">
+                                    {getCategoryName(item.category)}
+                                  </span>
+                                </div>
+                                {item.description && (
+                                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">{item.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {selectedAppointment.menu_items?.extras && selectedAppointment.menu_items.extras.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <UtensilsCrossed className="h-4 w-4 text-gray-600" />
+                        <p className="text-sm font-medium text-gray-700">Additional Items</p>
+                      </div>
+                      <div className="space-y-2">
+                        {selectedAppointment.menu_items.extras.map((item, index) => (
+                          <div
+                            key={`extra-${index}`}
+                            className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                          >
+                            <div className="mt-0.5">{getCategoryIcon(item.category)}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="font-medium text-sm text-gray-900">{item.name}</p>
+                                <span className="text-xs text-gray-500 whitespace-nowrap">
+                                  {getCategoryName(item.category)}
+                                </span>
+                              </div>
+                              {item.description && (
+                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">{item.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!hasMenuItems(selectedAppointment) && (
+                <div className="border-t pt-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <UtensilsCrossed className="h-5 w-5 text-gray-400" />
+                    <h3 className="text-base font-semibold text-gray-500">Selected Menu Items</h3>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
+                    <p className="text-sm text-gray-500">No menu items selected for this appointment</p>
+                  </div>
+                </div>
+              )}
+
               <div className="border-t pt-4">
                 <p className="text-sm font-medium text-gray-500 mb-2">Additional Requests</p>
                 {selectedAppointment.special_requests ? (
@@ -434,6 +598,7 @@ export default function AppointmentsList() {
                   </div>
                 </div>
               )}
+
               <div className="grid grid-cols-2 gap-4 border-t pt-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Created</p>
@@ -454,7 +619,6 @@ export default function AppointmentsList() {
         </DialogContent>
       </Dialog>
 
-      {/* Status Update Dialog */}
       <Dialog open={statusUpdateOpen} onOpenChange={setStatusUpdateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

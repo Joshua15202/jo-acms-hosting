@@ -76,11 +76,26 @@ interface MenuItems {
 const initialFormDataState = {
   guestCount: "",
   preferredMenus: "",
-  venue: "",
+  venueName: "",
+  venueCity: "",
+  venueStreetAddress: "",
+  venueZipCode: "",
   theme: "",
   colorMotif: "",
   additionalEventInfo: "",
 }
+
+const SERVICE_AREA_CITIES = [
+  "Fairview, Quezon City",
+  "Valenzuela City",
+  "Quezon City",
+  "Malolos, Bulacan",
+  "Novaliches, Quezon City",
+  "Malabon City",
+  "Meycauayan, Bulacan",
+  "Pandi, Bulacan",
+  "Marilao, Bulacan",
+]
 
 export default function AIRecommendation({ personalInfo, eventInfo, schedulingInfo }: AIRecommendationProps) {
   const router = useRouter()
@@ -651,7 +666,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         guestCount: Number.parseInt(formData.guestCount),
         eventDate: schedulingInfo.eventDate,
         eventTime: schedulingInfo.timeSlot,
-        venue: formData.venue,
+        venue: `${formData.venueName ? formData.venueName + ", " : ""}${formData.venueStreetAddress}, ${formData.venueCity}${formData.venueZipCode ? ", " + formData.venueZipCode : ""}`,
         theme: formData.theme,
         colorMotif: formData.colorMotif,
         celebrantName: eventInfo.celebrantName,
@@ -920,7 +935,8 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         eventType: eventInfo.eventType,
         guestCount: formData.guestCount,
         preferredMenus: formData.preferredMenus,
-        venue: formData.venue,
+        venue: `${formData.venueName ? formData.venueName + ", " : ""}${formData.venueStreetAddress}, ${formData.venueCity}${formData.venueZipCode ? ", " + formData.venueZipCode : ""}`,
+        venueCity: formData.venueCity,
         theme: formData.theme,
         colorMotif: formData.colorMotif,
         availableMenuItems: allMenuItems,
@@ -1670,19 +1686,98 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <label htmlFor="venue" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Venue (Optional)
-                  </label>
-                  <Input
-                    id="venue"
-                    name="venue"
-                    disabled={isFormDisabled}
-                    value={formData.venue}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Garden venue, Hotel ballroom"
-                    className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                  />
+                {/* Venue Information - Service Area */}
+                <div className="space-y-4 md:col-span-2 border-t pt-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-rose-600" />
+                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Venue Information</h4>
+                  </div>
+
+                  {/* Service Area Info */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      <strong>📍 Service Area:</strong> Jo Pacheco serves Quezon City, Valenzuela, Malabon, Bulacan
+                      (Malolos, Meycauayan, Pandi, Marilao), and nearby areas.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* Venue/Hall Name */}
+                    <div className="space-y-2">
+                      <label htmlFor="venueName" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Venue/Hall Name <span className="text-gray-500">(Optional)</span>
+                      </label>
+                      <Input
+                        id="venueName"
+                        name="venueName"
+                        disabled={isFormDisabled}
+                        value={formData.venueName}
+                        onChange={handleInputChange}
+                        placeholder="e.g., Garden Palace, Grand Ballroom"
+                        className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                      />
+                    </div>
+
+                    {/* City/Municipality */}
+                    <div className="space-y-2">
+                      <label htmlFor="venueCity" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        City/Municipality <span className="text-rose-600">*</span>
+                      </label>
+                      <Select
+                        name="venueCity"
+                        disabled={isFormDisabled}
+                        value={formData.venueCity}
+                        onValueChange={(value) => handleSelectChange("venueCity", value)}
+                      >
+                        <SelectTrigger className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                          <SelectValue placeholder="Select city" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SERVICE_AREA_CITIES.map((city) => (
+                            <SelectItem key={city} value={city}>
+                              {city}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Street Address */}
+                    <div className="space-y-2 md:col-span-2">
+                      <label
+                        htmlFor="venueStreetAddress"
+                        className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                      >
+                        Street Address <span className="text-rose-600">*</span>
+                      </label>
+                      <Input
+                        id="venueStreetAddress"
+                        name="venueStreetAddress"
+                        disabled={isFormDisabled}
+                        value={formData.venueStreetAddress}
+                        onChange={handleInputChange}
+                        placeholder="e.g., 123 Main Street, Barangay Example"
+                        className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                      />
+                    </div>
+
+                    {/* Zip Code */}
+                    <div className="space-y-2">
+                      <label htmlFor="venueZipCode" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Zip Code <span className="text-gray-500">(Optional)</span>
+                      </label>
+                      <Input
+                        id="venueZipCode"
+                        name="venueZipCode"
+                        disabled={isFormDisabled}
+                        value={formData.venueZipCode}
+                        onChange={handleInputChange}
+                        placeholder="e.g., 1400"
+                        maxLength={4}
+                        className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -1719,7 +1814,13 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
               <div className="mt-8 flex justify-center">
                 <Button
                   onClick={generateAIRecommendations}
-                  disabled={isFormDisabled || !formData.guestCount || isGenerating}
+                  disabled={
+                    isFormDisabled ||
+                    !formData.guestCount ||
+                    !formData.venueCity ||
+                    !formData.venueStreetAddress ||
+                    isGenerating
+                  }
                   className="px-8 py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isGenerating ? (
@@ -1802,10 +1903,17 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                             {formData.guestCount} people
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-green-600" />
-                          <span className="text-gray-600 dark:text-gray-400">Venue:</span>
-                          <span className="font-medium text-gray-800 dark:text-gray-200">{formData.venue}</span>
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
+                          <div className="flex-1">
+                            <span className="text-gray-600 dark:text-gray-400">Venue:</span>
+                            <div className="font-medium text-gray-800 dark:text-gray-200">
+                              {formData.venueName && <div>{formData.venueName}</div>}
+                              <div>{formData.venueStreetAddress}</div>
+                              <div>{formData.venueCity}</div>
+                              {formData.venueZipCode && <div>{formData.venueZipCode}</div>}
+                            </div>
+                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-gray-600 dark:text-gray-400">Theme:</span>

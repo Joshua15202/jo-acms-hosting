@@ -402,7 +402,7 @@ export default function BookAppointmentPage() {
                       onChange={handleInputChange}
                       placeholder="Enter your email address"
                       className="bg-gray-50"
-                      required                      
+                      required
                     />
                   </div>
                   <div className="grid gap-2">
@@ -414,7 +414,7 @@ export default function BookAppointmentPage() {
                       onChange={handleInputChange}
                       placeholder="e.g., 09xxxxxxxxx or +639xxxxxxxxx"
                       className="bg-gray-50"
-                      required                      
+                      required
                     />
                   </div>
                 </div>
@@ -514,7 +514,7 @@ export default function BookAppointmentPage() {
                         <SelectContent>
                           <SelectItem value="male">Male</SelectItem>
                           <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                          <SelectItem value="other">Rather not say</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -547,7 +547,7 @@ export default function BookAppointmentPage() {
                         <SelectContent>
                           <SelectItem value="female">Female</SelectItem>
                           <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
+                          <SelectItem value="other">Rather not say</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

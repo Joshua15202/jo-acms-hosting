@@ -14,7 +14,19 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { CheckCircle, XCircle, Clock, Eye, CreditCard, Calendar, Users, MapPin, Utensils } from "lucide-react"
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  Eye,
+  CreditCard,
+  Calendar,
+  Users,
+  MapPin,
+  Utensils,
+  ChefHat,
+  Cake,
+} from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 
@@ -29,7 +41,7 @@ type PaymentTransaction = {
   notes?: string
   proof_image_url: string
   status: "pending_verification" | "verified" | "rejected"
-  appointment_payment_status?: string // New field
+  appointment_payment_status?: string
   admin_notes?: string
   created_at: string
   updated_at: string
@@ -51,17 +63,30 @@ type PaymentTransaction = {
     total_package_amount?: number
     down_payment_amount?: number
     payment_status: string
-    // Menu details
     pasta_selection?: string
-    beverage_selection?: string
+    drink_selection?: string
     dessert_selection?: string
-    selected_menu?: any[]
-    // Event styling
+    selected_menu_items?: any[]
     event_theme?: string
     color_motif?: string
-    // Pricing breakdown
     total_amount?: number
     remaining_balance?: number
+  }
+  menu_items?: {
+    main_courses: Array<{
+      id: string
+      name: string
+      category: string
+      description?: string
+      price?: number
+    }>
+    extras: Array<{
+      id: string
+      name: string
+      category: string
+      description?: string
+      price?: number
+    }>
   }
 }
 
@@ -82,9 +107,17 @@ export default function PaymentManagement() {
   const fetchPaymentTransactions = async () => {
     try {
       setLoading(true)
+      console.log("FRONTEND: Calling payment transactions API...")
       const response = await fetch("/api/admin/payment-transactions")
+      console.log("FRONTEND: API response status:", response.status)
       if (response.ok) {
         const data = await response.json()
+        console.log("FRONTEND: Received data:", data)
+        console.log("FRONTEND: Transactions count:", data.transactions?.length)
+        if (data.transactions && data.transactions.length > 0) {
+          console.log("FRONTEND: First transaction:", data.transactions[0])
+          console.log("FRONTEND: First transaction menu_items:", data.transactions[0].menu_items)
+        }
         setTransactions(data.transactions || [])
       } else {
         toast({ title: "Error", description: "Failed to fetch payment transactions.", variant: "destructive" })
@@ -104,6 +137,14 @@ export default function PaymentManagement() {
   }
 
   const handleViewDetails = (transaction: PaymentTransaction) => {
+    console.log("=== VIEWING TRANSACTION DETAILS ===")
+    console.log("Full transaction:", transaction)
+    console.log("Menu items:", transaction.menu_items)
+    console.log("Menu items type:", typeof transaction.menu_items)
+    console.log("Main courses:", transaction.menu_items?.main_courses)
+    console.log("Main courses length:", transaction.menu_items?.main_courses?.length)
+    console.log("Extras:", transaction.menu_items?.extras)
+    console.log("Extras length:", transaction.menu_items?.extras?.length)
     setSelectedTransaction(transaction)
     setDetailsDialogOpen(true)
   }
@@ -134,7 +175,7 @@ export default function PaymentManagement() {
           description: `Payment ${action} successfully!`,
         })
         setVerificationDialogOpen(false)
-        fetchPaymentTransactions() // Refresh the list
+        fetchPaymentTransactions()
       } else {
         throw new Error(result.message || `Failed to ${action} payment`)
       }
@@ -219,15 +260,47 @@ export default function PaymentManagement() {
     return appointment.venue || appointment.venue_address || "Venue to be confirmed"
   }
 
-  const parseMenuItems = (menuItems: any) => {
-    if (typeof menuItems === "string") {
-      try {
-        return JSON.parse(menuItems)
-      } catch {
-        return []
-      }
+  const getCategoryBadgeColor = (category: string) => {
+    const categoryLower = category.toLowerCase()
+    if (categoryLower.includes("beef")) return "bg-red-100 text-red-800 border-red-200"
+    if (categoryLower.includes("pork")) return "bg-pink-100 text-pink-800 border-pink-200"
+    if (categoryLower.includes("chicken")) return "bg-yellow-100 text-yellow-800 border-yellow-200"
+    if (categoryLower.includes("fish") || categoryLower.includes("seafood"))
+      return "bg-blue-100 text-blue-800 border-blue-200"
+    if (categoryLower.includes("vegetable")) return "bg-green-100 text-green-800 border-green-200"
+    if (categoryLower.includes("pasta")) return "bg-orange-100 text-orange-800 border-orange-200"
+    if (categoryLower.includes("dessert")) return "bg-purple-100 text-purple-800 border-purple-200"
+    if (categoryLower.includes("beverage") || categoryLower.includes("drink"))
+      return "bg-cyan-100 text-cyan-800 border-cyan-200"
+    return "bg-gray-100 text-gray-800 border-gray-200"
+  }
+
+  const hasMenuItems = (transaction: PaymentTransaction | null) => {
+    console.log("=== CHECKING hasMenuItems ===")
+    console.log("Transaction:", transaction?.id)
+    console.log("menu_items exists:", !!transaction?.menu_items)
+    console.log("menu_items:", transaction?.menu_items)
+
+    if (!transaction?.menu_items) {
+      console.log("No menu_items object")
+      return false
     }
-    return Array.isArray(menuItems) ? menuItems : []
+
+    const hasMain =
+      transaction.menu_items.main_courses &&
+      Array.isArray(transaction.menu_items.main_courses) &&
+      transaction.menu_items.main_courses.length > 0
+
+    const hasExtras =
+      transaction.menu_items.extras &&
+      Array.isArray(transaction.menu_items.extras) &&
+      transaction.menu_items.extras.length > 0
+
+    console.log("hasMain:", hasMain, "count:", transaction.menu_items.main_courses?.length)
+    console.log("hasExtras:", hasExtras, "count:", transaction.menu_items.extras?.length)
+    console.log("Result:", hasMain || hasExtras)
+
+    return hasMain || hasExtras
   }
 
   if (loading) {
@@ -617,65 +690,6 @@ export default function PaymentManagement() {
                 </Card>
               </div>
 
-              {/* Event Details */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Event Details
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    <div className="space-y-4">
-                      <div>
-                        <span className="font-medium">Event Type:</span>
-                        <p className="text-sm capitalize">
-                          {selectedTransaction.tbl_comprehensive_appointments.event_type}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="font-medium">Date & Time:</span>
-                        <p className="text-sm">
-                          {formatEventDate(selectedTransaction.tbl_comprehensive_appointments.event_date)} at{" "}
-                          {selectedTransaction.tbl_comprehensive_appointments.event_time}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="font-medium">Guest Count:</span>
-                        <p className="text-sm">
-                          {selectedTransaction.tbl_comprehensive_appointments.guest_count} guests
-                        </p>
-                      </div>
-                      <div>
-                        <span className="font-medium">Venue:</span>
-                        <p className="text-sm">{getVenueDisplay(selectedTransaction.tbl_comprehensive_appointments)}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      {selectedTransaction.tbl_comprehensive_appointments.event_theme && (
-                        <div>
-                          <span className="font-medium">Theme:</span>
-                          <p className="text-sm">{selectedTransaction.tbl_comprehensive_appointments.event_theme}</p>
-                        </div>
-                      )}
-                      {selectedTransaction.tbl_comprehensive_appointments.color_motif && (
-                        <div>
-                          <span className="font-medium">Color Motif:</span>
-                          <p className="text-sm">{selectedTransaction.tbl_comprehensive_appointments.color_motif}</p>
-                        </div>
-                      )}
-                      <div>
-                        <span className="font-medium">Payment Status:</span>
-                        <Badge variant="outline" className="ml-2 bg-blue-100 text-blue-600 border-blue-200">
-                          {selectedTransaction.tbl_comprehensive_appointments.payment_status}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Menu Selection */}
               <Card>
                 <CardHeader>
@@ -685,43 +699,59 @@ export default function PaymentManagement() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-6 lg:grid-cols-3">
-                    {selectedTransaction.tbl_comprehensive_appointments.pasta_selection && (
-                      <div>
-                        <span className="font-medium">Pasta:</span>
-                        <p className="text-sm">{selectedTransaction.tbl_comprehensive_appointments.pasta_selection}</p>
-                      </div>
-                    )}
-                    {selectedTransaction.tbl_comprehensive_appointments.beverage_selection && (
-                      <div>
-                        <span className="font-medium">Drink:</span>
-                        <p className="text-sm">{selectedTransaction.tbl_comprehensive_appointments.beverage_selection}</p>
-                      </div>
-                    )}
-                    {selectedTransaction.tbl_comprehensive_appointments.dessert_selection && (
-                      <div>
-                        <span className="font-medium">Dessert:</span>
-                        <p className="text-sm">
-                          {selectedTransaction.tbl_comprehensive_appointments.dessert_selection}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {selectedTransaction.tbl_comprehensive_appointments.selected_menu && (
-                    <div className="mt-4">
-                      <span className="font-medium">Additional Menu Items:</span>
-                      <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        {parseMenuItems(selectedTransaction.tbl_comprehensive_appointments.selected_menu).map(
-                          (item: any, index: number) => (
-                            <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                              <span className="font-medium">{item.name}</span>
-                              {item.category && <span className="text-gray-500 ml-2">({item.category})</span>}
+                  {hasMenuItems(selectedTransaction) ? (
+                    <div className="space-y-6">
+                      {/* Main Courses */}
+                      {selectedTransaction.menu_items?.main_courses &&
+                        selectedTransaction.menu_items.main_courses.length > 0 && (
+                          <div>
+                            <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                              <ChefHat className="h-4 w-4" />
+                              Main Courses
+                            </h4>
+                            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                              {selectedTransaction.menu_items.main_courses.map((item, index) => (
+                                <div
+                                  key={`main-${index}`}
+                                  className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-100 transition-all"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <span className="font-medium text-sm">{item.name}</span>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-1 capitalize">{item.category}</p>
+                                  {item.description && <p className="text-xs text-gray-400 mt-1">{item.description}</p>}
+                                </div>
+                              ))}
                             </div>
-                          ),
+                          </div>
                         )}
-                      </div>
+
+                      {/* Extras */}
+                      {selectedTransaction.menu_items?.extras && selectedTransaction.menu_items.extras.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-sm text-gray-700 mb-3 flex items-center gap-2">
+                            <Cake className="h-4 w-4" />
+                            Extras
+                          </h4>
+                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            {selectedTransaction.menu_items.extras.map((item, index) => (
+                              <div
+                                key={`extra-${index}`}
+                                className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-100 transition-all"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className="font-medium text-sm">{item.name}</span>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1 capitalize">{item.category}</p>
+                                {item.description && <p className="text-xs text-gray-400 mt-1">{item.description}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No menu items selected for this appointment</p>
                   )}
                 </CardContent>
               </Card>
@@ -800,7 +830,6 @@ export default function PaymentManagement() {
                           if (parent) {
                             parent.innerHTML = `
                               <div class="flex flex-col items-center justify-center h-32 text-gray-500">
-                                <Eye class="h-8 w-8 mb-2" />
                                 <p>Unable to load image</p>
                                 <p class="text-sm">Click "Open in New Tab" to view</p>
                               </div>

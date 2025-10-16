@@ -745,7 +745,7 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
     setReceiptDialogOpen(true)
   }
 
-  // Optimized receipt download function with better performance
+  // Optimized receipt download function with logo and complete information
   const handleDownloadReceipt = async (transaction: PaymentTransaction) => {
     if (downloadingReceipt) {
       toast({
@@ -777,18 +777,76 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
         throw new Error("Could not get canvas context")
       }
 
-      // Set canvas size (smaller for better performance)
-      canvas.width = 600
-      canvas.height = 800
+      // Set canvas size - larger for more content
+      canvas.width = 800
+      canvas.height = 1400
 
       // Set background
       ctx.fillStyle = "#ffffff"
       ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-      // Optimized text drawing function
+      // Load and draw logo
+      const logo = new Image()
+      logo.crossOrigin = "anonymous"
+
+      await new Promise((resolve, reject) => {
+        logo.onload = resolve
+        logo.onerror = () => {
+          console.warn("Logo failed to load, continuing without it")
+          resolve(null)
+        }
+        logo.src = "/images/New Logo.png" // Updated logo source
+        // Timeout after 2 seconds
+        setTimeout(() => resolve(null), 2000)
+      })
+
+      let currentY = 30
+
+      // Draw logo if loaded
+      if (logo.complete && logo.naturalWidth > 0) {
+        const logoWidth = 80
+        const logoHeight = 80
+        ctx.drawImage(logo, 30, currentY, logoWidth, logoHeight)
+        currentY += logoHeight + 20
+      } else {
+        currentY += 20
+      }
+
+      // Header
+      ctx.fillStyle = "#1f2937"
+      ctx.font = "bold 28px Arial"
+      ctx.textAlign = "center"
+      ctx.fillText("Jo Pacheco Catering Services", canvas.width / 2, currentY)
+      currentY += 35
+
+      ctx.font = "20px Arial"
+      ctx.fillStyle = "#6b7280"
+      ctx.fillText("Payment Receipt", canvas.width / 2, currentY)
+      currentY += 25
+
+      ctx.font = "12px Arial"
+      ctx.fillStyle = "#9ca3af"
+      ctx.fillText(`Receipt ID: ${transaction.id.slice(0, 16)}`, canvas.width / 2, currentY)
+      currentY += 18
+      ctx.fillText(
+        `Date: ${format(new Date(transaction.created_at), "MMM d, yyyy 'at' h:mm a")}`,
+        canvas.width / 2,
+        currentY,
+      )
+      currentY += 35
+
+      // Draw line
+      ctx.strokeStyle = "#e5e7eb"
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(40, currentY)
+      ctx.lineTo(canvas.width - 40, currentY)
+      ctx.stroke()
+      currentY += 35
+
+      // Helper function for text
       const drawText = (text: string, x: number, y: number, maxWidth?: number) => {
         if (maxWidth && ctx.measureText(text).width > maxWidth) {
-          // Simple text truncation for performance
           let truncated = text
           while (ctx.measureText(truncated + "...").width > maxWidth && truncated.length > 0) {
             truncated = truncated.slice(0, -1)
@@ -797,82 +855,139 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
         } else {
           ctx.fillText(text, x, y)
         }
-        return y + 20
+        return y + 22
       }
 
-      let currentY = 30
-
-      // Header - simplified
-      ctx.fillStyle = "#1f2937"
-      ctx.font = "bold 24px Arial"
-      ctx.textAlign = "center"
-      ctx.fillText("Jo Pacheco Catering Services", canvas.width / 2, currentY)
-      currentY += 30
-
-      ctx.font = "18px Arial"
-      ctx.fillStyle = "#6b7280"
-      ctx.fillText("Payment Receipt", canvas.width / 2, currentY)
-      currentY += 20
-
-      ctx.font = "12px Arial"
-      ctx.fillStyle = "#9ca3af"
-      ctx.fillText(`Receipt ID: ${transaction.id.slice(0, 12)}`, canvas.width / 2, currentY)
-      currentY += 15
-      ctx.fillText(
-        `Date: ${format(new Date(transaction.created_at), "MMM d, yyyy 'at' h:mm a")}`,
-        canvas.width / 2,
-        currentY,
-      )
-      currentY += 40
-
-      // Draw line
-      ctx.strokeStyle = "#e5e7eb"
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(30, currentY)
-      ctx.lineTo(canvas.width - 30, currentY)
-      ctx.stroke()
-      currentY += 30
-
-      // Customer Information - simplified
+      // Customer Information
       ctx.textAlign = "left"
       ctx.fillStyle = "#dc2626"
-      ctx.font = "bold 16px Arial"
-      ctx.fillText("Customer Information", 30, currentY)
-      currentY += 25
+      ctx.font = "bold 18px Arial"
+      ctx.fillText("Customer Information", 40, currentY)
+      currentY += 28
 
       ctx.fillStyle = "#000000"
-      ctx.font = "12px Arial"
-      currentY = drawText(`Name: ${contactName}`, 30, currentY, canvas.width - 60)
-      currentY = drawText(`Email: ${appointment.contact_email}`, 30, currentY, canvas.width - 60)
-      currentY = drawText(`Phone: ${appointment.contact_phone || "Not provided"}`, 30, currentY, canvas.width - 60)
-      currentY += 15
-
-      // Event Details - simplified
-      ctx.fillStyle = "#dc2626"
-      ctx.font = "bold 16px Arial"
-      ctx.fillText("Event Details", 30, currentY)
-      currentY += 25
-
-      ctx.fillStyle = "#000000"
-      ctx.font = "12px Arial"
-      currentY = drawText(`Event: ${appointment.event_type}`, 30, currentY, canvas.width - 60)
-      currentY = drawText(`Date: ${formatEventDate(appointment.event_date)}`, 30, currentY, canvas.width - 60)
-      currentY = drawText(`Time: ${appointment.event_time}`, 30, currentY, canvas.width - 60)
-      currentY = drawText(`Guests: ${appointment.guest_count}`, 30, currentY, canvas.width - 60)
-      currentY += 15
-
-      // Payment Details - simplified
-      ctx.fillStyle = "#f9fafb"
-      ctx.fillRect(30, currentY, canvas.width - 60, 120)
-
+      ctx.font = "14px Arial"
+      currentY = drawText(`Name: ${contactName}`, 40, currentY, canvas.width - 80)
+      currentY = drawText(`Email: ${appointment.contact_email}`, 40, currentY, canvas.width - 80)
+      currentY = drawText(`Phone: ${appointment.contact_phone || "Not provided"}`, 40, currentY, canvas.width - 80)
       currentY += 20
-      ctx.fillStyle = "#dc2626"
-      ctx.font = "bold 16px Arial"
-      ctx.fillText("Payment Details", 40, currentY)
-      currentY += 25
 
-      ctx.font = "12px Arial"
+      // Event Details
+      ctx.fillStyle = "#dc2626"
+      ctx.font = "bold 18px Arial"
+      ctx.fillText("Event Details", 40, currentY)
+      currentY += 28
+
+      ctx.fillStyle = "#000000"
+      ctx.font = "14px Arial"
+      currentY = drawText(`Event Type: ${appointment.event_type}`, 40, currentY, canvas.width - 80)
+      currentY = drawText(`Date: ${formatEventDate(appointment.event_date)}`, 40, currentY, canvas.width - 80)
+      currentY = drawText(`Time: ${getTimeSlotRange(appointment.event_time)}`, 40, currentY, canvas.width - 80)
+      currentY = drawText(`Venue: ${appointment.venue_address || "To be confirmed"}`, 40, currentY, canvas.width - 80)
+      currentY = drawText(`Guests: ${appointment.guest_count}`, 40, currentY, canvas.width - 80)
+
+      if (appointment.theme) {
+        currentY = drawText(`Theme: ${appointment.theme}`, 40, currentY, canvas.width - 80)
+      }
+      if (appointment.color_motif) {
+        currentY = drawText(`Color Motif: ${appointment.color_motif}`, 40, currentY, canvas.width - 80)
+      }
+      currentY += 20
+
+      // Menu Selection
+      const menuItems = parseMenuItems(appointment.selected_menu)
+      if (
+        menuItems.length > 0 ||
+        appointment.pasta_selection ||
+        appointment.beverage_selection ||
+        appointment.dessert_selection
+      ) {
+        ctx.fillStyle = "#dc2626"
+        ctx.font = "bold 18px Arial"
+        ctx.fillText("Menu Selection", 40, currentY)
+        currentY += 28
+
+        ctx.fillStyle = "#000000"
+        ctx.font = "14px Arial"
+
+        if (menuItems.length > 0) {
+          const mainCoursesText = menuItems.map((item: any) => item.name || item).join(", ")
+          ctx.fillText("Main Courses:", 40, currentY)
+          currentY += 22
+
+          // Word wrap for long menu items
+          const words = mainCoursesText.split(" ")
+          let line = ""
+          for (const word of words) {
+            const testLine = line + word + " "
+            if (ctx.measureText(testLine).width > canvas.width - 120) {
+              ctx.fillText(line, 60, currentY)
+              currentY += 22
+              line = word + " "
+            } else {
+              line = testLine
+            }
+          }
+          if (line) {
+            ctx.fillText(line, 60, currentY)
+            currentY += 22
+          }
+          currentY += 5
+        }
+
+        if (appointment.pasta_selection) {
+          currentY = drawText(`Pasta: ${appointment.pasta_selection}`, 40, currentY, canvas.width - 80)
+        }
+        if (appointment.beverage_selection) {
+          currentY = drawText(`Beverage: ${appointment.beverage_selection}`, 40, currentY, canvas.width - 80)
+        }
+        if (appointment.dessert_selection) {
+          currentY = drawText(`Dessert: ${appointment.dessert_selection}`, 40, currentY, canvas.width - 80)
+        }
+        currentY += 20
+      }
+
+      // Special Requests
+      if (appointment.special_requests) {
+        ctx.fillStyle = "#dc2626"
+        ctx.font = "bold 18px Arial"
+        ctx.fillText("Special Requests", 40, currentY)
+        currentY += 28
+
+        ctx.fillStyle = "#000000"
+        ctx.font = "14px Arial"
+
+        // Word wrap for special requests
+        const words = appointment.special_requests.split(" ")
+        let line = ""
+        for (const word of words) {
+          const testLine = line + word + " "
+          if (ctx.measureText(testLine).width > canvas.width - 120) {
+            ctx.fillText(line, 40, currentY)
+            currentY += 22
+            line = word + " "
+          } else {
+            line = testLine
+          }
+        }
+        if (line) {
+          ctx.fillText(line, 40, currentY)
+          currentY += 22
+        }
+        currentY += 20
+      }
+
+      // Payment Details - with background
+      ctx.fillStyle = "#f9fafb"
+      ctx.fillRect(40, currentY, canvas.width - 80, 200)
+
+      currentY += 25
+      ctx.fillStyle = "#dc2626"
+      ctx.font = "bold 18px Arial"
+      ctx.fillText("Payment Details", 50, currentY)
+      currentY += 28
+
+      ctx.font = "14px Arial"
       ctx.fillStyle = "#000000"
       const paymentTypeLabel =
         transaction.payment_type === "down_payment"
@@ -881,33 +996,76 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
             ? "Remaining Balance"
             : "Full Payment"
 
-      currentY = drawText(`Payment Type: ${paymentTypeLabel}`, 40, currentY, canvas.width - 80)
+      currentY = drawText(`Payment Type: ${paymentTypeLabel}`, 50, currentY, canvas.width - 100)
 
-      ctx.font = "bold 14px Arial"
+      ctx.font = "bold 16px Arial"
       ctx.fillStyle = "#059669"
-      currentY = drawText(`Amount Paid: ${formatCurrency(transaction.amount)}`, 40, currentY, canvas.width - 80)
+      currentY = drawText(`Amount Paid: ${formatCurrency(transaction.amount)}`, 50, currentY, canvas.width - 100)
 
-      ctx.font = "12px Arial"
+      ctx.font = "14px Arial"
       ctx.fillStyle = "#000000"
-      currentY = drawText(`Method: ${transaction.payment_method.toUpperCase()}`, 40, currentY, canvas.width - 80)
-      currentY = drawText(`Reference: ${transaction.reference_number}`, 40, currentY, canvas.width - 80)
-      currentY += 30
+      currentY = drawText(`Method: ${transaction.payment_method.toUpperCase()}`, 50, currentY, canvas.width - 100)
+      currentY = drawText(`Reference: ${transaction.reference_number}`, 50, currentY, canvas.width - 100)
+      currentY = drawText(
+        `Total Package: ${formatCurrency(appointment.total_package_amount || 0)}`,
+        50,
+        currentY,
+        canvas.width - 100,
+      )
+      currentY = drawText(
+        `Payment Status: ${appointment.payment_status.replace("_", " ").toUpperCase()}`,
+        50,
+        currentY,
+        canvas.width - 100,
+      )
+      currentY += 25
 
-      // Footer - simplified
+      // Notes
+      if (transaction.notes) {
+        ctx.fillStyle = "#dc2626"
+        ctx.font = "bold 18px Arial"
+        ctx.fillText("Notes", 40, currentY)
+        currentY += 28
+
+        ctx.fillStyle = "#000000"
+        ctx.font = "14px Arial"
+
+        // Word wrap for notes
+        const words = transaction.notes.split(" ")
+        let line = ""
+        for (const word of words) {
+          const testLine = line + word + " "
+          if (ctx.measureText(testLine).width > canvas.width - 120) {
+            ctx.fillText(line, 40, currentY)
+            currentY += 22
+            line = word + " "
+          } else {
+            line = testLine
+          }
+        }
+        if (line) {
+          ctx.fillText(line, 40, currentY)
+          currentY += 22
+        }
+        currentY += 20
+      }
+
+      // Footer
+      currentY += 20
       ctx.textAlign = "center"
       ctx.fillStyle = "#1f2937"
-      ctx.font = "bold 14px Arial"
+      ctx.font = "bold 16px Arial"
       ctx.fillText("Thank you for choosing Jo Pacheco Catering Services!", canvas.width / 2, currentY)
-      currentY += 20
+      currentY += 25
 
-      ctx.font = "10px Arial"
+      ctx.font = "11px Arial"
       ctx.fillStyle = "#9ca3af"
       ctx.fillText(`Generated: ${format(new Date(), "MMM d, yyyy 'at' h:mm a")}`, canvas.width / 2, currentY)
 
       // Use requestAnimationFrame before converting to blob
       await new Promise((resolve) => requestAnimationFrame(resolve))
 
-      // Convert to blob with lower quality for better performance
+      // Convert to blob
       canvas.toBlob(
         (blob) => {
           if (blob) {
@@ -928,7 +1086,7 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
           setDownloadingReceipt(false)
         },
         "image/png",
-        0.8, // Reduced quality for better performance
+        0.92,
       )
     } catch (error) {
       console.error("Error generating receipt:", error)
@@ -966,7 +1124,7 @@ Phone: ${appointment.contact_phone || "Not provided"}
 ───────────────────────────────────────────────────────
 Event Type: ${appointment.event_type.charAt(0).toUpperCase() + appointment.event_type.slice(1)}
 Date: ${formatEventDate(appointment.event_date)}
-Time: ${appointment.event_time}
+Time: ${getTimeSlotRange(appointment.event_time)}
 Venue: ${appointment.venue_address || "To be confirmed"}
 Guest Count: ${appointment.guest_count} guests
 Theme: ${appointment.theme || "Not specified"}
@@ -977,9 +1135,9 @@ Color Motif: ${appointment.color_motif || "Not specified"}
 ───────────────────────────────────────────────────────
 ${
   appointment.selected_menu
-    ? `Main Courses:\n${parseMenuItems(appointment.selected_menu)
-        .map((item: any) => `• ${item.name || item}`)
-        .join("\n")}\n\n`
+    ? `Main Courses: ${parseMenuItems(appointment.selected_menu)
+        .map((item: any) => item.name || item)
+        .join(", ")}\n\n`
     : ""
 }${appointment.pasta_selection ? `Pasta: ${appointment.pasta_selection}\n` : ""}${appointment.beverage_selection ? `Beverage: ${appointment.beverage_selection}\n` : ""}${appointment.dessert_selection ? `Dessert: ${appointment.dessert_selection}\n` : ""}
 
@@ -1155,6 +1313,43 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
     }
   }
 
+  // Add a helper function to calculate the 4-hour time range
+  const getTimeSlotRange = (timeString: string) => {
+    try {
+      // Parse the time string (e.g., "2:00 PM")
+      const [time, period] = timeString.split(" ")
+      const [hours, minutes] = time.split(":")
+      let startHour = Number.parseInt(hours)
+
+      // Convert to 24-hour format for calculation
+      if (period === "PM" && startHour !== 12) {
+        startHour += 12
+      } else if (period === "AM" && startHour === 12) {
+        startHour = 0
+      }
+
+      // Calculate end time (4 hours later)
+      let endHour = startHour + 4
+      let endPeriod = "AM"
+
+      // Convert back to 12-hour format
+      if (endHour >= 12) {
+        endPeriod = "PM"
+        if (endHour > 12) {
+          endHour -= 12
+        }
+      }
+      if (endHour === 0) {
+        endHour = 12
+        endPeriod = "AM"
+      }
+
+      return `${timeString} - ${endHour}:${minutes} ${endPeriod}`
+    } catch {
+      return timeString
+    }
+  }
+
   const getVenueDisplay = (appointment: Appointment) => {
     return appointment.venue_address || "Venue to be confirmed"
   }
@@ -1164,7 +1359,9 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
   }
 
   const parseMenuItems = (menuItems: any) => {
-    console.log("Parsing menu items:", menuItems, typeof menuItems)
+    console.log("=== PARSING MENU ITEMS ===")
+    console.log("Raw menuItems:", menuItems)
+    console.log("Type:", typeof menuItems)
 
     // Handle null or undefined
     if (!menuItems) {
@@ -1185,6 +1382,11 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
 
         // If it's an object, try to extract items
         if (typeof parsed === "object" && parsed !== null) {
+          // Check for main_courses property first (NEW!)
+          if (parsed.main_courses && Array.isArray(parsed.main_courses)) {
+            console.log("Found main_courses array:", parsed.main_courses)
+            return parsed.main_courses.filter((item) => item && (item.name || typeof item === "string"))
+          }
           // Check for common array properties
           if (parsed.items && Array.isArray(parsed.items)) {
             return parsed.items.filter((item) => item && (item.name || typeof item === "string"))
@@ -1211,18 +1413,28 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
       return menuItems.filter((item) => item && (item.name || typeof item === "string"))
     }
 
-    // Handle object
+    // Handle object (NEW - Check for main_courses!)
     if (typeof menuItems === "object" && menuItems !== null) {
       console.log("Menu items is object:", menuItems)
+
+      // Check for main_courses property FIRST
+      if (menuItems.main_courses && Array.isArray(menuItems.main_courses)) {
+        console.log("Found main_courses array in object:", menuItems.main_courses)
+        return menuItems.main_courses.filter((item) => item && (item.name || typeof item === "string"))
+      }
+
       // Check for common array properties
       if (menuItems.items && Array.isArray(menuItems.items)) {
         return menuItems.items.filter((item) => item && (item.name || typeof item === "string"))
       }
+
       // If it's a single object, wrap it in an array
+      console.log("Wrapping object in array")
       return [menuItems].filter((item) => item && (item.name || typeof item === "string"))
     }
 
-    console.log("Menu items format not recognized, returning empty array")
+    console.log("Returning empty array - format not recognized")
+    console.log("menuItems value:", menuItems)
     return []
   }
 
@@ -1478,7 +1690,6 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
               </div>
             )}
 
-            {/* Detailed Debug Information */}
             {detailedDebugInfo && (
               <div className="mt-4 p-3 bg-white rounded border">
                 <h4 className="font-medium mb-2 flex items-center gap-2">
@@ -1549,7 +1760,8 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                         {detailedDebugInfo.debug.allAppointments.map((apt: any, index: number) => (
                           <div key={index} className="text-xs border-b pb-1 mb-1">
                             <p>
-                              ID: {apt.id} | Event: {apt.event_type} | Payment Status: {apt.payment_status}
+                              ID: {apt.id} | User: {apt.user_id} | Event: {apt.event_type} | Payment:{" "}
+                              {apt.payment_status}
                             </p>
                           </div>
                         ))}
@@ -1710,7 +1922,7 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                               <Clock className="h-4 w-4 text-gray-500" />
                               <div>
                                 <p className="font-medium">Time Slot</p>
-                                <p className="text-sm text-gray-600">{appointment.event_time}</p>
+                                <p className="text-sm text-gray-600">{getTimeSlotRange(appointment.event_time)}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -1934,7 +2146,7 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                             <div>
                               <p className="font-medium">Time Slot</p>
                               <p className="text-sm text-gray-600">
-                                {transaction.tbl_comprehensive_appointments.event_time}
+                                {getTimeSlotRange(transaction.tbl_comprehensive_appointments.event_time)}
                               </p>
                             </div>
                           </div>
@@ -2001,12 +2213,6 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                               <span className="text-sm font-mono">{transaction.reference_number}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="font-medium">Payment Date:</span>
-                              <span className="text-sm">
-                                {format(new Date(transaction.created_at), "MMM d, yyyy 'at' h:mm a")}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
                               <span className="font-medium">Total Package:</span>
                               <span className="text-sm">
                                 {formatCurrency(transaction.tbl_comprehensive_appointments.total_package_amount || 0)}
@@ -2035,18 +2241,17 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                             </h5>
                             <div className="text-sm text-gray-600 space-y-1">
                               {/* Display main courses from selected_menu FIRST with better styling */}
-                              {transaction.tbl_comprehensive_appointments.selected_menu && (
-                                <div className="mb-2">
-                                  <p className="font-medium text-gray-800 mb-1">Main Courses:</p>
-                                  {parseMenuItems(transaction.tbl_comprehensive_appointments.selected_menu).map(
-                                    (item: any, index: number) => (
-                                      <p key={`main-${index}`} className="ml-2 font-medium text-gray-900">
-                                        • {item.name || item}
-                                      </p>
-                                    ),
-                                  )}
-                                </div>
-                              )}
+                              {transaction.tbl_comprehensive_appointments.selected_menu &&
+                                parseMenuItems(transaction.tbl_comprehensive_appointments.selected_menu).length > 0 && (
+                                  <div className="mb-2">
+                                    <p className="font-medium text-gray-800">
+                                      <strong>Main Courses:</strong>{" "}
+                                      {parseMenuItems(transaction.tbl_comprehensive_appointments.selected_menu)
+                                        .map((item: any) => item.name || item)
+                                        .join(", ")}
+                                    </p>
+                                  </div>
+                                )}
 
                               {/* Display other selections */}
                               {transaction.tbl_comprehensive_appointments.pasta_selection && (
@@ -2200,9 +2405,9 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                 {/* Payment Information based on method */}
                 {(paymentData.paymentMethod === "gcash" || paymentData.paymentMethod === "bank_transfer") && (
                   <div
-                    className={`space-y-2 p-4 rounded-lg 
-                    ${paymentData.paymentMethod === "gcash" ? "bg-blue-100 border-blue-800" : ""} 
-                    ${paymentData.paymentMethod === "bank_transfer" ? "bg-green-100 border-green-800" : ""} 
+                    className={`space-y-2 p-4 rounded-lg
+                    ${paymentData.paymentMethod === "gcash" ? "bg-blue-100 border-blue-800" : ""}
+                    ${paymentData.paymentMethod === "bank_transfer" ? "bg-green-100 border-green-800" : ""}
                     border`}
                   >
                     <h5 className="font-semibold text-gray-700">
@@ -2232,7 +2437,9 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                                 alt="GCash QR Code"
                                 className="w-48 h-48 border rounded-lg p-2"
                               />
-
+                              <p className="text-xs text-gray-500 mt-2">
+                                (This is a placeholder QR code. In a real app, a dynamic QR code would be generated.)
+                              </p>
                             </div>
                           )}
                         </>
@@ -2394,7 +2601,8 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                           {formatEventDate(selectedTransaction.tbl_comprehensive_appointments.event_date)}
                         </p>
                         <p>
-                          <strong>Event Time:</strong> {selectedTransaction.tbl_comprehensive_appointments.event_time}
+                          <strong>Event Time:</strong>{" "}
+                          {getTimeSlotRange(selectedTransaction.tbl_comprehensive_appointments.event_time)}
                         </p>
                         <p>
                           <strong>Venue:</strong>{" "}
@@ -2463,18 +2671,18 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                       <h4 className="font-semibold text-gray-900 mb-3">Menu Selection</h4>
                       <div className="space-y-2 text-sm">
                         {/* Display main courses from selected_menu FIRST with better styling */}
-                        {selectedTransaction.tbl_comprehensive_appointments.selected_menu && (
-                          <div className="mb-3">
-                            <p className="font-semibold text-gray-900 mb-2">Main Courses:</p>
-                            {parseMenuItems(selectedTransaction.tbl_comprehensive_appointments.selected_menu).map(
-                              (item: any, index: number) => (
-                                <p key={`main-${index}`} className="ml-2 font-medium text-gray-800">
-                                  • {item.name || item}
-                                </p>
-                              ),
-                            )}
-                          </div>
-                        )}
+                        {selectedTransaction.tbl_comprehensive_appointments.selected_menu &&
+                          parseMenuItems(selectedTransaction.tbl_comprehensive_appointments.selected_menu).length >
+                            0 && (
+                            <div className="mb-3">
+                              <p className="font-semibold text-gray-900">
+                                <strong>Main Courses:</strong>{" "}
+                                {parseMenuItems(selectedTransaction.tbl_comprehensive_appointments.selected_menu)
+                                  .map((item: any) => item.name || item)
+                                  .join(", ")}
+                              </p>
+                            </div>
+                          )}
 
                         {/* Display other selections */}
                         {selectedTransaction.tbl_comprehensive_appointments.pasta_selection && (

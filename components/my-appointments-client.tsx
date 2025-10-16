@@ -501,7 +501,11 @@ export default function MyAppointmentsClient() {
                               {appointment.celebrant_gender && (
                                 <div>
                                   <p className="font-medium text-sm text-gray-500">Gender</p>
-                                  <p className="text-gray-900 capitalize">{appointment.celebrant_gender}</p>
+                                  <p className="text-gray-900 capitalize">
+                                    {appointment.celebrant_gender === "other"
+                                      ? "Rather not say"
+                                      : appointment.celebrant_gender}
+                                  </p>
                                 </div>
                               )}
                             </div>
@@ -596,7 +600,8 @@ export default function MyAppointmentsClient() {
                                 }`}
                               />
                               <span className="text-sm font-medium text-gray-900">
-                                {appointment.status === "TASTING_COMPLETED" && appointment.payment_status === "unpaid"
+                                {(appointment.status === "TASTING_COMPLETED" || appointment.status === "confirmed") &&
+                                appointment.payment_status === "unpaid"
                                   ? "Ready for Payment"
                                   : appointment.payment_status === "deposit_paid"
                                     ? "Down Payment Received"
@@ -609,50 +614,70 @@ export default function MyAppointmentsClient() {
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Additional Information */}
-                  {(appointment.additional_event_info || appointment.special_requests || appointment.admin_notes) && (
-                    <div className="mt-8 border rounded-lg p-4">
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h4>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        {appointment.additional_event_info && (
-                          <div>
-                            <p className="font-medium text-sm text-gray-500 mb-2">Event Information</p>
-                            <p className="text-gray-900 text-sm">{appointment.additional_event_info}</p>
-                          </div>
-                        )}
-                        {appointment.special_requests && (
-                          <div>
-                            <p className="font-medium text-sm text-gray-500 mb-2">Special Requests</p>
-                            <p className="text-gray-900 text-sm">{appointment.special_requests}</p>
-                          </div>
-                        )}
-                        {appointment.admin_notes && (
-                          <div className="md:col-span-2">
-                            <p className="font-medium text-sm text-gray-500 mb-2">Admin Notes</p>
-                            <div className="text-gray-900 text-sm whitespace-pre-line bg-gray-50 p-3 rounded">
-                              {appointment.admin_notes}
+                    {/* Additional Information */}
+                    {(appointment.additional_event_info || appointment.special_requests || appointment.admin_notes) && (
+                      <div className="mt-8 border rounded-lg p-4">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h4>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {appointment.additional_event_info && (
+                            <div>
+                              <p className="font-medium text-sm text-gray-500 mb-2">Event Information</p>
+                              <p className="text-gray-900 text-sm">{appointment.additional_event_info}</p>
                             </div>
-                          </div>
-                        )}
+                          )}
+                          {appointment.special_requests && (
+                            <div>
+                              <p className="font-medium text-sm text-gray-500 mb-2">Special Requests</p>
+                              <p className="text-gray-900 text-sm">{appointment.special_requests}</p>
+                            </div>
+                          )}
+                          {appointment.admin_notes && (
+                            <div className="md:col-span-2">
+                              <p className="font-medium text-sm text-gray-500 mb-2">Admin Notes</p>
+                              <div className="text-gray-900 text-sm whitespace-pre-line bg-gray-50 p-3 rounded">
+                                {appointment.admin_notes}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Action Buttons - UPDATED to show all buttons when TASTING_COMPLETED */}
-                  <div className="mt-8 flex flex-col gap-3 pt-6 border-t">
-                    {appointment.status === "TASTING_COMPLETED" && appointment.payment_status === "unpaid" ? (
-                      <>
-                        {/* Primary Payment Button */}
-                        <Button asChild className="w-full bg-green-600 hover:bg-green-700 text-white">
-                          <a href="/payment" className="flex items-center justify-center gap-2">
-                            <CreditCard className="h-4 w-4" />
-                            Proceed to Payment
-                          </a>
-                        </Button>
+                    {/* Action Buttons - UPDATED to show all buttons when TASTING_COMPLETED */}
+                    <div className="mt-8 flex flex-col gap-3 pt-6 border-t">
+                      {(appointment.status === "TASTING_COMPLETED" || appointment.status === "confirmed") &&
+                      appointment.payment_status === "unpaid" ? (
+                        <>
+                          {/* Primary Payment Button */}
+                          <Button asChild className="w-full bg-green-600 hover:bg-green-700 text-white">
+                            <a href="/payment" className="flex items-center justify-center gap-2">
+                              <CreditCard className="h-4 w-4 mr-2" />
+                              Proceed to Payment
+                            </a>
+                          </Button>
 
-                        {/* Secondary Action Buttons */}
+                          {/* Secondary Action Buttons */}
+                          <div className="flex gap-3">
+                            <Button
+                              variant="outline"
+                              onClick={() => handleReschedule(appointment)}
+                              className="flex-1 border-gray-300 hover:bg-gray-50"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Reschedule
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleCancel(appointment)}
+                              className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                            >
+                              <X className="h-4 w-4 mr-2" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </>
+                      ) : appointment.status !== "cancelled" && appointment.status !== "completed" ? (
                         <div className="flex gap-3">
                           <Button
                             variant="outline"
@@ -671,64 +696,51 @@ export default function MyAppointmentsClient() {
                             Cancel
                           </Button>
                         </div>
-                      </>
-                    ) : appointment.status !== "cancelled" && appointment.status !== "completed" ? (
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => handleReschedule(appointment)}
-                          className="flex-1 border-gray-300 hover:bg-gray-50"
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Reschedule
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => handleCancel(appointment)}
-                          className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : null}
-                  </div>
+                      ) : null}
+                    </div>
 
-                  {/* Status Messages */}
-                  {appointment.status === "TASTING_COMPLETED" && appointment.payment_status === "unpaid" && (
-                    <div className="mt-6 p-4 border border-gray-200 rounded-lg">
-                      <p className="font-medium text-gray-900">Tasting Complete - Ready for Payment!</p>
-                      <p className="text-gray-600 text-sm mt-1">
-                        Your tasting session is complete! Please proceed to payment to finalize your booking. You can
-                        still reschedule or cancel if needed.
-                      </p>
-                    </div>
-                  )}
-                  {appointment.payment_status === "deposit_paid" && appointment.status !== "confirmed" && (
-                    <div className="mt-6 p-4 border border-gray-200 rounded-lg">
-                      <p className="font-medium text-gray-900">Payment Under Review</p>
-                      <p className="text-gray-600 text-sm mt-1">
-                        Your down payment is being verified by our team. We'll notify you once it's confirmed.
-                      </p>
-                    </div>
-                  )}
-                  {appointment.payment_status === "fully_paid" && appointment.status !== "confirmed" && (
-                    <div className="mt-6 p-4 border border-gray-200 rounded-lg">
-                      <p className="font-medium text-gray-900">Payment Under Review</p>
-                      <p className="text-gray-600 text-sm mt-1">
-                        Your full payment is being verified by our team. We'll notify you once it's confirmed.
-                      </p>
-                    </div>
-                  )}
-                  {appointment.status === "confirmed" && (
-                    <div className="mt-6 p-4 border border-gray-200 rounded-lg">
-                      <p className="font-medium text-gray-900">Booking Confirmed!</p>
-                      <p className="text-gray-600 text-sm mt-1">
-                        Your payment has been verified and your event is locked in. We're excited to be part of your
-                        special day!
-                      </p>
-                    </div>
-                  )}
+                    {/* Status Messages */}
+                    {(appointment.status === "TASTING_COMPLETED" || appointment.status === "confirmed") &&
+                      appointment.payment_status === "unpaid" && (
+                        <div className="mt-6 p-4 border border-gray-200 rounded-lg">
+                          <p className="font-medium text-gray-900">
+                            {appointment.status === "confirmed"
+                              ? "Tasting Skipped - Ready for Payment!"
+                              : "Tasting Complete - Ready for Payment!"}
+                          </p>
+                          <p className="text-gray-600 text-sm mt-1">
+                            {appointment.status === "confirmed"
+                              ? "You've chosen to skip the food tasting. Please proceed to payment to finalize your booking. You can still reschedule or cancel if needed."
+                              : "Your tasting session is complete! Please proceed to payment to finalize your booking. You can still reschedule or cancel if needed."}
+                          </p>
+                        </div>
+                      )}
+                    {appointment.payment_status === "deposit_paid" && appointment.status !== "confirmed" && (
+                      <div className="mt-6 p-4 border border-gray-200 rounded-lg">
+                        <p className="font-medium text-gray-900">Payment Under Review</p>
+                        <p className="text-gray-600 text-sm mt-1">
+                          Your down payment is being verified by our team. We'll notify you once it's confirmed.
+                        </p>
+                      </div>
+                    )}
+                    {appointment.payment_status === "fully_paid" && appointment.status !== "confirmed" && (
+                      <div className="mt-6 p-4 border border-gray-200 rounded-lg">
+                        <p className="font-medium text-gray-900">Payment Under Review</p>
+                        <p className="text-gray-600 text-sm mt-1">
+                          Your full payment is being verified by our team. We'll notify you once it's confirmed.
+                        </p>
+                      </div>
+                    )}
+                    {appointment.status === "confirmed" && (
+                      <div className="mt-6 p-4 border border-gray-200 rounded-lg">
+                        <p className="font-medium text-gray-900">Booking Confirmed!</p>
+                        <p className="text-gray-600 text-sm mt-1">
+                          Your payment has been verified and your event is locked in. We're excited to be part of your
+                          special day!
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )
