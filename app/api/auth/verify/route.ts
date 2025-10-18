@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
-import { v4 as uuidv4 } from "uuid"
+import { cookies } from "next/headers"
+import crypto from "crypto"
 
 export async function POST(request: Request) {
   try {
-    console.log("=== Verification attempt ===")
+    const body = await request.json()
+    const { email, code } = body
 
-    const { email, code } = await request.json()
-
+    console.log("=== VERIFICATION REQUEST ===")
     console.log("Email:", email)
     console.log("Code:", code)
 
@@ -15,107 +16,75 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Email and verification code are required" }, { status: 400 })
     }
 
-    // Look for pending registration
-    const { data: pendingReg, error: pendingError } = await supabaseAdmin
+    // Get pending registration
+    const { data: pending, error: pendingError } = await supabaseAdmin
       .from("tbl_pending_registrations")
       .select("*")
       .eq("email", email)
       .single()
 
-    if (pendingError || !pendingReg) {
-      console.error("Pending registration not found:", pendingError)
-      return NextResponse.json(
-        {
-          success: false,
-          message: "No pending registration found. Please register again.",
-        },
-        { status: 404 },
-      )
+    const now = new Date()
+
+    if (pendingError || !pending) {
+      console.log("No pending registration found:", pendingError)
+      return NextResponse.json({ success: false, message: "No pending registration found" }, { status: 404 })
     }
 
-    console.log("Pending registration found:", {
-      id: pendingReg.id,
-      email: pendingReg.email,
-      has_code: !!pendingReg.verification_code,
-      code_expires: pendingReg.verification_expires,
-    })
+    console.log("Found pending registration")
 
-    // Check if code matches FIRST
-    if (pendingReg.verification_code !== code) {
-      console.log("Code mismatch")
+    // Check if expired
+    const verificationExpiresAt = new Date(pending.verification_expires)
+
+    if (verificationExpiresAt < now) {
+      console.log("Verification code has expired")
+      return NextResponse.json({ success: false, message: "Verification code has expired" }, { status: 400 })
+    }
+
+    // Verify code
+    if (pending.verification_code !== code) {
+      console.log("Invalid verification code")
       return NextResponse.json({ success: false, message: "Invalid verification code" }, { status: 400 })
     }
 
-    // Check if code is expired
-    const now = new Date()
-    const expiresAt = new Date(pendingReg.verification_expires)
+    console.log("Code verified! Creating user account...")
 
-    console.log("Code expiration check:", {
-      expires_at_utc: expiresAt.toISOString(),
-      now_utc: now.toISOString(),
-      is_expired: now > expiresAt,
-      time_diff_seconds: Math.round((expiresAt.getTime() - now.getTime()) / 1000),
-    })
-
-    if (now > expiresAt) {
-      console.log("Verification code expired")
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Verification code has expired. Please request a new code.",
-          expired: true,
-        },
-        { status: 400 },
-      )
-    }
-
-    console.log("Code verified successfully! Creating user account...")
-
-    // Create the actual user account in tbl_users
-    const { data: newUser, error: createUserError } = await supabaseAdmin
+    // Create user account - DON'T include full_name since it's a generated column
+    const { data: newUser, error: userError } = await supabaseAdmin
       .from("tbl_users")
       .insert({
-        first_name: pendingReg.first_name,
-        last_name: pendingReg.last_name,
-        email: pendingReg.email,
-        phone: pendingReg.phone,
-        password_hash: pendingReg.password_hash,
-        address_line1: pendingReg.address_line1,
-        address_line2: pendingReg.address_line2,
-        city: pendingReg.city,
-        province: pendingReg.province,
-        postal_code: pendingReg.postal_code,
-        country: pendingReg.country,
+        first_name: pending.first_name,
+        last_name: pending.last_name,
+        email: pending.email,
+        phone: pending.phone,
+        password_hash: pending.password_hash,
+        address_line1: pending.address_line1,
+        address_line2: pending.address_line2,
+        city: pending.city,
+        province: pending.province,
+        postal_code: pending.postal_code,
+        country: pending.country || "Philippines",
         role: "user",
         is_verified: true,
-        verification_code: null,
-        verification_expires: null,
       })
       .select()
       .single()
 
-    if (createUserError) {
-      console.error("Error creating user:", createUserError)
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Failed to create user account",
-          error: createUserError.message,
-        },
-        { status: 500 },
-      )
+    if (userError) {
+      console.error("User creation error:", userError)
+      return NextResponse.json({ success: false, message: "Failed to create user account" }, { status: 500 })
     }
 
-    console.log("User account created successfully:", newUser.id)
+    console.log("User created successfully:", newUser.id)
+    console.log("User full name:", newUser.full_name)
 
-    // Delete the pending registration
-    await supabaseAdmin.from("tbl_pending_registrations").delete().eq("id", pendingReg.id)
+    // Delete pending registration
+    await supabaseAdmin.from("tbl_pending_registrations").delete().eq("email", email)
     console.log("Pending registration deleted")
 
-    // Create session for automatic login
-    const sessionId = uuidv4()
+    // Create session
+    const sessionId = crypto.randomUUID()
     const sessionExpiresAt = new Date()
-    sessionExpiresAt.setDate(sessionExpiresAt.getDate() + 7)
+    sessionExpiresAt.setDate(sessionExpiresAt.getDate() + 7) // 7 days
 
     const { error: sessionError } = await supabaseAdmin.from("tbl_sessions").insert({
       id: sessionId,
@@ -124,47 +93,43 @@ export async function POST(request: Request) {
     })
 
     if (sessionError) {
-      console.error("Error creating session:", sessionError)
+      console.error("Session creation error:", sessionError)
+      return NextResponse.json({ success: false, message: "Failed to create session" }, { status: 500 })
     }
 
-    console.log("Verification completed successfully!")
+    console.log("Session created successfully")
 
-    const response = NextResponse.json({
-      success: true,
-      message: "Email verified successfully! Your account has been created.",
-      user: {
-        id: newUser.id,
-        name: `${newUser.first_name} ${newUser.last_name}`,
-        email: newUser.email,
-        role: newUser.role,
-        phone: newUser.phone || "",
-        is_verified: true,
-      },
+    // Set session cookie
+    const cookieStore = await cookies()
+    const isProduction = process.env.NODE_ENV === "production"
+
+    cookieStore.set("session-id", sessionId, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
     })
 
-    // Set session cookie for automatic login
-    if (!sessionError) {
-      response.cookies.set({
-        name: "session-id",
-        value: sessionId,
-        httpOnly: true,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7,
-      })
-    }
+    console.log("Cookie set successfully")
+    console.log("=== VERIFICATION COMPLETE ===")
 
-    return response
+    // Return complete user data
+    return NextResponse.json({
+      success: true,
+      message: "Email verified successfully",
+      user: {
+        id: newUser.id,
+        name: newUser.full_name, // This will be auto-generated from first_name + last_name
+        firstName: newUser.first_name,
+        lastName: newUser.last_name,
+        email: newUser.email,
+        phone: newUser.phone,
+        role: newUser.role,
+      },
+    })
   } catch (error) {
     console.error("Verification error:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        message: "An error occurred during verification",
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, message: "An error occurred during verification" }, { status: 500 })
   }
 }

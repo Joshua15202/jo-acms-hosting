@@ -91,12 +91,14 @@ export async function registerUser(formData: FormData) {
 
     // Set session cookie
     const cookieStore = await cookies()
+    const isProduction = process.env.NODE_ENV === "production"
+
     cookieStore.set("session-id", sessionId, {
       httpOnly: true,
       expires: expiresAt,
       path: "/",
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
     })
 
     console.log("Registration successful, session created:", sessionId)
@@ -168,12 +170,14 @@ export async function loginUser(formData: FormData) {
 
     // Set session cookie
     const cookieStore = await cookies()
+    const isProduction = process.env.NODE_ENV === "production"
+
     cookieStore.set("session-id", sessionId, {
       httpOnly: true,
       expires: expiresAt,
       path: "/",
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
     })
 
     console.log("Login successful, session created:", sessionId)

@@ -55,7 +55,7 @@ export default function BookAppointmentPage() {
   const [personalInfoCompleted, setPersonalInfoCompleted] = useState(false)
   const [schedulingCompleted, setSchedulingCompleted] = useState(false)
   const [eventTypeSelected, setEventTypeSelected] = useState(false)
-  const [backdropSelected, setBackdropSelected] = useState(false) // New state for backdrop selection
+  const [backdropSelected, setBackdropSelected] = useState(false)
   const [personalInfo, setPersonalInfo] = useState({
     firstName: "",
     lastName: "",
@@ -71,7 +71,6 @@ export default function BookAppointmentPage() {
   // Auto-fill personal info when user data is available
   useEffect(() => {
     if (user && !personalInfoCompleted) {
-      // Safely handle user.name which might be undefined
       const userName = user.name || ""
       const nameParts = userName.split(" ")
       const firstName = nameParts[0] || ""
@@ -121,7 +120,6 @@ export default function BookAppointmentPage() {
   const handleSelectChange = (name: string, value: string) => {
     if (name === "eventType") {
       setEventType(value)
-      // Reset backdrop selection when event type changes
       setBackdropStyle("")
       setBackdropSelected(false)
     } else {
@@ -132,7 +130,6 @@ export default function BookAppointmentPage() {
   const handlePersonalInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validation
     if (!personalInfo.firstName.trim()) {
       toast({ title: "Validation Error", description: "First Name is required.", variant: "destructive" })
       return
@@ -194,7 +191,6 @@ export default function BookAppointmentPage() {
       return
     }
 
-    // Validate celebrant info for specific event types
     if (eventType === "birthday") {
       if (!celebrantInfo.celebrantName.trim()) {
         toast({
@@ -271,7 +267,6 @@ export default function BookAppointmentPage() {
 
     setEventTypeSelected(true)
 
-    // For birthday events, don't show final success message yet
     if (eventType === "birthday") {
       toast({
         title: "Event Type Selected",
@@ -306,7 +301,7 @@ export default function BookAppointmentPage() {
 
   const handleChangeEventType = () => {
     setEventTypeSelected(false)
-    setBackdropSelected(false) // Reset backdrop selection
+    setBackdropSelected(false)
     setEventType("")
     setBackdropStyle("")
     setCelebrantInfo({
@@ -331,7 +326,7 @@ export default function BookAppointmentPage() {
   }
 
   if (!isAuthenticated) {
-    return null // Will redirect in useEffect
+    return null
   }
 
   return (
@@ -770,21 +765,7 @@ export default function BookAppointmentPage() {
         </div>
       )}
 
-      {/* Add the Toaster component - this was missing! */}
       <Toaster />
     </div>
   )
-}
-
-const getBackdropPrice = (backdropType: string): number => {
-  switch (backdropType) {
-    case "SINGLE_PANEL_BACKDROP":
-      return 7000
-    case "DOUBLE_PANEL_BACKDROP":
-      return 8000
-    case "TRIPLE_PANEL_BACKDROP":
-      return 10000
-    default:
-      return 0
-  }
 }

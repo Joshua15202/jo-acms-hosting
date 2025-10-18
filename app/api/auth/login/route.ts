@@ -5,13 +5,13 @@ import { v4 as uuidv4 } from "uuid"
 
 export async function POST(request: Request) {
   try {
-    console.log("=== Login attempt ===")
+    console.log("=== /api/auth/login called ===")
 
     const formData = await request.formData()
     const email = formData.get("email") as string
     const password = formData.get("password") as string
 
-    console.log("Login request for email:", email)
+    console.log("Login attempt for email:", email)
 
     if (!email || !password) {
       return NextResponse.json({ success: false, message: "Email and password are required" }, { status: 400 })
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
 
     console.log("Password verified successfully")
 
-    // Create session
+    // Create session in database
     const sessionId = uuidv4()
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 7) // 7 days from now
@@ -128,8 +128,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Failed to create session" }, { status: 500 })
     }
 
-    console.log("Session created successfully")
+    console.log("Session created successfully:", sessionId)
 
+    // Create response
     const response = NextResponse.json({
       success: true,
       message: "Login successful",
@@ -143,16 +144,19 @@ export async function POST(request: Request) {
       },
     })
 
-    // Set the session cookie
-    response.cookies.set({
-      name: "session-id",
-      value: sessionId,
+    // Determine if we're in production (HTTPS)
+    const isProduction = process.env.NODE_ENV === "production"
+
+    // Set session cookie
+    response.cookies.set("session-id", sessionId, {
       httpOnly: true,
-      path: "/",
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
     })
+
+    console.log("Cookie set - session-id:", sessionId, "secure:", isProduction, "sameSite: lax")
 
     return response
   } catch (error) {

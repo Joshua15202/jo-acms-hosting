@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Hash the password
+    // Hash the password using the existing auth utilities
     console.log("Hashing password...")
     const hashedPassword = await hashPassword(password)
 

@@ -21,6 +21,348 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+// Service area data
+const SERVICE_AREAS = {
+  "Metro Manila": {
+    "Quezon City": [
+      "Alicia",
+      "Amihan",
+      "Apolonio Samson",
+      "Aurora",
+      "Baesa",
+      "Bagbag",
+      "Bagong Lipunan ng Crame",
+      "Bagong Pag-asa",
+      "Bagong Silangan",
+      "Bagumbayan",
+      "Bagumbuhay",
+      "Bahay Toro",
+      "Balingasa",
+      "Balong Bato",
+      "Batasan Hills",
+      "Bayanihan",
+      "Blue Ridge A",
+      "Blue Ridge B",
+      "Botocan",
+      "Bungad",
+      "Camp Aguinaldo",
+      "Capri",
+      "Central",
+      "Claro",
+      "Commonwealth",
+      "Culiat",
+      "Damar",
+      "Damayan",
+      "Damayang Lagi",
+      "Del Monte",
+      "Dioquino Zobel",
+      "Don Manuel",
+      "Doña Imelda",
+      "Doña Josefa",
+      "Duyan-Duyan",
+      "E. Rodriguez",
+      "East Kamias",
+      "Escopa I",
+      "Escopa II",
+      "Escopa III",
+      "Escopa IV",
+      "Fairview",
+      "Fortune",
+      "Greater Lagro",
+      "Gulod",
+      "Holy Spirit",
+      "Horseshoe",
+      "Immaculate Concepcion",
+      "Kaligayahan",
+      "Kalusugan",
+      "Kamuning",
+      "Katipunan",
+      "Kaunlaran",
+      "Kristong Hari",
+      "Krus na Ligas",
+      "Laging Handa",
+      "Libis",
+      "Lourdes",
+      "Loyola Heights",
+      "Maharlika",
+      "Malaya",
+      "Манггаханан",
+      "Mangga",
+      "Marilag",
+      "Маринаба",
+      "Masagana",
+      "Masambong",
+      "Matalahib",
+      "Matandang Balara",
+      "Milagrosa",
+      "N.S. Amoranto",
+      "Nagkaisang Nayon",
+      "Narvacan",
+      "New Era",
+      "North Fairview",
+      "Novaliches Proper",
+      "Obrero",
+      "Old Capitol Site",
+      "Olimpia",
+      "Paligsahan",
+      "Paltok",
+      "Pansol",
+      "Paraiso",
+      "Pasong Putik Proper",
+      "Pasong Tamo",
+      "Payatas",
+      "Phil-Am",
+      "Pinagkaisahan",
+      "Pinyahan",
+      "Project 6",
+      "Quirino 2-A",
+      "Quirino 2-B",
+      "Quirino 2-C",
+      "Quirino 3-A",
+      "Ramon Magsaysay",
+      "Roxas",
+      "Sabina",
+      "Saint Ignatius",
+      "Saint Peter",
+      "Salvacion",
+      "San Agustin",
+      "San Antonio",
+      "San Bartolome",
+      "San Isidro",
+      "San Isidro Labrador",
+      "San Jose",
+      "San Martin de Porres",
+      "San Roque",
+      "San Vicente",
+      "Santa Cruz",
+      "Santa Lucia",
+      "Santa Monica",
+      "Santa Teresita",
+      "Santo Cristo",
+      "Santo Niño",
+      "Santol",
+      "Sauyo",
+      "Siena",
+      "Silangan",
+      "Sikatuna Village",
+      "South Triangle",
+      "Tagumpay",
+      "Talampas",
+      "Talayan",
+      "Talipapa",
+      "Tandang Sora",
+      "Tatalon",
+      "Teachers Village East",
+      "Teachers Village West",
+      "Ugong Norte",
+      "Unang Sigaw",
+      "UP Campus",
+      "UP Village",
+      "Valencia",
+      "Vasra",
+      "Veterans Village",
+      "West Triangle",
+      "White Plains",
+    ],
+    Valenzuela: [
+      "Arkong Bato",
+      "Bagbaguin",
+      "Balangkas",
+      "Bignay",
+      "Bisig",
+      "Canumay East",
+      "Canumay West",
+      "Coloong",
+      "Dalandanan",
+      "Gen. T. de Leon",
+      "Hen. Mariano",
+      "Isla",
+      "Karuhatan",
+      "Lawang Bato",
+      "Lingunan",
+      "Mabolo",
+      "Malanday",
+      "Malinta",
+      "Mapulang Lupa",
+      "Marulas",
+      "Maysan",
+      "Palasan",
+      "Parada",
+      "Pariancillo Villa",
+      "Paso de Blas",
+      "Pasolo",
+      "Poblacion",
+      "Polo",
+      "Punturin",
+      "Rincon",
+      "Tagalag",
+      "Ugong",
+      "Viente Reales",
+      "Wawang Pulo",
+    ],
+    Malabon: [
+      "Acacia",
+      "Baritan",
+      "Bayan-Bayanan",
+      "Catmon",
+      "Concepcion",
+      "Dampalit",
+      "Flores",
+      "Hulong Duhat",
+      "Ibaba",
+      "Longos",
+      "Maysilo",
+      "Muzon",
+      "Niugan",
+      "Panghulo",
+      "Potrero",
+      "San Agustin",
+      "Santolan",
+      "Tañong",
+      "Tinajeros",
+      "Tonsuya",
+      "Tugatog",
+    ],
+    Novaliches: [
+      "Greater Lagro",
+      "Gulod",
+      "Kaligayahan",
+      "Nagkaisang Nayon",
+      "North Fairview",
+      "Novaliches Proper",
+      "Pasong Putik",
+      "San Agustin",
+      "San Bartolome",
+      "Sta. Lucia",
+      "Sta. Monica",
+    ],
+  },
+  Bulacan: {
+    Malolos: [
+      "Anilao",
+      "Atlag",
+      "Babatnin",
+      "Bagna",
+      "Bagong Bayan",
+      "Balayong",
+      "Balite",
+      "Bangkal",
+      "Barihan",
+      "Bulihan",
+      "Bungahan",
+      "Caingin",
+      "Calero",
+      "Caliligawan",
+      "Canalate",
+      "Caniogan",
+      "Catmon",
+      "Cofradia",
+      "Dakila",
+      "Guinhawa",
+      "Ligas",
+      "Liyang",
+      "Longos",
+      "Look 1st",
+      "Look 2nd",
+      "Lugam",
+      "Mabolo",
+      "Mambog",
+      "Masile",
+      "Matimbo",
+      "Mojon",
+      "Namayan",
+      "Niugan",
+      "Pamarawan",
+      "Panasahan",
+      "Pinagbakahan",
+      "San Agustin",
+      "San Gabriel",
+      "San Juan",
+      "San Pablo",
+      "San Vicente",
+      "Santiago",
+      "Santisima Trinidad",
+      "Santo Cristo",
+      "Santo Niño",
+      "Santo Rosario",
+      "Santor",
+      "Sumapang Bata",
+      "Sumapang Matanda",
+      "Taal",
+      "Tikay",
+    ],
+    Meycauayan: [
+      "Bagbaguin",
+      "Bahay Pare",
+      "Banga",
+      "Bayugo",
+      "Bisig",
+      "Bolacan",
+      "Calvario",
+      "Camalig",
+      "Hulo",
+      "Iba",
+      "Langka",
+      "Lawa",
+      "Libtong",
+      "Liputan",
+      "Longos",
+      "Malhacan",
+      "Pajo",
+      "Pandayan",
+      "Pantoc",
+      "Perez",
+      "Poblacion",
+      "Saluysoy",
+      "St. Francis",
+      "Tugatog",
+      "Ubihan",
+      "Zamora",
+    ],
+    Marilao: [
+      "Abangan Norte",
+      "Abangan Sur",
+      "Lambakin",
+      "Lias",
+      "Loma de Gato",
+      "Nagbalon",
+      "Patubig",
+      "Poblacion I",
+      "Poblacion II",
+      "Prenza I",
+      "Prenza II",
+      "Santa Rosa I",
+      "Santa Rosa II",
+      "Saog",
+      "Tabing Ilog",
+      "Ibayo",
+    ],
+    Pandi: [
+      "Bagbaguin",
+      "Bagong Barrio",
+      "Baka-Bakahan",
+      "Bunsuran I",
+      "Bunsuran II",
+      "Bunsuran III",
+      "Cacarong Bata",
+      "Cacarong Matanda",
+      "Cupang",
+      "Malibo",
+      "Manatal",
+      "Mapulang Lupa",
+      "Masagana",
+      "Masuso",
+      "Pinagkuartelan",
+      "Poblacion",
+      "Real de Cacarong",
+      "San Roque",
+      "Siling Matanda",
+      "Siling Bata",
+    ],
+  },
+}
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -31,20 +373,44 @@ export default function RegisterPage() {
   const [error, setError] = useState("")
   const [verificationStep, setVerificationStep] = useState(false)
   const [verificationCode, setVerificationCode] = useState("")
-  const [timeLeft, setTimeLeft] = useState(300) // 5 minutes in seconds
-  const [resendTimeLeft, setResendTimeLeft] = useState(60) // 60 seconds until resend is available
+  const [timeLeft, setTimeLeft] = useState(300)
+  const [resendTimeLeft, setResendTimeLeft] = useState(60)
   const [canResend, setCanResend] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState("")
   const [showTerms, setShowTerms] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
 
-  // Check if user came from login with pending verification
+  // Address state
+  const [selectedProvince, setSelectedProvince] = useState("")
+  const [selectedCity, setSelectedCity] = useState("")
+  const [selectedBarangay, setSelectedBarangay] = useState("")
+  const [availableCities, setAvailableCities] = useState<string[]>([])
+  const [availableBarangays, setAvailableBarangays] = useState<string[]>([])
+
   useEffect(() => {
     if (verifyEmail) {
       checkPendingRegistration(verifyEmail)
     }
   }, [verifyEmail])
+
+  useEffect(() => {
+    if (selectedProvince) {
+      const cities = Object.keys(SERVICE_AREAS[selectedProvince as keyof typeof SERVICE_AREAS] || {})
+      setAvailableCities(cities)
+      setSelectedCity("")
+      setSelectedBarangay("")
+      setAvailableBarangays([])
+    }
+  }, [selectedProvince])
+
+  useEffect(() => {
+    if (selectedProvince && selectedCity) {
+      const barangays = SERVICE_AREAS[selectedProvince as keyof typeof SERVICE_AREAS]?.[selectedCity] || []
+      setAvailableBarangays(barangays)
+      setSelectedBarangay("")
+    }
+  }, [selectedCity])
 
   const checkPendingRegistration = async (email: string) => {
     try {
@@ -59,19 +425,16 @@ export default function RegisterPage() {
       const result = await response.json()
 
       if (result.success && result.hasPending) {
-        // Show verification step
         setRegisteredEmail(email)
         setVerificationStep(true)
         setCanResend(false)
         setResendTimeLeft(60)
 
-        // Calculate time left until expiration
         const expiresAt = new Date(result.expiresAt)
         const now = new Date()
         const secondsLeft = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000))
         setTimeLeft(secondsLeft)
 
-        // Start countdown timer
         const expirationTimer = setInterval(() => {
           setTimeLeft((prev) => {
             if (prev <= 1) {
@@ -82,7 +445,6 @@ export default function RegisterPage() {
           })
         }, 1000)
 
-        // Start resend availability countdown
         const resendTimer = setInterval(() => {
           setResendTimeLeft((prev) => {
             if (prev <= 1) {
@@ -101,16 +463,13 @@ export default function RegisterPage() {
     }
   }
 
-  // Add beforeunload warning when on registration or verification page
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (!verificationStep && !showTerms) {
-        // On the main registration form
         e.preventDefault()
         e.returnValue = ""
         return ""
       } else if (verificationStep) {
-        // On verification step
         e.preventDefault()
         e.returnValue = "You haven't verified your email yet. Are you sure you want to leave?"
         return "You haven't verified your email yet. Are you sure you want to leave?"
@@ -129,13 +488,21 @@ export default function RegisterPage() {
     const password = formData.get("password") as string
     const confirmPassword = formData.get("confirmPassword") as string
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setError("Passwords do not match")
       return
     }
 
-    // Store form data and show terms dialog
+    if (!selectedProvince || !selectedCity || !selectedBarangay) {
+      setError("Please select province, city, and barangay")
+      return
+    }
+
+    // Add address fields to form data
+    formData.set("province", selectedProvince)
+    formData.set("city", selectedCity)
+    formData.set("barangay", selectedBarangay)
+
     setPendingFormData(formData)
     setShowTerms(true)
   }
@@ -156,8 +523,9 @@ export default function RegisterPage() {
       const lastName = pendingFormData.get("lastName") as string
       const phone = pendingFormData.get("phone") as string
       const password = pendingFormData.get("password") as string
-      const addressLine1 = pendingFormData.get("addressLine1") as string
+      const streetAddress = pendingFormData.get("streetAddress") as string
       const addressLine2 = pendingFormData.get("addressLine2") as string
+      const barangay = pendingFormData.get("barangay") as string
       const city = pendingFormData.get("city") as string
       const province = pendingFormData.get("province") as string
       const postalCode = pendingFormData.get("postalCode") as string
@@ -168,9 +536,9 @@ export default function RegisterPage() {
       apiFormData.set("email", email)
       apiFormData.set("phone", phone || "")
       apiFormData.set("password", password)
-      apiFormData.set("addressLine1", addressLine1)
+      apiFormData.set("addressLine1", streetAddress)
       apiFormData.set("addressLine2", addressLine2 || "")
-      apiFormData.set("city", city)
+      apiFormData.set("city", `${barangay}, ${city}`)
       apiFormData.set("province", province)
       apiFormData.set("postalCode", postalCode)
       apiFormData.set("agreedToTerms", "true")
@@ -186,13 +554,11 @@ export default function RegisterPage() {
       console.log("Registration result:", result)
 
       if (result.success) {
-        // Show verification step
         setRegisteredEmail(result.email || email)
         setVerificationStep(true)
         setCanResend(false)
         setResendTimeLeft(60)
 
-        // Start OTP expiration countdown timer (5 minutes)
         const expirationTimer = setInterval(() => {
           setTimeLeft((prev) => {
             if (prev <= 1) {
@@ -203,7 +569,6 @@ export default function RegisterPage() {
           })
         }, 1000)
 
-        // Start resend availability countdown (60 seconds)
         const resendTimer = setInterval(() => {
           setResendTimeLeft((prev) => {
             if (prev <= 1) {
@@ -216,7 +581,6 @@ export default function RegisterPage() {
         }, 1000)
       } else {
         if (result.requiresVerification) {
-          // Already has pending registration - go to verification
           setRegisteredEmail(result.email || email)
           setVerificationStep(true)
           setCanResend(true)
@@ -253,11 +617,9 @@ export default function RegisterPage() {
       const result = await response.json()
 
       if (result.success) {
-        // Set user in auth context for immediate login
         if (result.user) {
           setUser(result.user)
         }
-        // Redirect to home page
         router.push("/")
       } else {
         setError(result.message || "Verification failed")
@@ -290,9 +652,8 @@ export default function RegisterPage() {
       const result = await response.json()
 
       if (result.success) {
-        setTimeLeft(300) // Reset OTP expiration to 5 minutes
+        setTimeLeft(300)
 
-        // Start new OTP expiration countdown
         const expirationTimer = setInterval(() => {
           setTimeLeft((prev) => {
             if (prev <= 1) {
@@ -303,7 +664,6 @@ export default function RegisterPage() {
           })
         }, 1000)
 
-        // Start new resend countdown (60 seconds)
         const resendTimer = setInterval(() => {
           setResendTimeLeft((prev) => {
             if (prev <= 1) {
@@ -450,8 +810,13 @@ export default function RegisterPage() {
                 <div className="space-y-2">
                   <h3 className="text-sm font-semibold">Address</h3>
                   <div className="grid gap-2">
-                    <Label htmlFor="addressLine1">Street Address</Label>
-                    <Input id="addressLine1" name="addressLine1" placeholder="123 Main Street, Barangay" required />
+                    <Label htmlFor="streetAddress">Street Address</Label>
+                    <Input
+                      id="streetAddress"
+                      name="streetAddress"
+                      placeholder="123 Main Street, House #, Block #"
+                      required
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="addressLine2">
@@ -459,16 +824,60 @@ export default function RegisterPage() {
                     </Label>
                     <Input id="addressLine2" name="addressLine2" placeholder="Apt 4B, Building 2" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input id="city" name="city" placeholder="Manila" required />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="province">Province</Label>
-                      <Input id="province" name="province" placeholder="Metro Manila" required />
-                    </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="province">Province</Label>
+                    <Select value={selectedProvince} onValueChange={setSelectedProvince} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select province" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.keys(SERVICE_AREAS).map((province) => (
+                          <SelectItem key={province} value={province}>
+                            {province}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="city">City/Municipality</Label>
+                    <Select value={selectedCity} onValueChange={setSelectedCity} disabled={!selectedProvince} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select city/municipality" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableCities.map((city) => (
+                          <SelectItem key={city} value={city}>
+                            {city}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="barangay">Barangay</Label>
+                    <Select
+                      value={selectedBarangay}
+                      onValueChange={setSelectedBarangay}
+                      disabled={!selectedCity}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select barangay" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableBarangays.map((barangay) => (
+                          <SelectItem key={barangay} value={barangay}>
+                            {barangay}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="grid gap-2">
                     <Label htmlFor="postalCode">Postal Code</Label>
                     <Input id="postalCode" name="postalCode" placeholder="1000" required />

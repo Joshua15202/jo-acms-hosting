@@ -1,24 +1,25 @@
 "use client"
 
-import { useChat } from "ai/react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Send, User, AlertCircle, Loader2, Heart, X, Minus } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
-import ReactMarkdown from "react-markdown" // Import ReactMarkdown
-import remarkGfm from "remark-gfm" // Import remarkGfm for GitHub Flavored Markdown
+import type React from "react"
 
-export default function JoPachecoChathead() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error, append } = useChat({
-    api: "/api/chat",
-    // Remove streamProtocol to use default
-  })
-  const scrollAreaRef = useRef<HTMLDivElement>(null)
+import { useState, useRef, useEffect } from "react"
+import { Send, User, AlertCircle, Loader2, ChefHat, X, Minus, UtensilsCrossed } from "lucide-react"
+
+interface Message {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  created_at: string
+}
+
+export default function ChatbotComponent() {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -27,8 +28,95 @@ export default function JoPachecoChathead() {
     }
   }, [messages])
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: input.trim(),
+      created_at: new Date().toISOString(),
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+    setInput("")
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      console.log("Sending request to /api/chat")
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+        }),
+      })
+
+      console.log("Response status:", response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("API Error Response:", errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+
+      // Get response text first to check if it's valid JSON
+      const responseText = await response.text()
+      console.log("Raw response:", responseText)
+
+      let data
+      try {
+        data = JSON.parse(responseText)
+      } catch (parseError) {
+        console.error("JSON Parse Error:", parseError)
+        console.error("Response text:", responseText)
+        throw new Error("Invalid JSON response from server")
+      }
+
+      console.log("Parsed API Response:", data)
+
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
+      const assistantMessage: Message = {
+        id: data.id || (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.content || data.message || "Sorry, I couldn't generate a response.",
+        created_at: data.created_at || new Date().toISOString(),
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+    } catch (err: any) {
+      console.error("Chat error:", err)
+      setError(err.message || "Failed to send message")
+
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Sorry, I'm having trouble processing your request. Please try again.",
+        created_at: new Date().toISOString(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleQuickQuestion = (question: string) => {
-    append({ role: "user", content: question })
+    setInput(question)
+    // Trigger form submission
+    setTimeout(() => {
+      const form = document.querySelector("form")
+      if (form) {
+        form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
+      }
+    }, 100)
   }
 
   const toggleChat = () => {
@@ -51,20 +139,19 @@ export default function JoPachecoChathead() {
 
   return (
     <>
-      {/* Chathead Button */}
+      {/* Chathead */}
       {!isOpen && (
         <div className="fixed bottom-6 right-6 z-50">
-          <Button
+          <button
             onClick={toggleChat}
-            className="w-16 h-16 rounded-full bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+            aria-label="Open Jo-ACMS ChatBot"
+            className="w-16 h-16 rounded-full bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 flex items-center justify-center"
           >
-            <Heart className="h-8 w-8 text-white" />
-          </Button>
-          {messages.length > 0 && (
-            <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">
-                {messages.filter((m) => m.role === "assistant").length}
-              </span>
+            <UtensilsCrossed className="h-8 w-8 text-white" />
+          </button>
+          {messages.filter((m) => m.role === "assistant").length > 0 && (
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+              {messages.filter((m) => m.role === "assistant").length}
             </div>
           )}
         </div>
@@ -74,123 +161,113 @@ export default function JoPachecoChathead() {
       {isOpen && (
         <div
           className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${
-            isMinimized ? "w-80 h-16" : "w-96 h-[600px]"
+            isMinimized ? "w-80 h-16" : "w-96 h-[600px] max-h-[calc(100vh-3rem)]"
           }`}
         >
-          <Card className="h-full shadow-2xl border-rose-200">
+          <div className="h-full shadow-2xl border border-rose-200 rounded-lg bg-white flex flex-col">
             {/* Chat Header */}
-            <CardHeader className="bg-gradient-to-r from-rose-600 to-pink-600 text-white p-4 rounded-t-lg">
+            <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white p-4 rounded-t-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="bg-white/20 p-1 rounded-full">
-                    <Heart className="h-5 w-5" />
+                    <ChefHat className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">Jo Pacheco Chatbot</CardTitle>
-                    <p className="text-rose-100 text-sm">Wedding & Event Planning</p>
+                    <h3 className="text-xl font-semibold">Jo-ACMS ChatBot</h3>
+                    <p className="text-rose-100 text-base">Your Catering Assistant</p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                <div className="flex items-center space-x-1">
+                  <button
                     onClick={isMinimized ? restoreChat : minimizeChat}
-                    className="text-white hover:bg-white/20 p-1 h-8 w-8"
+                    aria-label={isMinimized ? "Restore chat" : "Minimize chat"}
+                    className="text-white hover:bg-white/20 p-1 h-7 w-7 rounded flex items-center justify-center"
                   >
                     <Minus className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  </button>
+                  <button
                     onClick={toggleChat}
-                    className="text-white hover:bg-white/20 p-1 h-8 w-8"
+                    aria-label="Close chat"
+                    className="text-white hover:bg-white/20 p-1 h-7 w-7 rounded flex items-center justify-center"
                   >
                     <X className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
               </div>
-              {isLoading && (
+              {isLoading && !isMinimized && (
                 <div className="flex items-center space-x-2 mt-2">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  <span className="text-xs text-rose-100">Planning your perfect event...</span>
+                  <span className="text-sm text-rose-100">Jo-ACMS ChatBot is typing...</span>
                 </div>
               )}
-            </CardHeader>
+            </div>
 
             {!isMinimized && (
               <>
                 {/* Error Alert */}
                 {error && (
-                  <Alert className="m-4 border-red-200 bg-red-50">
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                    <AlertDescription className="text-red-800 text-sm">
-                      <strong>Error:</strong>{" "}
-                      {error.message || "Failed to connect. Please check your API configuration."}
-                    </AlertDescription>
-                  </Alert>
+                  <div className="m-4 border border-red-200 bg-red-50 rounded-lg p-3">
+                    <div className="flex items-center space-x-2">
+                      <AlertCircle className="h-4 w-4 text-red-600" />
+                      <div className="text-red-800 text-sm">
+                        <strong>Error:</strong> {error}
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* Chat Content */}
-                <CardContent className="p-0 flex-1">
-                  <ScrollArea className="h-[440px] p-4" ref={scrollAreaRef}>
-                    {messages.length === 0 ? (
+                <div className="p-0 flex-1 overflow-hidden">
+                  <div className="h-[440px] p-4 overflow-y-auto" ref={scrollAreaRef}>
+                    {messages.length === 0 && !isLoading ? (
                       <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
                         <div className="bg-gradient-to-r from-rose-100 to-pink-100 p-4 rounded-full">
-                          <Heart className="h-12 w-12 text-rose-600" />
+                          <ChefHat className="h-12 w-12 text-rose-600" />
                         </div>
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Welcome! 💕</h3>
-                          <p className="text-gray-600 text-sm mb-4">
-                            I'm here to help you plan your perfect event with Jo Pacheco Wedding & Event!
+                          <h3 className="text-xl font-semibold text-gray-900 mb-2">Welcome to Jo-ACMS! 👋</h3>
+                          <p className="text-gray-600 text-base mb-4">
+                            I'm your personal catering assistant. I can help you with our services, bookings, menu
+                            planning, and more!
                           </p>
 
                           {/* Quick Start Buttons */}
                           <div className="space-y-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleQuickQuestion("I want to plan a wedding event")}
+                            <button
+                              onClick={() => handleQuickQuestion("What catering services does Jo-ACMS offer?")}
                               disabled={isLoading}
-                              className="w-full border-rose-200 hover:bg-rose-50 text-xs"
+                              className="w-full border border-rose-200 hover:bg-rose-50 text-sm py-2 px-3 rounded-md disabled:opacity-50"
                             >
-                              💒 Plan Wedding
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleQuickQuestion("Show me your catering menu and packages")}
+                              🍽️ Our Catering Services
+                            </button>
+                            <button
+                              onClick={() => handleQuickQuestion("How do I book an appointment through Jo-ACMS?")}
                               disabled={isLoading}
-                              className="w-full border-rose-200 hover:bg-rose-50 text-xs"
+                              className="w-full border border-rose-200 hover:bg-rose-50 text-sm py-2 px-3 rounded-md disabled:opacity-50"
                             >
-                              🍽️ View Menu & Packages
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleQuickQuestion("Help me plan a debut celebration")}
+                              📅 Book an Appointment
+                            </button>
+                            <button
+                              onClick={() => handleQuickQuestion("What menu packages are available in Jo-ACMS?")}
                               disabled={isLoading}
-                              className="w-full border-rose-200 hover:bg-rose-50 text-xs"
+                              className="w-full border border-rose-200 hover:bg-rose-50 text-sm py-2 px-3 rounded-md disabled:opacity-50"
                             >
-                              ✨ Plan Debut
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleQuickQuestion("How do I book an appointment?")}
+                              📋 Menu Packages
+                            </button>
+                            <button
+                              onClick={() => handleQuickQuestion("How does Jo-ACMS pricing work for events?")}
                               disabled={isLoading}
-                              className="w-full border-rose-200 hover:bg-rose-50 text-xs"
+                              className="w-full border border-rose-200 hover:bg-rose-50 text-sm py-2 px-3 rounded-md disabled:opacity-50"
                             >
-                              📅 Book Appointment
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleQuickQuestion("What are your most popular Filipino dishes?")}
+                              💰 Pricing Information
+                            </button>
+                            <button
+                              onClick={() => handleQuickQuestion("What event types does Jo-ACMS cater to?")}
                               disabled={isLoading}
-                              className="w-full border-rose-200 hover:bg-rose-50 text-xs"
+                              className="w-full border border-rose-200 hover:bg-rose-50 text-sm py-2 px-3 rounded-md disabled:opacity-50"
                             >
-                              🇵🇭 Filipino Specialties
-                            </Button>
+                              🎉 Event Types
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -203,27 +280,28 @@ export default function JoPachecoChathead() {
                               message.role === "user" ? "flex-row-reverse space-x-reverse" : ""
                             }`}
                           >
-                            <div
-                              className={`h-6 w-6 flex-shrink-0 rounded-full flex items-center justify-center ${
-                                message.role === "user" ? "bg-blue-100" : "bg-gradient-to-r from-rose-100 to-pink-100"
-                              }`}
-                            >
-                              {message.role === "user" ? (
-                                <User className="h-3 w-3 text-blue-600" />
-                              ) : (
-                                <Heart className="h-3 w-3 text-rose-600" />
-                              )}
+                            <div className="h-6 w-6 flex-shrink-0 mt-0.5 rounded-full flex items-center justify-center">
+                              <div
+                                className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                                  message.role === "user" ? "bg-blue-100" : "bg-gradient-to-r from-rose-100 to-pink-100"
+                                }`}
+                              >
+                                {message.role === "user" ? (
+                                  <User className="h-3 w-3 text-blue-600" />
+                                ) : (
+                                  <ChefHat className="h-3 w-3 text-rose-600" />
+                                )}
+                              </div>
                             </div>
 
                             <div
-                              className={`max-w-[80%] p-2 rounded-lg text-xs whitespace-pre-wrap break-words leading-relaxed ${
+                              className={`max-w-[80%] p-2 rounded-lg text-sm shadow-sm ${
                                 message.role === "user"
                                   ? "bg-blue-500 text-white"
                                   : "bg-gradient-to-r from-rose-50 to-pink-50 text-gray-900 border border-rose-100"
                               }`}
                             >
-                              {/* Use ReactMarkdown to render message content */}
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                              <div className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</div>
                             </div>
                           </div>
                         ))}
@@ -231,7 +309,7 @@ export default function JoPachecoChathead() {
                         {isLoading && (
                           <div className="flex items-start space-x-2">
                             <div className="h-6 w-6 rounded-full bg-gradient-to-r from-rose-100 to-pink-100 flex items-center justify-center">
-                              <Heart className="h-3 w-3 text-rose-600" />
+                              <ChefHat className="h-3 w-3 text-rose-600" />
                             </div>
                             <div className="bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-100 p-2 rounded-lg">
                               <div className="flex space-x-1">
@@ -250,33 +328,33 @@ export default function JoPachecoChathead() {
                         )}
                       </div>
                     )}
-                  </ScrollArea>
-                </CardContent>
+                  </div>
+                </div>
 
                 {/* Input Area */}
-                <CardFooter className="border-t bg-gradient-to-r from-rose-50 to-pink-50 p-3">
+                <div className="border-t bg-gradient-to-r from-rose-50 to-pink-50 p-3">
                   <form onSubmit={handleSubmit} className="flex w-full space-x-2">
-                    <Input
+                    <input
                       value={input}
-                      onChange={handleInputChange}
-                      placeholder="Ask about events, catering, bookings..."
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="Ask about Jo-ACMS catering services..."
                       disabled={isLoading}
-                      className="flex-1 border-rose-200 focus:border-rose-400 bg-white text-sm h-8"
+                      className="flex-1 border border-rose-200 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 bg-white text-sm h-8 px-3 rounded-md"
                       autoFocus
                     />
-                    <Button
+                    <button
                       type="submit"
                       disabled={isLoading || !input.trim()}
-                      size="sm"
-                      className="bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 h-8 px-3"
+                      aria-label="Send message"
+                      className="bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 h-8 px-3 rounded-md text-white disabled:opacity-50 flex items-center justify-center"
                     >
                       {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                    </Button>
+                    </button>
                   </form>
-                </CardFooter>
+                </div>
               </>
             )}
-          </Card>
+          </div>
         </div>
       )}
     </>

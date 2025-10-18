@@ -87,6 +87,331 @@ const timeSlotOptions = [
   { value: "dinner", label: "Dinner (6PM - 10PM)" },
 ]
 
+// Address data structure
+const addressData = {
+  "Metro Manila": {
+    "Quezon City": [
+      "Alicia",
+      "Amihan",
+      "Apolonio Samson",
+      "Baesa",
+      "Bagbaguin",
+      "Bagong Lipunan ng Crame",
+      "Bagong Pag-asa",
+      "Bagong Silangan",
+      "Bagumbayan",
+      "Bagumbuhay",
+      "Bahay Toro",
+      "Balingasa",
+      "Botocan",
+      "Bungad",
+      "Camp Aguinaldo",
+      "Capri",
+      "Central",
+      "Claro",
+      "Commonwealth",
+      "Culiat",
+      "Damar",
+      "Damayan",
+      "Damayang Lagi",
+      "Del Monte",
+      "Dioquino Zobel",
+      "Dona Imelda",
+      "Dona Josefa",
+      "Don Manuel",
+      "Duyan-Duyan",
+      "E. Rodriguez",
+      "East Kamias",
+      "Escopa I",
+      "Escopa II",
+      "Escopa III",
+      "Escopa IV",
+      "Fairview",
+      "Greater Lagro",
+      "Gulod",
+      "Holy Spirit",
+      "Horseshoe",
+      "Immaculate Concepcion",
+      "Kaligayahan",
+      "Kalusugan",
+      "Kamuning",
+      "Katipunan",
+      "Kaunlaran",
+      "Kristong Hari",
+      "Krus na Ligas",
+      "Laging Handa",
+      "Libis",
+      "Lourdes",
+      "Loyola Heights",
+      "Maharlika",
+      "Malaya",
+      "Mangga",
+      "Manresa",
+      "Mariana",
+      "Mariblo",
+      "Marilag",
+      "Masagana",
+      "Masambong",
+      "Matalahib",
+      "Matandang Balara",
+      "Milagrosa",
+      "N.S. Amoranto",
+      "Nagkaisang Nayon",
+      "New Era",
+      "North Fairview",
+      "Novaliches Proper",
+      "Nueve de Febrero",
+      "Obrero",
+      "Old Capitol Site",
+      "Paang Bundok",
+      "Pag-ibig sa Nayon",
+      "Paligsahan",
+      "Paltok",
+      "Pansol",
+      "Paraiso",
+      "Pasong Putik Proper",
+      "Pasong Tamo",
+      "Payatas",
+      "Phil-Am",
+      "Pinagkaisahan",
+      "Pinyahan",
+      "Project 6",
+      "Quirino 2-A",
+      "Quirino 2-B",
+      "Quirino 2-C",
+      "Quirino 3-A",
+      "Ramon Magsaysay",
+      "Roxas",
+      "Sacred Heart",
+      "Saint Ignatius",
+      "Saint Peter",
+      "Salvacion",
+      "San Agustin",
+      "San Antonio",
+      "San Bartolome",
+      "San Isidro",
+      "San Isidro Labrador",
+      "San Jose",
+      "San Martin de Porres",
+      "San Roque",
+      "San Vicente",
+      "Sangandaan",
+      "Santa Cruz",
+      "Santa Lucia",
+      "Santa Monica",
+      "Santa Teresita",
+      "Santo Cristo",
+      "Santo Domingo",
+      "Santo Nino",
+      "Santol",
+      "Sauyo",
+      "Sienna",
+      "Silangan",
+      "Sikatuna Village",
+      "Socorro",
+      "South Triangle",
+      "Tagumpay",
+      "Talampas",
+      "Talayan",
+      "Talipapa",
+      "Tandang Sora",
+      "Tatalon",
+      "Teachers Village East",
+      "Teachers Village West",
+      "Ugong Norte",
+      "Unang Sigaw",
+      "UP Campus",
+      "UP Village",
+      "Valencia",
+      "Vasra",
+      "Veterans Village",
+      "West Triangle",
+      "White Plains",
+    ],
+    Valenzuela: [
+      "Arkong Bato",
+      "Bagbaguin",
+      "Balangkas",
+      "Bignay",
+      "Bisig",
+      "Canumay East",
+      "Canumay West",
+      "Coloong",
+      "Dalandanan",
+      "Gen. T. de Leon",
+      "Hen. T. de Leon",
+      "Isla",
+      "Karuhatan",
+      "Lawang Bato",
+      "Lingunan",
+      "Mabolo",
+      "Malanday",
+      "Malinta",
+      "Mapulang Lupa",
+      "Marulas",
+      "Maysan",
+      "Palasan",
+      "Parada",
+      "Pariancillo Villa",
+      "Pasolo",
+      "Polo",
+      "Punturin",
+      "Rincon",
+      "Tagalag",
+      "Ugong",
+      "Viente Reales",
+      "Wawang Pulo",
+    ],
+    Malabon: [
+      "Acacia",
+      "Baritan",
+      "Bayan-bayanan",
+      "Catmon",
+      "Concepcion",
+      "Dampalit",
+      "Flores",
+      "Hulong Duhat",
+      "Ibaba",
+      "Longos",
+      "Maysilo",
+      "Muzon",
+      "Niugan",
+      "Panghulo",
+      "Potrero",
+      "San Agustin",
+      "Santolan",
+      "Tanong",
+      "Tinajeros",
+      "Tonsuya",
+      "Tugatog",
+    ],
+  },
+  Bulacan: {
+    Malolos: [
+      "Anilao",
+      "Atlag",
+      "Babatnin",
+      "Bagna",
+      "Bagong Bayan",
+      "Balayong",
+      "Balite",
+      "Bangkal",
+      "Barihan",
+      "Bulihan",
+      "Bungahan",
+      "Caingin",
+      "Calero",
+      "Caliligawan",
+      "Canalate",
+      "Caniogan",
+      "Capihan",
+      "Catmon",
+      "Cofradia",
+      "Dakila",
+      "Guinhawa",
+      "Ligas",
+      "Liyang",
+      "Longos",
+      "Look 1st",
+      "Look 2nd",
+      "Lugam",
+      "Mabolo",
+      "Mambog",
+      "Masile",
+      "Matimbo",
+      "Mojon",
+      "Namayan",
+      "Niugan",
+      "Pamarawan",
+      "Panasahan",
+      "Pinagbakahan",
+      "San Agustin",
+      "San Gabriel",
+      "San Juan",
+      "San Pablo",
+      "San Vicente",
+      "Santiago",
+      "Santisima Trinidad",
+      "Santo Cristo",
+      "Santo Niño",
+      "Santo Rosario",
+      "Sariling Bayan",
+      "Subukan",
+      "Sumapang Bata",
+      "Sumapang Matanda",
+      "Taal",
+      "Tikay",
+    ],
+    Meycauayan: [
+      "Bagbaguin",
+      "Bahay Pare",
+      "Bancal",
+      "Banga",
+      "Bayugo",
+      "Caingin",
+      "Calvario",
+      "Camalig",
+      "Hulo",
+      "Iba",
+      "Langka",
+      "Lawa",
+      "Libtong",
+      "Liputan",
+      "Malhacan",
+      "Pajo",
+      "Pandayan",
+      "Pantoc",
+      "Perez",
+      "Saluysoy",
+      "St. Francis",
+      "Tugatog",
+      "Ubihan",
+      "Zamora",
+    ],
+    Pandi: [
+      "Bagbaguin",
+      "Bagong Barrio",
+      "Baka-bakahan",
+      "Baliuag",
+      "Bunsuran I",
+      "Bunsuran II",
+      "Bunsuran III",
+      "Cacarong Bata",
+      "Cacarong Matanda",
+      "Cupang",
+      "Malibo",
+      "Manatal",
+      "Mapulang Lupa",
+      "Masagana",
+      "Masangsang",
+      "Pinagkuartelan",
+      "Poblacion",
+      "Real de Cacarong",
+      "San Roque",
+      "Siling Bata",
+      "Siling Matanda",
+    ],
+    Marilao: [
+      "Abangan Norte",
+      "Abangan Sur",
+      "Ibayo",
+      "Lambakin",
+      "Lias",
+      "Loma de Gato",
+      "Nagbalon",
+      "Patubig",
+      "Poblacion I",
+      "Poblacion II",
+      "Prenza I",
+      "Prenza II",
+      "Santa Rosa I",
+      "Santa Rosa II",
+      "Saog",
+      "Tabing Ilog",
+    ],
+  },
+}
+
 function BookingFormContent({
   personalInfo,
   eventInfo,
@@ -102,14 +427,14 @@ function BookingFormContent({
   const [date, setDate] = useState<Date | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isBookingComplete, setIsBookingComplete] = useState(false)
-  const [countdown, setCountdown] = useState(10) // 10 second countdown
+  const [countdown, setCountdown] = useState(10)
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([])
   const [menuItems, setMenuItems] = useState<{ [category: string]: MenuItem[] }>({})
   const [menuLoading, setMenuLoading] = useState(true)
   const [maxSelections, setMaxSelections] = useState({
-    menu1: 1, // Beef, Pork, Shrimp
-    menu2: 1, // Chicken
-    menu3: 1, // Fish, Vegetables
+    menu1: 1,
+    menu2: 1,
+    menu3: 1,
     pasta: 1,
     dessert: 1,
     beverage: 1,
@@ -118,19 +443,17 @@ function BookingFormContent({
   const [pricingLoading, setPricingLoading] = useState(false)
   const [bookingResponse, setBookingResponse] = useState<any>(null)
 
-  // Add refs to track recent toast messages and prevent duplicates
   const recentToasts = useRef<Set<string>>(new Set())
 
   const showToastOnce = useCallback(
     (message: string, toastData: any) => {
       if (recentToasts.current.has(message)) {
-        return // Don't show duplicate toast
+        return
       }
 
       recentToasts.current.add(message)
       toast(toastData)
 
-      // Remove from recent toasts after 1 second
       setTimeout(() => {
         recentToasts.current.delete(message)
       }, 1000)
@@ -144,10 +467,12 @@ function BookingFormContent({
     eventDate: "",
     eventTime: "",
     venueName: "",
+    venueProvince: "",
     venueCity: "",
+    venueBarangay: "",
     venueStreet: "",
-    venueZipCode: "",
-    venue: "", // Keep for backward compatibility
+    venuePostalCode: "",
+    venue: "",
     theme: "",
     colorMotif: "",
     celebrantName: eventInfo.celebrantName || "",
@@ -156,17 +481,49 @@ function BookingFormContent({
     groomName: eventInfo.groomName || "",
     brideName: eventInfo.brideName || "",
     additionalEventInfo: eventInfo.additionalEventInfo || "",
-    // Updated menu structure
-    menu1Selections: [] as string[], // Beef, Pork, Shrimp
-    menu2Selections: [] as string[], // Chicken
-    menu3Selections: [] as string[], // Fish, Vegetables
+    menu1Selections: [] as string[],
+    menu2Selections: [] as string[],
+    menu3Selections: [] as string[],
     pasta: "",
     dessert: "",
     beverage: "",
     additionalRequests: "",
   })
 
-  // Load menu items from database
+  const [availableCities, setAvailableCities] = useState<string[]>([])
+  const [availableBarangays, setAvailableBarangays] = useState<string[]>([])
+
+  useEffect(() => {
+    if (formData.venueProvince) {
+      const cities = Object.keys(addressData[formData.venueProvince as keyof typeof addressData] || {})
+      setAvailableCities(cities)
+      if (!cities.includes(formData.venueCity)) {
+        setFormData((prev) => ({ ...prev, venueCity: "", venueBarangay: "" }))
+        setAvailableBarangays([])
+      }
+    } else {
+      setAvailableCities([])
+      setAvailableBarangays([])
+      setFormData((prev) => ({ ...prev, venueCity: "", venueBarangay: "" }))
+    }
+  }, [formData.venueProvince])
+
+  useEffect(() => {
+    if (formData.venueProvince && formData.venueCity) {
+      const barangays =
+        addressData[formData.venueProvince as keyof typeof addressData]?.[
+          formData.venueCity as keyof (typeof addressData)[keyof typeof addressData]
+        ] || []
+      setAvailableBarangays(barangays)
+      if (!barangays.includes(formData.venueBarangay)) {
+        setFormData((prev) => ({ ...prev, venueBarangay: "" }))
+      }
+    } else {
+      setAvailableBarangays([])
+      setFormData((prev) => ({ ...prev, venueBarangay: "" }))
+    }
+  }, [formData.venueProvince, formData.venueCity])
+
   useEffect(() => {
     const loadMenuItems = async () => {
       try {
@@ -190,7 +547,6 @@ function BookingFormContent({
             console.log("- Vegetables items:", data.menuItems.vegetables?.length || 0)
           } else {
             console.error("Failed to load menu items - invalid response:", data)
-            // Set fallback menu items directly in the component
             const fallbackMenu = {
               beef: [
                 { id: 1, name: "Beef Broccoli", price: 70, category: "beef" },
@@ -239,7 +595,6 @@ function BookingFormContent({
           }
         } else {
           console.error("Failed to fetch menu items - HTTP error:", response.status)
-          // Set fallback menu here too
           const fallbackMenu = {
             beef: [
               { id: 1, name: "Beef Broccoli", price: 70, category: "beef" },
@@ -287,7 +642,6 @@ function BookingFormContent({
         }
       } catch (error) {
         console.error("Error loading menu items:", error)
-        // Set fallback menu on error too
         const fallbackMenu = {
           beef: [
             { id: 1, name: "Beef Broccoli", price: 70, category: "beef" },
@@ -340,7 +694,6 @@ function BookingFormContent({
     loadMenuItems()
   }, [])
 
-  // Countdown timer effect
   useEffect(() => {
     let timer: NodeJS.Timeout
     if (isBookingComplete && countdown > 0) {
@@ -348,13 +701,11 @@ function BookingFormContent({
         setCountdown(countdown - 1)
       }, 1000)
     } else if (isBookingComplete && countdown === 0) {
-      // Auto redirect when countdown reaches 0
       router.push("/")
     }
     return () => clearTimeout(timer)
   }, [isBookingComplete, countdown, router])
 
-  // Load URL parameters on mount - only run once
   useEffect(() => {
     const urlParams = {
       eventType: searchParams.get("eventType") || eventInfo.eventType || "",
@@ -362,10 +713,12 @@ function BookingFormContent({
       eventDate: searchParams.get("eventDate") || schedulingInfo.eventDate || "",
       eventTime: searchParams.get("eventTime") || schedulingInfo.timeSlot || "",
       venueName: searchParams.get("venueName") || "",
+      venueProvince: searchParams.get("venueProvince") || "",
       venueCity: searchParams.get("venueCity") || "",
+      venueBarangay: searchParams.get("venueBarangay") || "",
       venueStreet: searchParams.get("venueStreet") || "",
-      venueZipCode: searchParams.get("venueZipCode") || "",
-      venue: searchParams.get("venue") || "", // Keep for backward compatibility
+      venuePostalCode: searchParams.get("venuePostalCode") || "",
+      venue: searchParams.get("venue") || "",
       theme: searchParams.get("theme") || "",
       colorMotif: searchParams.get("colorMotif") || "",
       celebrantName: searchParams.get("celebrantName") || eventInfo.celebrantName || "",
@@ -375,7 +728,6 @@ function BookingFormContent({
       groomName: searchParams.get("groomName") || eventInfo.groomName || "",
       brideName: searchParams.get("brideName") || eventInfo.brideName || "",
       additionalEventInfo: searchParams.get("additionalEventInfo") || eventInfo.additionalEventInfo || "",
-      // Updated for new menu structure
       menu1Selections: searchParams.get("ai_main_courses")?.split(",").filter(Boolean) || [],
       menu2Selections: [],
       menu3Selections: [],
@@ -396,13 +748,10 @@ function BookingFormContent({
       setCurrentStep(2)
     }
 
-    // Initialize time slots
     setAvailableTimeSlots(timeSlotOptions.map((slot) => slot.value))
-  }, []) // Empty dependency array to run only once
+  }, [])
 
-  // Add this useEffect after the existing useEffects, around line 200
   useEffect(() => {
-    // Clear guest count if it's 80 and event type is wedding
     if (formData.eventType === "wedding" && formData.guestCount === "80") {
       setFormData((prev) => ({ ...prev, guestCount: "" }))
     }
@@ -434,11 +783,9 @@ function BookingFormContent({
     }
   }, [])
 
-  // Add this helper function after the getBackdropDetails function
   const getTimeRange = useCallback((timeString: string): string => {
     if (!timeString) return "Not selected"
 
-    // Parse the time string (e.g., "3:00 PM" or "15:00")
     const timeParts = timeString.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i)
     if (!timeParts) return timeString
 
@@ -446,22 +793,18 @@ function BookingFormContent({
     const minutes = timeParts[2]
     const period = timeParts[3]?.toUpperCase()
 
-    // Convert to 24-hour format if needed
     if (period === "PM" && hours !== 12) {
       hours += 12
     } else if (period === "AM" && hours === 12) {
       hours = 0
     }
 
-    // Add 4 hours
     const endHours = (hours + 4) % 24
 
-    // Format start time
     const startHours12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours
     const startPeriod = hours >= 12 ? "PM" : "AM"
     const startTime = `${startHours12}:${minutes} ${startPeriod}`
 
-    // Format end time
     const endHours12 = endHours === 0 ? 12 : endHours > 12 ? endHours - 12 : endHours
     const endPeriod = endHours >= 12 ? "PM" : "AM"
     const endTime = `${endHours12}:${minutes} ${endPeriod}`
@@ -482,7 +825,6 @@ function BookingFormContent({
     }
   }, [])
 
-  // Update pricing when form data changes
   const getPackagePricing = useCallback(async () => {
     if (!formData.guestCount) return null
 
@@ -501,16 +843,13 @@ function BookingFormContent({
       console.log("Event type:", formData.eventType)
       console.log("Backdrop style:", backdropStyle)
 
-      // Get base pricing (pass event type for wedding package detection)
       const basePricing = await calculatePackagePricing(guestCount, menuSelections, formData.eventType)
       console.log("Base pricing result:", basePricing)
 
-      // For non-wedding events, add backdrop price. For weddings, it's included in the package.
       const isWedding = formData.eventType === "wedding"
       const backdropPrice = !isWedding && backdropStyle ? getBackdropPrice(backdropStyle) : 0
       console.log("Backdrop price:", backdropPrice)
 
-      // Create final pricing with backdrop added (if applicable)
       const finalPricing = {
         ...basePricing,
         totalAmount: basePricing.total + backdropPrice,
@@ -598,8 +937,16 @@ function BookingFormContent({
       toast({ title: "Validation Error", description: "Number of Guests is required.", variant: "destructive" })
       return false
     }
+    if (!formData.venueProvince) {
+      toast({ title: "Validation Error", description: "Province is required.", variant: "destructive" })
+      return false
+    }
     if (!formData.venueCity) {
       toast({ title: "Validation Error", description: "City/Municipality is required.", variant: "destructive" })
+      return false
+    }
+    if (!formData.venueBarangay) {
+      toast({ title: "Validation Error", description: "Barangay is required.", variant: "destructive" })
       return false
     }
     if (!formData.venueStreet || !formData.venueStreet.trim()) {
@@ -607,7 +954,15 @@ function BookingFormContent({
       return false
     }
     return true
-  }, [formData.eventType, formData.guestCount, formData.venueCity, formData.venueStreet, toast])
+  }, [
+    formData.eventType,
+    formData.guestCount,
+    formData.venueProvince,
+    formData.venueCity,
+    formData.venueBarangay,
+    formData.venueStreet,
+    toast,
+  ])
 
   const handleIncreaseLimit = useCallback((menuType: keyof typeof maxSelections) => {
     setMaxSelections((prev) => ({
@@ -616,7 +971,6 @@ function BookingFormContent({
     }))
   }, [])
 
-  // Updated menu selection handlers
   const handleMenuSelection = useCallback(
     (menuType: "menu1" | "menu2" | "menu3", itemName: string, checked: boolean) => {
       const selectionKey = `${menuType}Selections` as keyof typeof formData
@@ -624,7 +978,6 @@ function BookingFormContent({
       const maxKey = menuType as keyof typeof maxSelections
 
       if (checked) {
-        // Check if we've reached the maximum limit
         if (currentSelections.length >= maxSelections[maxKey]) {
           const limitMessage = `${menuType}-limit-${maxSelections[maxKey]}`
           showToastOnce(limitMessage, {
@@ -635,13 +988,11 @@ function BookingFormContent({
           return
         }
 
-        // Add the item
         setFormData((prev) => ({
           ...prev,
           [selectionKey]: [...currentSelections, itemName],
         }))
       } else {
-        // Remove the item
         setFormData((prev) => ({
           ...prev,
           [selectionKey]: currentSelections.filter((item) => item !== itemName),
@@ -688,7 +1039,7 @@ function BookingFormContent({
 
   const handleNext = useCallback(
     (e?: React.MouseEvent) => {
-      e?.preventDefault() // Prevent form submission
+      e?.preventDefault()
       if (currentStep === 1 && validateStep1()) {
         setCurrentStep(2)
       } else if (currentStep === 2 && validateStep2()) {
@@ -705,7 +1056,6 @@ function BookingFormContent({
   }, [currentStep])
 
   const handleGoToHomepage = useCallback(() => {
-    // Store success message in localStorage to show on homepage
     localStorage.setItem("bookingSuccess", "true")
     router.push("/")
   }, [router])
@@ -714,12 +1064,10 @@ function BookingFormContent({
     async (e: React.FormEvent) => {
       e.preventDefault()
 
-      // Prevent multiple submissions
       if (isSubmitting || isBookingComplete) {
         return
       }
 
-      // Check if user is still authenticated
       if (!user) {
         toast({
           title: "Authentication Required",
@@ -732,7 +1080,6 @@ function BookingFormContent({
       setIsSubmitting(true)
 
       try {
-        // Try to refresh session first
         console.log("Refreshing session before booking...")
         const sessionValid = await refreshSession()
         if (!sessionValid) {
@@ -745,12 +1092,17 @@ function BookingFormContent({
           return
         }
 
-        // Combine venue fields into complete address
-        const venueAddress = [formData.venueName, formData.venueStreet, formData.venueCity, formData.venueZipCode]
+        const venueAddress = [
+          formData.venueName,
+          formData.venueStreet,
+          formData.venueBarangay,
+          formData.venueCity,
+          formData.venueProvince,
+          formData.venuePostalCode,
+        ]
           .filter(Boolean)
           .join(", ")
 
-        // Combine all menu selections for submission
         const allMainCourses = [...formData.menu1Selections, ...formData.menu2Selections, ...formData.menu3Selections]
 
         const appointmentData: AppointmentData = {
@@ -762,7 +1114,7 @@ function BookingFormContent({
           guestCount: Number.parseInt(formData.guestCount),
           eventDate: formData.eventDate,
           eventTime: formData.eventTime,
-          venue: venueAddress, // Use combined venue address
+          venue: venueAddress,
           theme: formData.theme || "",
           colorMotif: formData.colorMotif || "",
           celebrantName: formData.celebrantName || "",
@@ -788,7 +1140,7 @@ function BookingFormContent({
             "Content-Type": "application/json",
           },
           body: JSON.stringify(appointmentData),
-          credentials: "include", // Include cookies
+          credentials: "include",
         })
 
         console.log("API Response status:", response.status)
@@ -819,13 +1171,11 @@ function BookingFormContent({
                 description: "Your session has expired. Please refresh the page and log in again.",
                 variant: "destructive",
               })
-              // Don't redirect, just ask user to refresh
               setIsSubmitting(false)
               return
             }
           }
 
-          // Show detailed error information
           const errorMessage = result.error || `HTTP ${response.status}: ${response.statusText}`
           const errorDetails = result.details ? ` Details: ${result.details}` : ""
           const errorSuggestion = result.suggestion ? ` ${result.suggestion}` : ""
@@ -833,10 +1183,8 @@ function BookingFormContent({
           throw new Error(`${errorMessage}${errorDetails}${errorSuggestion}`)
         }
 
-        // Store the booking response for the success message
         setBookingResponse(result)
 
-        // Mark booking as complete and start countdown
         setIsBookingComplete(true)
         setCountdown(20)
       } catch (error) {
@@ -933,7 +1281,6 @@ function BookingFormContent({
           </Select>
         </div>
 
-        {/* Updated Venue Address Section */}
         <div className="grid gap-4 md:col-span-2">
           <h4 className="font-medium text-base text-rose-600 border-b pb-2">Venue Information</h4>
 
@@ -950,25 +1297,60 @@ function BookingFormContent({
             </div>
 
             <div className="grid gap-2">
+              <label htmlFor="venueProvince">Province *</label>
+              <Select
+                name="venueProvince"
+                value={formData.venueProvince}
+                onValueChange={(value) => handleSelectChange("venueProvince", value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select province" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Metro Manila">Metro Manila</SelectItem>
+                  <SelectItem value="Bulacan">Bulacan</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
               <label htmlFor="venueCity">City/Municipality *</label>
               <Select
                 name="venueCity"
                 value={formData.venueCity}
                 onValueChange={(value) => handleSelectChange("venueCity", value)}
+                disabled={!formData.venueProvince}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select city/municipality" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Fairview">Fairview, Quezon City</SelectItem>
-                  <SelectItem value="Valenzuela">Valenzuela City</SelectItem>
-                  <SelectItem value="Quezon City">Quezon City</SelectItem>
-                  <SelectItem value="Malolos">Malolos, Bulacan</SelectItem>
-                  <SelectItem value="Novaliches">Novaliches, Quezon City</SelectItem>
-                  <SelectItem value="Malabon">Malabon City</SelectItem>
-                  <SelectItem value="Meycauayan">Meycauayan, Bulacan</SelectItem>
-                  <SelectItem value="Pandi">Pandi, Bulacan</SelectItem>
-                  <SelectItem value="Marilao">Marilao, Bulacan</SelectItem>
+                  {availableCities.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      {city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <label htmlFor="venueBarangay">Barangay *</label>
+              <Select
+                name="venueBarangay"
+                value={formData.venueBarangay}
+                onValueChange={(value) => handleSelectChange("venueBarangay", value)}
+                disabled={!formData.venueCity}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select barangay" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableBarangays.map((barangay) => (
+                    <SelectItem key={barangay} value={barangay}>
+                      {barangay}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -980,16 +1362,16 @@ function BookingFormContent({
                 name="venueStreet"
                 value={formData.venueStreet}
                 onChange={handleInputChange}
-                placeholder="e.g., 123 Main Street, Barangay Name"
+                placeholder="e.g., 123 Main Street"
               />
             </div>
 
             <div className="grid gap-2">
-              <label htmlFor="venueZipCode">Zip Code</label>
+              <label htmlFor="venuePostalCode">Postal Code</label>
               <Input
-                id="venueZipCode"
-                name="venueZipCode"
-                value={formData.venueZipCode}
+                id="venuePostalCode"
+                name="venuePostalCode"
+                value={formData.venuePostalCode}
                 onChange={handleInputChange}
                 placeholder="e.g., 1400"
                 maxLength={4}
@@ -1156,7 +1538,6 @@ function BookingFormContent({
           Select one item per menu (Menu 1-3). Use "+1 More" to add additional selections from the same menu.
         </p>
 
-        {/* Menu 1: Beef, Pork, Shrimp */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <label className="text-base font-medium">🥩 Menu 1: Beef, Pork</label>
@@ -1207,7 +1588,6 @@ function BookingFormContent({
           </div>
         </div>
 
-        {/* Menu 2: Chicken */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <label className="text-base font-medium">🐔 Menu 2: Chicken</label>
@@ -1256,7 +1636,6 @@ function BookingFormContent({
           </div>
         </div>
 
-        {/* Menu 3: Fish, Vegetables */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <label className="text-base font-medium">🐟 Menu 3: Seafood, Vegetables</label>
@@ -1309,11 +1688,9 @@ function BookingFormContent({
           </div>
         </div>
 
-        {/* Extras: Pasta, Dessert, Beverages */}
         <div className="border-t pt-6">
           <h4 className="text-base font-medium mb-4">🍽️ Extras: Pasta, Dessert, Beverage </h4>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
-            {/* Pasta */}
             <div className="space-y-3 border rounded-lg p-4">
               <div className="flex items-center justify-between border-b pb-2">
                 <h4 className="font-medium text-gray-700 dark:text-gray-300">🍝 Pasta</h4>
@@ -1369,7 +1746,6 @@ function BookingFormContent({
               </div>
             </div>
 
-            {/* Dessert */}
             <div className="space-y-3 border rounded-lg p-4">
               <div className="flex items-center justify-between border-b pb-2">
                 <h4 className="font-medium text-gray-700 dark:text-gray-300">🍰 Dessert</h4>
@@ -1425,7 +1801,6 @@ function BookingFormContent({
               </div>
             </div>
 
-            {/* Beverage */}
             <div className="space-y-3 border rounded-lg p-4">
               <div className="flex items-center justify-between border-b pb-2">
                 <h4 className="font-medium text-gray-700 dark:text-gray-300">🥤 Beverage</h4>
@@ -1487,7 +1862,6 @@ function BookingFormContent({
   }
 
   const renderStep3 = () => {
-    // Add this helper function at the beginning of renderStep3
     const cleanValue = (value: string) => value.replace(/\s*$$Auto-filled$$\s*/gi, "").trim()
 
     return (
@@ -1528,18 +1902,20 @@ function BookingFormContent({
                   <span className="font-medium">Number of Guests:</span>
                   <span>{formData.guestCount ? `${formData.guestCount} guests` : "Not specified"}</span>
                 </div>
-                {/* Updated Review Venue Section */}
-                <div className="flex flex-col gap-1">
+                <div className="flex justify-between">
                   <span className="font-medium">Venue:</span>
-                  <div className="text-right">
-                    {formData.venueName && <div className="font-medium">{formData.venueName}</div>}
-                    {formData.venueStreet && <div>{formData.venueStreet}</div>}
-                    {formData.venueCity && <div>{formData.venueCity}</div>}
-                    {formData.venueZipCode && <div>{formData.venueZipCode}</div>}
-                    {!formData.venueCity && !formData.venueStreet && (
-                      <span className="text-gray-500">Not specified</span>
-                    )}
-                  </div>
+                  <span className="text-right">
+                    {[
+                      formData.venueName,
+                      formData.venueStreet,
+                      formData.venueBarangay,
+                      formData.venueCity,
+                      formData.venueProvince,
+                      formData.venuePostalCode,
+                    ]
+                      .filter(Boolean)
+                      .join(", ") || "Not specified"}
+                  </span>
                 </div>
                 {formData.theme && (
                   <div className="flex justify-between">
@@ -1600,7 +1976,6 @@ function BookingFormContent({
             <div>
               <h4 className="font-semibold text-base mb-3 text-rose-600">Menu Selection</h4>
               <div className="space-y-3 text-sm pl-4">
-                {/* Menu 1 */}
                 <div>
                   <span className="font-medium">
                     Menu 1 - Beef, Pork ({formData.menu1Selections?.length || 0} selected):
@@ -1620,7 +1995,6 @@ function BookingFormContent({
                   </div>
                 </div>
 
-                {/* Menu 2 */}
                 <div>
                   <span className="font-medium">
                     Menu 2 - Chicken ({formData.menu2Selections?.length || 0} selected):
@@ -1640,7 +2014,6 @@ function BookingFormContent({
                   </div>
                 </div>
 
-                {/* Menu 3 */}
                 <div>
                   <span className="font-medium">
                     Menu 3 - Seafood, Vegetables ({formData.menu3Selections?.length || 0} selected):
@@ -1724,7 +2097,6 @@ function BookingFormContent({
 
             <hr className="my-4" />
 
-            {/* Add Backdrop Styling Information for Birthday Events */}
             {formData.eventType === "birthday" && backdropStyle && (
               <>
                 <div>
@@ -1838,7 +2210,6 @@ function BookingFormContent({
                           <span className="font-medium">Service Fee:</span>
                           <span className="font-semibold text-rose-600">{formatCurrency(pricingData.serviceFee)}</span>
                         </div>
-                        {/* Add Service Fee Information for non-Wedding and non-Debut events */}
                         {formData.eventType !== "wedding" && formData.eventType !== "debut" && (
                           <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                             <div className="font-medium text-blue-800 dark:text-blue-200 mb-2">
@@ -1907,7 +2278,6 @@ function BookingFormContent({
     )
   }
 
-  // Show success message with countdown if booking is complete
   if (isBookingComplete) {
     const tastingDate = bookingResponse?.data?.tastingDate
     const tastingTime = bookingResponse?.data?.tastingTime
@@ -1958,10 +2328,10 @@ function BookingFormContent({
               <br />
               <br />
               Click{" "}
-              <strong>"Confirm This Date"</strong>{" "}
-                to secure your tasting slot, or{" "}
-              <strong>"Skip Food Tasting & Proceed to Payment"</strong>{" "}
-                to skip directly to payment if preferred.
+              <strong>
+                "Confirm This Date" to secure your tasting slot, or "Skip Food Tasting & Proceed to Payment" to skip
+                directly to payment if preferred"
+              </strong>{" "}
               in the email to confirm or skip your tasting appointment.
             </p>
           </div>

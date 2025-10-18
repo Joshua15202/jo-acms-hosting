@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 import { cookies } from "next/headers"
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   try {
     console.log("=== AUTH ME API CALLED ===")
