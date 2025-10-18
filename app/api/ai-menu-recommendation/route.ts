@@ -502,8 +502,8 @@ export async function POST(request: Request) {
       seafood: applyUserConstraints(availableMenuItems.seafood || [], "seafood", userPrefs),
       vegetables: applyUserConstraints(availableMenuItems.vegetables || [], "vegetables", userPrefs),
       pasta: applyUserConstraints(availableMenuItems.pasta || [], "pasta", userPrefs),
-      dessert: availableMenuItems.dessert || [], // Desserts rarely restricted
-      beverage: availableMenuItems.beverage || [], // Beverages rarely restricted
+      dessert: availableMenuItems.dessert || [],
+      beverage: availableMenuItems.beverage || [],
     }
 
     // Randomize all menu categories for variety - include generation count for more randomness
@@ -641,9 +641,9 @@ VALIDATION RULES:
 Remember: Always maintain the fixed structure while respecting user restrictions completely. Focus on creating the perfect menu within these constraints while ensuring maximum variety for generation #${generationCount}.`
 
     const response = await generateText({
-      model: google("gemini-1.5-flash"),
+      model: google("gemini-1.5-flash-latest"),
       prompt: prompt,
-      temperature: 0.8, // Increased temperature for more variety
+      temperature: 0.8,
       maxTokens: 1500,
     })
 
@@ -690,13 +690,11 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       const beefSelections = validateSelections(aiRecommendations.beef || [], filteredMenuItems.beef, "Beef")
 
       if (beefSelections.length > 0) {
-        // Take ONLY the first item, even if AI provided multiple
         validatedRecommendations.beef = [beefSelections[0]]
         console.log(
           `Beef: Selected "${beefSelections[0]}" (AI provided ${beefSelections.length} items, took first only)`,
         )
       } else if (filteredMenuItems.beef.length > 0) {
-        // Fallback: pick one random item
         const randomItem = filteredMenuItems.beef[Math.floor(Math.random() * filteredMenuItems.beef.length)]
         validatedRecommendations.beef = [randomItem]
         console.log(`Beef: Fallback selected "${randomItem}"`)
@@ -708,13 +706,11 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       const porkSelections = validateSelections(aiRecommendations.pork || [], filteredMenuItems.pork, "Pork")
 
       if (porkSelections.length > 0) {
-        // Take ONLY the first item, even if AI provided multiple
         validatedRecommendations.pork = [porkSelections[0]]
         console.log(
           `Pork: Selected "${porkSelections[0]}" (AI provided ${porkSelections.length} items, took first only)`,
         )
       } else if (filteredMenuItems.pork.length > 0) {
-        // Fallback: pick one random item
         const randomItem = filteredMenuItems.pork[Math.floor(Math.random() * filteredMenuItems.pork.length)]
         validatedRecommendations.pork = [randomItem]
         console.log(`Pork: Fallback selected "${randomItem}"`)
@@ -730,13 +726,11 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       )
 
       if (chickenSelections.length > 0) {
-        // Take ONLY the first item, even if AI provided multiple
         validatedRecommendations.chicken = [chickenSelections[0]]
         console.log(
           `Chicken: Selected "${chickenSelections[0]}" (AI provided ${chickenSelections.length} items, took first only)`,
         )
       } else {
-        // Fallback: pick one random chicken item
         const randomItem = filteredMenuItems.chicken[Math.floor(Math.random() * filteredMenuItems.chicken.length)]
         validatedRecommendations.chicken = [randomItem]
         console.log(`Chicken: Fallback selected "${randomItem}"`)
@@ -752,13 +746,11 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       )
 
       if (seafoodSelections.length > 0) {
-        // Take ONLY the first item, even if AI provided multiple
         validatedRecommendations.seafood = [seafoodSelections[0]]
         console.log(
           `Seafood: Selected "${seafoodSelections[0]}" (AI provided ${seafoodSelections.length} items, took first only)`,
         )
       } else if (filteredMenuItems.seafood.length > 0) {
-        // Fallback: pick one random item
         const randomItem = filteredMenuItems.seafood[Math.floor(Math.random() * filteredMenuItems.seafood.length)]
         validatedRecommendations.seafood = [randomItem]
         console.log(`Seafood: Fallback selected "${randomItem}"`)
@@ -774,13 +766,11 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       )
 
       if (vegetableSelections.length > 0) {
-        // Take ONLY the first item, even if AI provided multiple
         validatedRecommendations.vegetables = [vegetableSelections[0]]
         console.log(
           `Vegetables: Selected "${vegetableSelections[0]}" (AI provided ${vegetableSelections.length} items, took first only)`,
         )
       } else if (filteredMenuItems.vegetables.length > 0) {
-        // Fallback: pick one random item
         const randomItem = filteredMenuItems.vegetables[Math.floor(Math.random() * filteredMenuItems.vegetables.length)]
         validatedRecommendations.vegetables = [randomItem]
         console.log(`Vegetables: Fallback selected "${randomItem}"`)
@@ -792,13 +782,11 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       const pastaSelections = validateSelections(aiRecommendations.pasta || [], filteredMenuItems.pasta, "Pasta")
 
       if (pastaSelections.length > 0) {
-        // Take ONLY the first item, even if AI provided multiple
         validatedRecommendations.pasta = [pastaSelections[0]]
         console.log(
           `Pasta: Selected "${pastaSelections[0]}" (AI provided ${pastaSelections.length} items, took first only)`,
         )
       } else {
-        // Fallback: pick one random pasta
         const randomItem = filteredMenuItems.pasta[Math.floor(Math.random() * filteredMenuItems.pasta.length)]
         validatedRecommendations.pasta = [randomItem]
         console.log(`Pasta: Fallback selected "${randomItem}"`)
@@ -814,13 +802,11 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       )
 
       if (dessertSelections.length > 0) {
-        // Take ONLY the first item, even if AI provided multiple
         validatedRecommendations.dessert = [dessertSelections[0]]
         console.log(
           `Dessert: Selected "${dessertSelections[0]}" (AI provided ${dessertSelections.length} items, took first only)`,
         )
       } else {
-        // Fallback: pick one random dessert
         const randomItem = filteredMenuItems.dessert[Math.floor(Math.random() * filteredMenuItems.dessert.length)]
         validatedRecommendations.dessert = [randomItem]
         console.log(`Dessert: Fallback selected "${randomItem}"`)
@@ -836,13 +822,11 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       )
 
       if (beverageSelections.length > 0) {
-        // Take ONLY the first item, even if AI provided multiple
         validatedRecommendations.beverage = [beverageSelections[0]]
         console.log(
           `Beverage: Selected "${beverageSelections[0]}" (AI provided ${beverageSelections.length} items, took first only)`,
         )
       } else {
-        // Fallback: pick one random beverage
         const randomItem = filteredMenuItems.beverage[Math.floor(Math.random() * filteredMenuItems.beverage.length)]
         validatedRecommendations.beverage = [randomItem]
         console.log(`Beverage: Fallback selected "${randomItem}"`)
@@ -898,7 +882,6 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       validatedRecommendations.beverage.length > 1
     ) {
       console.error("CRITICAL ERROR: More than 1 item detected in a category!")
-      // Force compliance by taking only first item
       validatedRecommendations.beef = validatedRecommendations.beef.slice(0, 1)
       validatedRecommendations.pork = validatedRecommendations.pork.slice(0, 1)
       validatedRecommendations.chicken = validatedRecommendations.chicken.slice(0, 1)
@@ -912,8 +895,8 @@ Remember: Always maintain the fixed structure while respecting user restrictions
     return NextResponse.json({
       success: true,
       recommendations: validatedRecommendations,
-      userPreferences: userPrefs, // Include parsed preferences for debugging
-      sessionId: sessionId, // Include session ID for tracking variety
+      userPreferences: userPrefs,
+      sessionId: sessionId,
       fixedStructure: {
         beef: validatedRecommendations.beef.length,
         pork: validatedRecommendations.pork.length,

@@ -9,7 +9,6 @@ import { useToast } from "@/components/ui/use-toast"
 import {
   ChevronRight,
   Loader2,
-  Send,
   Shuffle,
   Calendar,
   Clock,
@@ -20,6 +19,7 @@ import {
   Mail,
   Phone,
   Home,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Input } from "@/components/ui/input"
@@ -53,6 +53,7 @@ interface AIRecommendationProps {
   personalInfo: PersonalInfo
   eventInfo: EventInfo
   schedulingInfo: SchedulingInfo
+  onChangeEventType?: () => void
 }
 
 interface MenuItem {
@@ -77,7 +78,9 @@ const initialFormDataState = {
   guestCount: "",
   preferredMenus: "",
   venueName: "",
+  venueProvince: "",
   venueCity: "",
+  venueBarangay: "",
   venueStreetAddress: "",
   venueZipCode: "",
   theme: "",
@@ -85,19 +88,337 @@ const initialFormDataState = {
   additionalEventInfo: "",
 }
 
-const SERVICE_AREA_CITIES = [
-  "Fairview, Quezon City",
-  "Valenzuela City",
-  "Quezon City",
-  "Malolos, Bulacan",
-  "Novaliches, Quezon City",
-  "Malabon City",
-  "Meycauayan, Bulacan",
-  "Pandi, Bulacan",
-  "Marilao, Bulacan",
-]
+// Address data structure
+const addressData = {
+  "Metro Manila": {
+    "Quezon City": [
+      "Alicia",
+      "Amihan",
+      "Apolonio Samson",
+      "Baesa",
+      "Bagbaguin",
+      "Bagong Lipunan ng Crame",
+      "Bagong Pag-asa",
+      "Bagong Silangan",
+      "Bagumbayan",
+      "Bagumbuhay",
+      "Bahay Toro",
+      "Balingasa",
+      "Botocan",
+      "Bungad",
+      "Camp Aguinaldo",
+      "Capri",
+      "Central",
+      "Claro",
+      "Commonwealth",
+      "Culiat",
+      "Damar",
+      "Damayan",
+      "Damayang Lagi",
+      "Del Monte",
+      "Dioquino Zobel",
+      "Dona Imelda",
+      "Dona Josefa",
+      "Don Manuel",
+      "Duyan-Duyan",
+      "E. Rodriguez",
+      "East Kamias",
+      "Escopa I",
+      "Escopa II",
+      "Escopa III",
+      "Escopa IV",
+      "Fairview",
+      "Greater Lagro",
+      "Gulod",
+      "Holy Spirit",
+      "Horseshoe",
+      "Immaculate Concepcion",
+      "Kaligayahan",
+      "Kalusugan",
+      "Kamuning",
+      "Katipunan",
+      "Kaunlaran",
+      "Kristong Hari",
+      "Krus na Ligas",
+      "Laging Handa",
+      "Libis",
+      "Lourdes",
+      "Loyola Heights",
+      "Maharlika",
+      "Malaya",
+      "Mangga",
+      "Manresa",
+      "Mariana",
+      "Mariblo",
+      "Marilag",
+      "Masagana",
+      "Masambong",
+      "Matalahib",
+      "Matandang Balara",
+      "Milagrosa",
+      "N.S. Amoranto",
+      "Nagkaisang Nayon",
+      "New Era",
+      "North Fairview",
+      "Novaliches Proper",
+      "Nueve de Febrero",
+      "Obrero",
+      "Old Capitol Site",
+      "Paang Bundok",
+      "Pag-ibig sa Nayon",
+      "Paligsahan",
+      "Paltok",
+      "Pansol",
+      "Paraiso",
+      "Pasong Putik Proper",
+      "Pasong Tamo",
+      "Payatas",
+      "Phil-Am",
+      "Pinagkaisahan",
+      "Pinyahan",
+      "Project 6",
+      "Quirino 2-A",
+      "Quirino 2-B",
+      "Quirino 2-C",
+      "Quirino 3-A",
+      "Ramon Magsaysay",
+      "Roxas",
+      "Sacred Heart",
+      "Saint Ignatius",
+      "Saint Peter",
+      "Salvacion",
+      "San Agustin",
+      "San Antonio",
+      "San Bartolome",
+      "San Isidro",
+      "San Isidro Labrador",
+      "San Jose",
+      "San Martin de Porres",
+      "San Roque",
+      "San Vicente",
+      "Sangandaan",
+      "Santa Cruz",
+      "Santa Lucia",
+      "Santa Monica",
+      "Santa Teresita",
+      "Santo Cristo",
+      "Santo Domingo",
+      "Santo Nino",
+      "Santol",
+      "Sauyo",
+      "Sienna",
+      "Silangan",
+      "Sikatuna Village",
+      "Socorro",
+      "South Triangle",
+      "Tagumpay",
+      "Talampas",
+      "Talayan",
+      "Talipapa",
+      "Tandang Sora",
+      "Tatalon",
+      "Teachers Village East",
+      "Teachers Village West",
+      "Ugong Norte",
+      "Unang Sigaw",
+      "UP Campus",
+      "UP Village",
+      "Valencia",
+      "Vasra",
+      "Veterans Village",
+      "West Triangle",
+      "White Plains",
+    ],
+    Valenzuela: [
+      "Arkong Bato",
+      "Bagbaguin",
+      "Balangkas",
+      "Bignay",
+      "Bisig",
+      "Canumay East",
+      "Canumay West",
+      "Coloong",
+      "Dalandanan",
+      "Gen. T. de Leon",
+      "Hen. T. de Leon",
+      "Isla",
+      "Karuhatan",
+      "Lawang Bato",
+      "Lingunan",
+      "Mabolo",
+      "Malanday",
+      "Malinta",
+      "Mapulang Lupa",
+      "Marulas",
+      "Maysan",
+      "Palasan",
+      "Parada",
+      "Pariancillo Villa",
+      "Pasolo",
+      "Polo",
+      "Punturin",
+      "Rincon",
+      "Tagalag",
+      "Ugong",
+      "Viente Reales",
+      "Wawang Pulo",
+    ],
+    Malabon: [
+      "Acacia",
+      "Baritan",
+      "Bayan-bayanan",
+      "Catmon",
+      "Concepcion",
+      "Dampalit",
+      "Flores",
+      "Hulong Duhat",
+      "Ibaba",
+      "Longos",
+      "Maysilo",
+      "Muzon",
+      "Niugan",
+      "Panghulo",
+      "Potrero",
+      "San Agustin",
+      "Santolan",
+      "Tanong",
+      "Tinajeros",
+      "Tonsuya",
+      "Tugatog",
+    ],
+  },
+  Bulacan: {
+    Malolos: [
+      "Anilao",
+      "Atlag",
+      "Babatnin",
+      "Bagna",
+      "Bagong Bayan",
+      "Balayong",
+      "Balite",
+      "Bangkal",
+      "Barihan",
+      "Bulihan",
+      "Bungahan",
+      "Caingin",
+      "Calero",
+      "Caliligawan",
+      "Canalate",
+      "Caniogan",
+      "Capihan",
+      "Catmon",
+      "Cofradia",
+      "Dakila",
+      "Guinhawa",
+      "Ligas",
+      "Liyang",
+      "Longos",
+      "Look 1st",
+      "Look 2nd",
+      "Lugam",
+      "Mabolo",
+      "Mambog",
+      "Masile",
+      "Matimbo",
+      "Mojon",
+      "Namayan",
+      "Niugan",
+      "Pamarawan",
+      "Panasahan",
+      "Pinagbakahan",
+      "San Agustin",
+      "San Gabriel",
+      "San Juan",
+      "San Pablo",
+      "San Vicente",
+      "Santiago",
+      "Santisima Trinidad",
+      "Santo Cristo",
+      "Santo Niño",
+      "Santo Rosario",
+      "Sariling Bayan",
+      "Subukan",
+      "Sumapang Bata",
+      "Sumapang Matanda",
+      "Taal",
+      "Tikay",
+    ],
+    Meycauayan: [
+      "Bagbaguin",
+      "Bahay Pare",
+      "Bancal",
+      "Banga",
+      "Bayugo",
+      "Caingin",
+      "Calvario",
+      "Camalig",
+      "Hulo",
+      "Iba",
+      "Langka",
+      "Lawa",
+      "Libtong",
+      "Liputan",
+      "Malhacan",
+      "Pajo",
+      "Pandayan",
+      "Pantoc",
+      "Perez",
+      "Saluysoy",
+      "St. Francis",
+      "Tugatog",
+      "Ubihan",
+      "Zamora",
+    ],
+    Pandi: [
+      "Bagbaguin",
+      "Bagong Barrio",
+      "Baka-bakahan",
+      "Baliuag",
+      "Bunsuran I",
+      "Bunsuran II",
+      "Bunsuran III",
+      "Cacarong Bata",
+      "Cacarong Matanda",
+      "Cupang",
+      "Malibo",
+      "Manatal",
+      "Mapulang Lupa",
+      "Masagana",
+      "Masangsang",
+      "Pinagkuartelan",
+      "Poblacion",
+      "Real de Cacarong",
+      "San Roque",
+      "Siling Bata",
+      "Siling Matanda",
+    ],
+    Marilao: [
+      "Abangan Norte",
+      "Abangan Sur",
+      "Ibayo",
+      "Lambakin",
+      "Lias",
+      "Loma de Gato",
+      "Nagbalon",
+      "Patubig",
+      "Poblacion I",
+      "Poblacion II",
+      "Prenza I",
+      "Prenza II",
+      "Santa Rosa I",
+      "Santa Rosa II",
+      "Saog",
+      "Tabing Ilog",
+    ],
+  },
+}
 
-export default function AIRecommendation({ personalInfo, eventInfo, schedulingInfo }: AIRecommendationProps) {
+export default function AIRecommendation({
+  personalInfo,
+  eventInfo,
+  schedulingInfo,
+  onChangeEventType,
+}: AIRecommendationProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isGenerating, setIsGenerating] = useState(false)
@@ -112,9 +433,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
   const [generationCount, setGenerationCount] = useState(0)
 
   const [selectedMenuItems, setSelectedMenuItems] = useState<{
-    menu1: string[] // Beef, Pork
-    menu2: string[] // Chicken
-    menu3: string[] // Seafood, Vegetables
+    menu1: string[]
+    menu2: string[]
+    menu3: string[]
     pasta: string[]
     dessert: string[]
     beverage: string[]
@@ -126,6 +447,42 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     dessert: [],
     beverage: [],
   })
+
+  const [availableCities, setAvailableCities] = useState<string[]>([])
+  const [availableBarangays, setAvailableBarangays] = useState<string[]>([])
+
+  // Update cities when province changes
+  useEffect(() => {
+    if (formData.venueProvince) {
+      const cities = Object.keys(addressData[formData.venueProvince as keyof typeof addressData] || {})
+      setAvailableCities(cities)
+      if (!cities.includes(formData.venueCity)) {
+        setFormData((prev) => ({ ...prev, venueCity: "", venueBarangay: "" }))
+        setAvailableBarangays([])
+      }
+    } else {
+      setAvailableCities([])
+      setAvailableBarangays([])
+      setFormData((prev) => ({ ...prev, venueCity: "", venueBarangay: "" }))
+    }
+  }, [formData.venueProvince])
+
+  // Update barangays when city changes
+  useEffect(() => {
+    if (formData.venueProvince && formData.venueCity) {
+      const barangays =
+        addressData[formData.venueProvince as keyof typeof addressData]?.[
+          formData.venueCity as keyof (typeof addressData)[keyof typeof addressData]
+        ] || []
+      setAvailableBarangays(barangays)
+      if (!barangays.includes(formData.venueBarangay)) {
+        setFormData((prev) => ({ ...prev, venueBarangay: "" }))
+      }
+    } else {
+      setAvailableBarangays([])
+      setFormData((prev) => ({ ...prev, venueBarangay: "" }))
+    }
+  }, [formData.venueProvince, formData.venueCity])
 
   // Countdown timer effect for auto-redirect
   useEffect(() => {
@@ -141,6 +498,39 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
 
   const handleGoToHomepage = () => {
     router.push("/")
+  }
+
+  // Fetch menu items from database on component mount
+  useEffect(() => {
+    const fetchMenuItems = async () => {
+      try {
+        setIsLoadingMenu(true)
+        const response = await fetch("/api/menu-items")
+        const result = await response.json()
+
+        if (result.success && result.menuItems) {
+          console.log("Fetched menu items:", result.menuItems)
+          setMenuItems(result.menuItems)
+        } else {
+          console.error("Failed to fetch menu items:", result.message)
+        }
+      } catch (error) {
+        console.error("Error fetching menu items:", error)
+      } finally {
+        setIsLoadingMenu(false)
+      }
+    }
+
+    fetchMenuItems()
+  }, [])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   // Randomize array function for client-side fallback
@@ -305,7 +695,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         const categories = pattern.extract(match[0])
         onlyRequests.push(...categories)
         console.log(`Detected combination "only" request:`, categories)
-        break // Only process the first match to avoid duplicates
+        break
       }
     }
 
@@ -616,39 +1006,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     }
   }
 
-  // Fetch menu items from database on component mount
-  useEffect(() => {
-    const fetchMenuItems = async () => {
-      try {
-        setIsLoadingMenu(true)
-        const response = await fetch("/api/menu-items")
-        const result = await response.json()
-
-        if (result.success && result.menuItems) {
-          console.log("Fetched menu items:", result.menuItems)
-          setMenuItems(result.menuItems)
-        } else {
-          console.error("Failed to fetch menu items:", result.message)
-        }
-      } catch (error) {
-        console.error("Error fetching menu items:", error)
-      } finally {
-        setIsLoadingMenu(false)
-      }
-    }
-
-    fetchMenuItems()
-  }, [])
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
-
   const handleBookPackage = async (pkg: any) => {
     setIsBooking(true)
 
@@ -666,7 +1023,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         guestCount: Number.parseInt(formData.guestCount),
         eventDate: schedulingInfo.eventDate,
         eventTime: schedulingInfo.timeSlot,
-        venue: `${formData.venueName ? formData.venueName + ", " : ""}${formData.venueStreetAddress}, ${formData.venueCity}${formData.venueZipCode ? ", " + formData.venueZipCode : ""}`,
+        venue: `${formData.venueName ? formData.venueName + ", " : ""}${formData.venueStreetAddress}, ${formData.venueBarangay}, ${formData.venueCity}, ${formData.venueProvince}${formData.venueZipCode ? ", " + formData.venueZipCode : ""}`,
         theme: formData.theme,
         colorMotif: formData.colorMotif,
         celebrantName: eventInfo.celebrantName,
@@ -676,9 +1033,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         brideName: eventInfo.brideName,
         additionalEventInfo: eventInfo.additionalEventInfo,
         mainCourses: allMainCourses,
-        pasta: selectedMenuItems.pasta,
-        dessert: selectedMenuItems.dessert,
-        beverage: selectedMenuItems.beverage,
+        pasta: selectedMenuItems.pasta.join(", "),
+        dessert: selectedMenuItems.dessert.join(", "),
+        beverage: selectedMenuItems.beverage.join(", "),
         additionalRequests: formData.preferredMenus ? `AI Preferences: ${formData.preferredMenus}` : "",
         totalAmount: pkg.menuTotal + pkg.serviceFee,
         downPayment: pkg.downPayment,
@@ -701,7 +1058,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       if (result.success) {
         setBookingResponse(result)
         setIsBookingComplete(true)
-        setCountdown(20) // Start 20-second countdown
+        setCountdown(20)
       } else {
         throw new Error(result.error || "Failed to book appointment")
       }
@@ -722,9 +1079,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     console.log("Enforcing fixed structure - Input:", aiRecommendations)
 
     const finalMenu = {
-      menu1: [] as string[], // Exactly 1 from beef/pork
-      menu2: [] as string[], // Exactly 1 from chicken
-      menu3: [] as string[], // Exactly 1 from seafood/vegetables
+      menu1: [] as string[],
+      menu2: [] as string[],
+      menu3: [] as string[],
       pasta: aiRecommendations.pasta?.slice(0, 1) || [],
       dessert: aiRecommendations.dessert?.slice(0, 1) || [],
       beverage: aiRecommendations.beverage?.slice(0, 1) || [],
@@ -732,12 +1089,10 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
 
     console.log("User preferences:", userPrefs)
 
-    // Handle "only" requests - but still maintain 1 from each available category
+    // Handle "only" requests
     if (userPrefs.onlyRequests.length > 0) {
       console.log("Processing 'only' requests:", userPrefs.onlyRequests)
 
-      // For "only" requests, we still try to provide variety but prioritize the requested category
-      // Menu 1 (Beef & Pork) - only if beef or pork is in "only" requests
       if (userPrefs.onlyRequests.includes("beef") && filteredMenuItems.beef.length > 0) {
         finalMenu.menu1 = [
           shuffleArray([...filteredMenuItems.beef])[0].name || shuffleArray([...filteredMenuItems.beef])[0],
@@ -748,14 +1103,12 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         ]
       }
 
-      // Menu 2 (Chicken) - only if chicken is in "only" requests
       if (userPrefs.onlyRequests.includes("chicken") && filteredMenuItems.chicken.length > 0) {
         finalMenu.menu2 = [
           shuffleArray([...filteredMenuItems.chicken])[0].name || shuffleArray([...filteredMenuItems.chicken])[0],
         ]
       }
 
-      // Menu 3 (Seafood & Vegetables) - only if seafood or vegetables is in "only" requests
       if (userPrefs.onlyRequests.includes("seafood") && filteredMenuItems.seafood.length > 0) {
         finalMenu.menu3 = [
           shuffleArray([...filteredMenuItems.seafood])[0].name || shuffleArray([...filteredMenuItems.seafood])[0],
@@ -765,44 +1118,21 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           shuffleArray([...filteredMenuItems.vegetables])[0].name || shuffleArray([...filteredMenuItems.vegetables])[0],
         ]
       }
-
-      // Special handling for vegetarian - only vegetables
-      if (
-        userPrefs.onlyRequests.includes("vegetables") &&
-        (userPrefs.restrictions.includes("beef") ||
-          userPrefs.restrictions.includes("pork") ||
-          userPrefs.restrictions.includes("chicken") ||
-          userPrefs.restrictions.includes("seafood"))
-      ) {
-        finalMenu.menu1 = []
-        finalMenu.menu2 = []
-        if (filteredMenuItems.vegetables.length > 0) {
-          finalMenu.menu3 = [
-            shuffleArray([...filteredMenuItems.vegetables])[0].name ||
-              shuffleArray([...filteredMenuItems.vegetables])[0],
-          ]
-        }
-      }
     } else {
-      // Normal distribution - exactly 1 from each menu category, respecting restrictions
       console.log("Processing normal distribution - 1 from each menu, respecting restrictions")
 
-      // Menu 1: Select 1 from beef/pork (skip if both are restricted)
       if (!userPrefs.restrictions.includes("beef") || !userPrefs.restrictions.includes("pork")) {
         let menu1Items = []
 
-        // Add beef items if not restricted
         if (!userPrefs.restrictions.includes("beef") && filteredMenuItems.beef.length > 0) {
           menu1Items.push(...filteredMenuItems.beef)
         }
 
-        // Add pork items if not restricted
         if (!userPrefs.restrictions.includes("pork") && filteredMenuItems.pork.length > 0) {
           menu1Items.push(...filteredMenuItems.pork)
         }
 
         if (menu1Items.length > 0) {
-          // Prioritize emphasized items
           if (userPrefs.emphasis.includes("beef") || userPrefs.emphasis.includes("pork")) {
             const emphasizedItems = menu1Items.filter((item) => {
               const itemName = (item.name || item).toLowerCase()
@@ -822,13 +1152,10 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         }
       }
 
-      // Menu 2: Select 1 from chicken (skip if restricted)
       if (!userPrefs.restrictions.includes("chicken") && filteredMenuItems.chicken.length > 0) {
         let chickenItems = [...filteredMenuItems.chicken]
 
-        // Prioritize if emphasized
         if (userPrefs.emphasis.includes("chicken")) {
-          // All chicken items are already emphasized, so just shuffle
           chickenItems = shuffleArray(chickenItems)
         }
 
@@ -836,22 +1163,18 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         finalMenu.menu2 = [selectedItem.name || selectedItem]
       }
 
-      // Menu 3: Select 1 from seafood/vegetables (skip if both are restricted)
       if (!userPrefs.restrictions.includes("seafood") || !userPrefs.restrictions.includes("vegetables")) {
         let menu3Items = []
 
-        // Add seafood items if not restricted
         if (!userPrefs.restrictions.includes("seafood") && filteredMenuItems.seafood.length > 0) {
           menu3Items.push(...filteredMenuItems.seafood)
         }
 
-        // Add vegetable items if not restricted
         if (!userPrefs.restrictions.includes("vegetables") && filteredMenuItems.vegetables.length > 0) {
           menu3Items.push(...filteredMenuItems.vegetables)
         }
 
         if (menu3Items.length > 0) {
-          // Prioritize emphasized items
           if (userPrefs.emphasis.includes("seafood") || userPrefs.emphasis.includes("vegetables")) {
             const emphasizedItems = menu3Items.filter((item) => {
               const itemName = (item.name || item).toLowerCase()
@@ -874,7 +1197,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       }
     }
 
-    // Ensure we have exactly 1 pasta, 1 dessert, 1 beverage (respecting restrictions)
     if (
       finalMenu.pasta.length === 0 &&
       !userPrefs.restrictions.includes("pasta") &&
@@ -916,10 +1238,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     }
 
     setIsGenerating(true)
-    setGenerationCount((prev) => prev + 1) // Increment generation count for variety tracking
+    setGenerationCount((prev) => prev + 1)
 
     try {
-      // Prepare menu data for AI with randomization
       const allMenuItems = {
         beef: menuItems.beef.map((item) => item.name),
         pork: menuItems.pork.map((item) => item.name),
@@ -935,12 +1256,12 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         eventType: eventInfo.eventType,
         guestCount: formData.guestCount,
         preferredMenus: formData.preferredMenus,
-        venue: `${formData.venueName ? formData.venueName + ", " : ""}${formData.venueStreetAddress}, ${formData.venueCity}${formData.venueZipCode ? ", " + formData.venueZipCode : ""}`,
+        venue: `${formData.venueName ? formData.venueName + ", " : ""}${formData.venueStreetAddress}, ${formData.venueBarangay}, ${formData.venueCity}, ${formData.venueProvince}${formData.venueZipCode ? ", " + formData.venueZipCode : ""}`,
         venueCity: formData.venueCity,
         theme: formData.theme,
         colorMotif: formData.colorMotif,
         availableMenuItems: allMenuItems,
-        generationCount: generationCount, // Include generation count for variety
+        generationCount: generationCount,
       }
 
       console.log("Sending AI request:", aiRequest)
@@ -956,19 +1277,16 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       const result = await response.json()
       console.log("AI API response:", result)
 
-      // Handle successful AI response
       if (result.success && result.recommendations) {
         console.log("AI recommendations received successfully")
 
-        // Parse user preferences for client-side validation
         const userPrefs = parseUserPreferences(formData.preferredMenus || "")
 
-        // Apply user restrictions to available items
         const applyUserRestrictions = (items: MenuItem[], category: string) => {
           if (userPrefs.restrictions.includes(category.toLowerCase())) {
-            return [] // Completely exclude this category
+            return []
           }
-          return shuffleArray(items) // Randomize available items
+          return shuffleArray(items)
         }
 
         const filteredMenuItems = {
@@ -982,10 +1300,8 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           beverage: shuffleArray(menuItems.beverage),
         }
 
-        // Enforce fixed structure: exactly 1 main course from each menu category
         const finalMenu = enforceFixedStructure(result.recommendations, userPrefs, filteredMenuItems)
 
-        // Update the state with the final menu
         setSelectedMenuItems({
           menu1: finalMenu.menu1,
           menu2: finalMenu.menu2,
@@ -995,7 +1311,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           beverage: finalMenu.beverage,
         })
 
-        // Calculate pricing based on final selections
         const calculateMenuPricing = (selections: any) => {
           const numGuests = Number.parseInt(formData.guestCount) || 50
           let total = 0
@@ -1008,42 +1323,36 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
             beverage: [],
           }
 
-          // Menu 1 (Beef & Pork) - ₱70 per guest
           selections.menu1?.forEach((item: string) => {
             const itemTotal = 70 * numGuests
             total += itemTotal
             breakdown.menu1.push({ name: item, pricePerGuest: 70, total: itemTotal })
           })
 
-          // Menu 2 (Chicken) - ₱60 per guest
           selections.menu2?.forEach((item: string) => {
             const itemTotal = 60 * numGuests
             total += itemTotal
             breakdown.menu2.push({ name: item, pricePerGuest: 60, total: itemTotal })
           })
 
-          // Menu 3 (Seafood & Vegetables) - ₱50 per guest
           selections.menu3?.forEach((item: string) => {
             const itemTotal = 50 * numGuests
             total += itemTotal
             breakdown.menu3.push({ name: item, pricePerGuest: 50, total: itemTotal })
           })
 
-          // Pasta - ₱40 per guest
           selections.pasta?.forEach((item: string) => {
             const itemTotal = 40 * numGuests
             total += itemTotal
             breakdown.pasta.push({ name: item, pricePerGuest: 40, total: itemTotal })
           })
 
-          // Dessert - ₱25 per guest
           selections.dessert?.forEach((item: string) => {
             const itemTotal = 25 * numGuests
             total += itemTotal
             breakdown.dessert.push({ name: item, pricePerGuest: 25, total: itemTotal })
           })
 
-          // Beverage - ₱25 per guest
           selections.beverage?.forEach((item: string) => {
             const itemTotal = 25 * numGuests
             total += itemTotal
@@ -1053,17 +1362,14 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           return { total, breakdown }
         }
 
-        // Calculate pricing based on the final menu structure
         const menuPricing = calculateMenuPricing(finalMenu)
         const numGuests = Number.parseInt(formData.guestCount) || 50
 
-        // Wedding package pricing based on guest count
         let serviceFee = 0
         const isWeddingEvent = eventInfo.eventType === "wedding"
         const isDebutEvent = eventInfo.eventType === "debut"
 
         if (isWeddingEvent) {
-          // Wedding package pricing
           const weddingPackagePricing: { [key: string]: number } = {
             "50": 56500,
             "100": 63000,
@@ -1073,7 +1379,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           }
           serviceFee = weddingPackagePricing[formData.guestCount] || 56500
         } else if (isDebutEvent) {
-          // Debut package pricing
           const debutPackagePricing: { [key: string]: number } = {
             "50": 21500,
             "80": 26400,
@@ -1083,7 +1388,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           }
           serviceFee = debutPackagePricing[formData.guestCount] || 21500
         } else {
-          // Regular service fee for other events
           const serviceFees: { [key: string]: number } = {
             "50": 11500,
             "80": 10400,
@@ -1094,11 +1398,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           serviceFee = serviceFees[formData.guestCount] || 11500
         }
 
-        // Calculate final total amount
         const finalTotalAmount = menuPricing.total + serviceFee
         const finalDownPayment = Math.round(finalTotalAmount * 0.5)
 
-        // Wedding package inclusions
         const weddingPackageInclusions = isWeddingEvent
           ? [
               "Rice & Drinks",
@@ -1113,7 +1415,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
             ]
           : []
 
-        // Debut package inclusions
         const debutPackageInclusions = isDebutEvent
           ? [
               "Rice & Drinks",
@@ -1127,7 +1428,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
             ]
           : []
 
-        // Service fee inclusions for regular events
         const serviceFeeInclusions =
           !isWeddingEvent && !isDebutEvent
             ? [
@@ -1143,11 +1443,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
               ]
             : []
 
-        // Create detailed package features with actual menu items
         const createPackageFeatures = (selections: any) => {
           const features = []
 
-          // Main courses with actual names
           const mainCourseItems = [
             ...(selections.menu1 || []).map((item: string) => `${item} (Menu 1)`),
             ...(selections.menu2 || []).map((item: string) => `${item} (Menu 2)`),
@@ -1158,22 +1456,18 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
             features.push(`Main Courses (${mainCourseItems.length}): ${mainCourseItems.join(", ")}`)
           }
 
-          // Pasta dishes
           if (selections.pasta && selections.pasta.length > 0) {
             features.push(`Pasta (${selections.pasta.length}): ${selections.pasta.join(", ")}`)
           }
 
-          // Desserts
           if (selections.dessert && selections.dessert.length > 0) {
             features.push(`Desserts (${selections.dessert.length}): ${selections.dessert.join(", ")}`)
           }
 
-          // Beverages
           if (selections.beverage && selections.beverage.length > 0) {
             features.push(`Beverages (${selections.beverage.length}): ${selections.beverage.join(", ")}`)
           }
 
-          // Add user preference acknowledgment
           if (userPrefs.restrictions.length > 0) {
             features.push(`✓ Excludes: ${userPrefs.restrictions.join(", ")} (as requested)`)
           }
@@ -1184,10 +1478,8 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
             features.push(`✓ Only includes: ${userPrefs.onlyRequests.join(", ")} (as requested)`)
           }
 
-          // Add other standard features
           features.push(`${numGuests} guests`)
           features.push(`AI-personalized based on your preferences`)
-          features.push(`Generation #${generationCount} - Fresh variety`)
           features.push(`Fixed structure: exactly 1 main course, 1 pasta, 1 dessert, 1 beverage`)
 
           return features
@@ -1224,12 +1516,10 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         setRecommendations(mockRecommendations)
       } else {
         console.error("AI recommendation failed:", result.message)
-        // Fallback to original logic if AI fails
         generateFallbackRecommendations()
       }
     } catch (error) {
       console.error("Error generating AI recommendations:", error)
-      // Fallback to original logic if AI fails
       generateFallbackRecommendations()
     } finally {
       setIsGenerating(false)
@@ -1242,12 +1532,11 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     const numGuests = Number.parseInt(formData.guestCount) || 50
     const userPrefs = parseUserPreferences(formData.preferredMenus || "")
 
-    // Apply user restrictions to available items
     const applyUserRestrictions = (items: MenuItem[], category: string) => {
       if (userPrefs.restrictions.includes(category.toLowerCase())) {
-        return [] // Completely exclude this category
+        return []
       }
-      return shuffleArray(items) // Randomize available items
+      return shuffleArray(items)
     }
 
     const filteredMenuItems = {
@@ -1261,7 +1550,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       beverage: shuffleArray(menuItems.beverage),
     }
 
-    // Use the same fixed structure enforcement
     const fallbackRecommendations = {
       menu1: [],
       menu2: [],
@@ -1285,7 +1573,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
     const isWeddingEvent = eventInfo.eventType === "wedding"
     const isDebutEvent = eventInfo.eventType === "debut"
 
-    // Calculate final menu cost with fixed pricing
     const costs = { menu1: 70, menu2: 60, menu3: 50, pasta: 40, dessert: 25, beverage: 25 }
     const finalMenuCost =
       (finalMenu.menu1.length * costs.menu1 +
@@ -1296,10 +1583,8 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         finalMenu.beverage.length * costs.beverage) *
       numGuests
 
-    // Service fee calculation
     let serviceFee = 0
     if (isWeddingEvent) {
-      // Wedding package pricing
       const weddingPackagePricing: { [key: string]: number } = {
         "50": 56500,
         "100": 63000,
@@ -1309,7 +1594,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       }
       serviceFee = weddingPackagePricing[formData.guestCount] || 56500
     } else if (isDebutEvent) {
-      // Debut package pricing
       const debutPackagePricing: { [key: string]: number } = {
         "50": 21500,
         "80": 26400,
@@ -1319,7 +1603,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       }
       serviceFee = debutPackagePricing[formData.guestCount] || 21500
     } else {
-      // Regular service fee
       const serviceFees: { [key: string]: number } = {
         "50": 11500,
         "80": 10400,
@@ -1330,11 +1613,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
       serviceFee = serviceFees[formData.guestCount] || 11500
     }
 
-    // Calculate final total amount
     const finalTotalAmount = finalMenuCost + serviceFee
     const finalDownPayment = Math.round(finalTotalAmount * 0.5)
 
-    // Wedding package inclusions
     const weddingPackageInclusions = isWeddingEvent
       ? [
           "Rice & Drinks",
@@ -1349,7 +1630,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         ]
       : []
 
-    // Debut package inclusions
     const debutPackageInclusions = isDebutEvent
       ? [
           "Rice & Drinks",
@@ -1363,7 +1643,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         ]
       : []
 
-    // Service fee inclusions for regular events
     const serviceFeeInclusions =
       !isWeddingEvent && !isDebutEvent
         ? [
@@ -1379,11 +1658,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
           ]
         : []
 
-    // Create detailed package features with actual menu items for fallback
     const createFallbackPackageFeatures = (selections: any) => {
       const features = []
 
-      // Main courses with actual names
       const mainCourseItems = [
         ...(selections.menu1 || []).map((item: string) => `${item} (Menu 1)`),
         ...(selections.menu2 || []).map((item: string) => `${item} (Menu 2)`),
@@ -1394,22 +1671,18 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         features.push(`Main Courses (${mainCourseItems.length}): ${mainCourseItems.join(", ")}`)
       }
 
-      // Pasta dishes
       if (selections.pasta && selections.pasta.length > 0) {
         features.push(`Pasta (${selections.pasta.length}): ${selections.pasta.join(", ")}`)
       }
 
-      // Desserts
       if (selections.dessert && selections.dessert.length > 0) {
         features.push(`Desserts (${selections.dessert.length}): ${selections.dessert.join(", ")}`)
       }
 
-      // Beverages
       if (selections.beverage && selections.beverage.length > 0) {
         features.push(`Beverages (${selections.beverage.length}): ${selections.beverage.join(", ")}`)
       }
 
-      // Add user preference acknowledgment
       if (userPrefs.restrictions.length > 0) {
         features.push(`✓ Excludes: ${userPrefs.restrictions.join(", ")} (as requested)`)
       }
@@ -1420,7 +1693,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
         features.push(`✓ Only includes: ${userPrefs.onlyRequests.join(", ")} (as requested)`)
       }
 
-      // Add other standard features
       features.push(`${numGuests} guests`)
       features.push(`Generation #${generationCount} - Standard structure`)
       features.push(`Fixed structure: exactly 1 main course, 1 pasta, 1 dessert, 1 beverage`)
@@ -1458,7 +1730,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
 
   const isFormDisabled = !eventInfo.eventType || isLoadingMenu
 
-  // Show success message with countdown if booking is complete
   if (isBookingComplete) {
     const tastingDate = bookingResponse?.data?.tastingDate
     const tastingTime = bookingResponse?.data?.tastingTime
@@ -1571,7 +1842,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                 structure:{" "}
                 <strong>
                   1 main course from each category (Menu 1: Beef/Pork, Menu 2: Chicken, Menu 3: Seafood/Vegetables), 1
-                  pasta, 1 dessert, 1 beverage
+                  pasta, 1 dessert, and 1 beverage
                 </strong>
                 .
               </p>
@@ -1603,97 +1874,53 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                   </Select>
                 </div>
 
+                {/* AI Menu Preferences - Moved below guest count */}
                 <div className="space-y-3 md:col-span-2">
-                  <label htmlFor="preferredMenus" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    AI Menu Preferences & Dietary Restrictions
-                  </label>
-                  <div className="relative">
-                    <Textarea
-                      id="preferredMenus"
-                      name="preferredMenus"
-                      disabled={isFormDisabled}
-                      value={formData.preferredMenus}
-                      onChange={handleInputChange}
-                      placeholder="Tell our AI your specific menu preferences and dietary restrictions. Examples: 'No beef', 'Add more chicken', 'More seafood', 'No pork', 'Prefer vegetables', 'Only chicken dishes', 'Vegetarian only', 'Halal requirements', 'No shellfish allergy', 'Gluten-free options', 'Keto diet', 'Pescatarian', etc. Our AI will maintain exactly 1 main course, 1 pasta, 1 dessert, and 1 beverage while respecting your preferences."
-                      className="min-h-[120px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 resize-none pr-12"
-                    />
-                    <Send className="absolute right-3 top-3 h-5 w-5 text-gray-400" />
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-rose-600" />
+                    <label htmlFor="preferredMenus" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      AI Menu Preferences & Dietary Restrictions <span className="text-gray-500">(Optional)</span>
+                    </label>
                   </div>
-
-                  {/* Dietary Restrictions Quick Buttons */}
-                  <div className="space-y-3">
-                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Quick Dietary Restrictions:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { label: "Vegetarian", value: "vegetarian only, no meat" },
-                        { label: "Pescatarian", value: "pescatarian, fish only, no meat" },
-                        { label: "Halal", value: "halal requirements, no pork" },
-                        { label: "No Shellfish", value: "no shellfish, shellfish allergy" },
-                        { label: "Gluten-Free", value: "gluten free, no pasta" },
-                        { label: "Keto/Low-Carb", value: "keto diet, low carb, no pasta" },
-                        { label: "No Beef", value: "no beef, exclude beef" },
-                        { label: "No Pork", value: "no pork, exclude pork" },
-                        { label: "No Chicken", value: "no chicken, exclude chicken" },
-                        { label: "More Seafood", value: "more seafood, extra seafood, prefer seafood" },
-                        { label: "More Vegetables", value: "more vegetables, extra vegetables, prefer vegetables" },
-                        { label: "Only Chicken", value: "only chicken, chicken only, chicken dishes only" },
-                        { label: "Only Beef", value: "only beef, beef only, beef dishes only" },
-                        { label: "Only Seafood", value: "only seafood, seafood only, seafood dishes only" },
-                      ].map((restriction) => (
-                        <Button
-                          key={restriction.label}
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={isFormDisabled}
-                          onClick={() => {
-                            const currentValue = formData.preferredMenus
-                            const newValue = currentValue ? `${currentValue}, ${restriction.value}` : restriction.value
-                            setFormData((prev) => ({ ...prev, preferredMenus: newValue }))
-                          }}
-                          className="text-xs px-3 py-1 h-7 border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
-                        >
-                          + {restriction.label}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                    <p className="text-xs text-blue-700 dark:text-blue-300">
-                      💡 <strong>Fixed Menu Structure:</strong> Our AI will always provide exactly 1 main course from
-                      each category (Menu 1: Beef/Pork, Menu 2: Chicken, Menu 3: Seafood/Vegetables), 1 pasta, 1
-                      dessert, and 1 beverage. You can specify preferences for specific dishes or categories, and our AI
-                      will respect your dietary restrictions while maintaining this structure.
-                    </p>
-                    <ul className="text-xs text-blue-600 dark:text-blue-400 mt-2 space-y-1 ml-4">
+                  <Textarea
+                    id="preferredMenus"
+                    name="preferredMenus"
+                    disabled={isFormDisabled}
+                    value={formData.preferredMenus}
+                    onChange={handleInputChange}
+                    placeholder="Tell us about your dietary preferences or restrictions..."
+                    className="min-h-[100px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                  />
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <h5 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                      💡 How to use AI Preferences:
+                    </h5>
+                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1.5">
                       <li>
-                        • <strong>Restrictions:</strong> "No beef", "Avoid pork", "Exclude chicken", "No shellfish
-                        allergy"
+                        <strong>To exclude items:</strong> "no pork", "no seafood", "halal" (automatically excludes
+                        pork)
                       </li>
                       <li>
-                        • <strong>Preferences:</strong> "More seafood", "Extra vegetables", "Prefer chicken", "Specific
-                        pasta dish"
+                        <strong>To emphasize favorites:</strong> "more beef", "lots of chicken", "I love seafood"
                       </li>
                       <li>
-                        • <strong>Only requests:</strong> "Only chicken", "Only seafood", "Only beef dishes"
+                        <strong>For specific diets:</strong> "vegetarian", "pescatarian" (fish only), "only chicken"
                       </li>
                       <li>
-                        • <strong>Dietary needs:</strong> "Vegetarian", "Halal", "Gluten-free", "Keto diet",
-                        "Pescatarian"
+                        <strong>Examples:</strong> "halal", "no pork, more beef", "vegetarian options", "only chicken
+                        and seafood", "I love pasta"
                       </li>
                     </ul>
                   </div>
                 </div>
 
-                {/* Venue Information - Service Area */}
-                <div className="space-y-4 md:col-span-2 border-t pt-4">
+                {/* Venue Information */}
+                <div className="space-y-4 md:col-span-2">
                   <div className="flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-rose-600" />
                     <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Venue Information</h4>
                   </div>
 
-                  {/* Service Area Info */}
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                     <p className="text-xs text-blue-700 dark:text-blue-300">
                       <strong>📍 Service Area:</strong> Jo Pacheco serves Quezon City, Valenzuela, Malabon, Bulacan
@@ -1702,7 +1929,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    {/* Venue/Hall Name */}
                     <div className="space-y-2">
                       <label htmlFor="venueName" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Venue/Hall Name <span className="text-gray-500">(Optional)</span>
@@ -1718,14 +1944,33 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                       />
                     </div>
 
-                    {/* City/Municipality */}
+                    <div className="space-y-2">
+                      <label htmlFor="venueProvince" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Province <span className="text-rose-600">*</span>
+                      </label>
+                      <Select
+                        name="venueProvince"
+                        disabled={isFormDisabled}
+                        value={formData.venueProvince}
+                        onValueChange={(value) => handleSelectChange("venueProvince", value)}
+                      >
+                        <SelectTrigger className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                          <SelectValue placeholder="Select province" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Metro Manila">Metro Manila</SelectItem>
+                          <SelectItem value="Bulacan">Bulacan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="space-y-2">
                       <label htmlFor="venueCity" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         City/Municipality <span className="text-rose-600">*</span>
                       </label>
                       <Select
                         name="venueCity"
-                        disabled={isFormDisabled}
+                        disabled={isFormDisabled || !formData.venueProvince}
                         value={formData.venueCity}
                         onValueChange={(value) => handleSelectChange("venueCity", value)}
                       >
@@ -1733,7 +1978,7 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                           <SelectValue placeholder="Select city" />
                         </SelectTrigger>
                         <SelectContent>
-                          {SERVICE_AREA_CITIES.map((city) => (
+                          {availableCities.map((city) => (
                             <SelectItem key={city} value={city}>
                               {city}
                             </SelectItem>
@@ -1742,7 +1987,29 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                       </Select>
                     </div>
 
-                    {/* Street Address */}
+                    <div className="space-y-2">
+                      <label htmlFor="venueBarangay" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Barangay <span className="text-rose-600">*</span>
+                      </label>
+                      <Select
+                        name="venueBarangay"
+                        disabled={isFormDisabled || !formData.venueCity}
+                        value={formData.venueBarangay}
+                        onValueChange={(value) => handleSelectChange("venueBarangay", value)}
+                      >
+                        <SelectTrigger className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                          <SelectValue placeholder="Select barangay" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableBarangays.map((barangay) => (
+                            <SelectItem key={barangay} value={barangay}>
+                              {barangay}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="space-y-2 md:col-span-2">
                       <label
                         htmlFor="venueStreetAddress"
@@ -1756,12 +2023,11 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                         disabled={isFormDisabled}
                         value={formData.venueStreetAddress}
                         onChange={handleInputChange}
-                        placeholder="e.g., 123 Main Street, Barangay Example"
+                        placeholder="e.g., 123 Main Street"
                         className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
                       />
                     </div>
 
-                    {/* Zip Code */}
                     <div className="space-y-2">
                       <label htmlFor="venueZipCode" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Zip Code <span className="text-gray-500">(Optional)</span>
@@ -1817,7 +2083,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                   disabled={
                     isFormDisabled ||
                     !formData.guestCount ||
+                    !formData.venueProvince ||
                     !formData.venueCity ||
+                    !formData.venueBarangay ||
                     !formData.venueStreetAddress ||
                     isGenerating
                   }
@@ -1849,7 +2117,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
               </p>
               {recommendations && (
                 <div className="space-y-6">
-                  {/* Personal Information Summary */}
                   <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-900/20">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
@@ -1880,7 +2147,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                     </CardContent>
                   </Card>
 
-                  {/* Event Details Summary */}
                   <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-900/20">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
@@ -1906,29 +2172,38 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                         <div className="flex items-start gap-2">
                           <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
                           <div className="flex-1">
-                            <span className="text-gray-600 dark:text-gray-400">Venue:</span>
-                            <div className="font-medium text-gray-800 dark:text-gray-200">
-                              {formData.venueName && <div>{formData.venueName}</div>}
-                              <div>{formData.venueStreetAddress}</div>
-                              <div>{formData.venueCity}</div>
-                              {formData.venueZipCode && <div>{formData.venueZipCode}</div>}
-                            </div>
+                            <span className="text-gray-600 dark:text-gray-400">Venue: </span>
+                            <span className="font-medium text-gray-800 dark:text-gray-200">
+                              {[
+                                formData.venueName,
+                                formData.venueStreetAddress,
+                                formData.venueBarangay,
+                                formData.venueCity,
+                                formData.venueProvince,
+                                formData.venueZipCode,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-600 dark:text-gray-400">Theme:</span>
-                          <span className="font-medium text-gray-800 dark:text-gray-200">{formData.theme}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Palette className="h-4 w-4 text-green-600" />
-                          <span className="text-gray-600 dark:text-gray-400">Color Motif:</span>
-                          <span className="font-medium text-gray-800 dark:text-gray-200">{formData.colorMotif}</span>
-                        </div>
+                        {formData.theme && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-600 dark:text-gray-400">Theme:</span>
+                            <span className="font-medium text-gray-800 dark:text-gray-200">{formData.theme}</span>
+                          </div>
+                        )}
+                        {formData.colorMotif && (
+                          <div className="flex items-center gap-2">
+                            <Palette className="h-4 w-4 text-green-600" />
+                            <span className="text-gray-600 dark:text-gray-400">Color Motif:</span>
+                            <span className="font-medium text-gray-800 dark:text-gray-200">{formData.colorMotif}</span>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
 
-                  {/* Scheduling Information Summary */}
                   <Card className="border-purple-200 bg-purple-50/50 dark:border-purple-800 dark:bg-purple-900/20">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-200">
@@ -2003,7 +2278,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                   </CardHeader>
 
                   <CardContent className="space-y-6">
-                    {/* User Preferences Acknowledgment */}
                     {pkg.userPreferences &&
                       (pkg.userPreferences.restrictions.length > 0 ||
                         pkg.userPreferences.emphasis.length > 0 ||
@@ -2032,11 +2306,9 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                         </div>
                       )}
 
-                    {/* Package Includes */}
                     <div>
                       <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Package Includes:</h4>
                       <div className="space-y-3">
-                        {/* Main Courses */}
                         {pkg.menuSelections && (
                           <>
                             {(pkg.menuSelections.menu1?.length > 0 ||
@@ -2063,7 +2335,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                               </div>
                             )}
 
-                            {/* Pasta */}
                             {pkg.menuSelections.pasta?.length > 0 && (
                               <div className="flex items-start space-x-3">
                                 <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
@@ -2078,7 +2349,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                               </div>
                             )}
 
-                            {/* Desserts */}
                             {pkg.menuSelections.dessert?.length > 0 && (
                               <div className="flex items-start space-x-3">
                                 <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
@@ -2093,7 +2363,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                               </div>
                             )}
 
-                            {/* Beverages */}
                             {pkg.menuSelections.beverage?.length > 0 && (
                               <div className="flex items-start space-x-3">
                                 <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
@@ -2110,7 +2379,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                           </>
                         )}
 
-                        {/* Additional Features */}
                         <div className="flex items-start space-x-3">
                           <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
                           <span className="text-gray-700 dark:text-gray-300">{formData.guestCount} guests</span>
@@ -2143,7 +2411,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                       </div>
                     </div>
 
-                    {/* Wedding Package Inclusions */}
                     {pkg.isWeddingEvent && pkg.weddingPackageInclusions && pkg.weddingPackageInclusions.length > 0 && (
                       <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-4">
                         <h4 className="text-lg font-semibold text-rose-900 dark:text-rose-100 mb-3">
@@ -2160,7 +2427,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                       </div>
                     )}
 
-                    {/* Debut Package Inclusions */}
                     {pkg.isDebutEvent && pkg.debutPackageInclusions && pkg.debutPackageInclusions.length > 0 && (
                       <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
                         <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">
@@ -2177,7 +2443,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                       </div>
                     )}
 
-                    {/* Service Fee Inclusions for regular events */}
                     {!pkg.isWeddingEvent &&
                       !pkg.isDebutEvent &&
                       pkg.serviceFeeInclusions &&
@@ -2197,7 +2462,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                         </div>
                       )}
 
-                    {/* Pricing Breakdown */}
                     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
                       <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                         Pricing Breakdown:
@@ -2234,7 +2498,6 @@ export default function AIRecommendation({ personalInfo, eventInfo, schedulingIn
                       </div>
                     </div>
 
-                    {/* AI Reasoning */}
                     <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
                       <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">AI Reasoning:</h4>
                       <p className="text-purple-800 dark:text-purple-200 leading-relaxed">{pkg.reasoning}</p>

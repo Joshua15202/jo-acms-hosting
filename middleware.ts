@@ -1,74 +1,173 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-
-// Paths that require authentication
-const protectedPaths = ["/profile", "/my-appointments", "/book-appointment"]
-
-// Paths that require admin authentication
-const adminProtectedPaths = [
-  "/admin/dashboard",
-  "/admin/inventory",
-  "/admin/forecasting",
-  "/admin/appointments",
-  "/admin/payments",
-]
-
-// Paths that require assistant authentication
-const assistantProtectedPaths = [
-  "/assistant/dashboard",
-  "/assistant/appointments",
-  "/assistant/billing",
-  "/assistant/inventory",
-  "/assistant/services",
-  "/assistant/notifications",
-]
+import { supabaseAdmin } from "@/lib/supabase"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  console.log("=== MIDDLEWARE DEBUG ===")
-  console.log("Checking path:", pathname)
-  console.log("Cookies:", request.cookies.getAll())
+  console.log("=== MIDDLEWARE ===")
+  console.log("Path:", pathname)
+  console.log(
+    "All cookies:",
+    request.cookies.getAll().map((c) => ({ name: c.name, value: c.value.substring(0, 20) })),
+  )
 
-  // Skip middleware for admin login and root admin page
-  if (pathname === "/admin/login" || pathname === "/admin") {
+  // Public paths that don't require authentication
+  const publicPaths = [
+    "/",
+    "/about",
+    "/services",
+    "/contact",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/privacy",
+    "/terms",
+    "/tasting/confirm",
+  ]
+
+  // Allow public paths
+  if (publicPaths.some((path) => pathname === path || pathname.startsWith(path))) {
+    console.log("Public path, allowing access")
     return NextResponse.next()
   }
 
-  // Check if the path is protected
-  const isProtectedPath = protectedPaths.some((path) => pathname.startsWith(path))
-  const isAdminProtectedPath = adminProtectedPaths.some((path) => pathname.startsWith(path))
-  const isAssistantProtectedPath = assistantProtectedPaths.some((path) => pathname.startsWith(path))
-
-  if (!isProtectedPath && !isAdminProtectedPath && !isAssistantProtectedPath) {
-    console.log("Path not protected, allowing access")
+  // Allow API routes (they handle their own auth)
+  if (pathname.startsWith("/api/")) {
+    console.log("API route, allowing access")
     return NextResponse.next()
   }
 
-  // For admin paths, check admin authentication differently
-  if (isAdminProtectedPath) {
-    // We can't access localStorage in middleware, so we'll let the client-side handle admin auth
+  // Allow static files
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/static") ||
+    pathname.includes(".") ||
+    pathname === "/favicon.ico"
+  ) {
     return NextResponse.next()
   }
 
+  // Admin routes
+  if (pathname.startsWith("/admin")) {
+    if (pathname === "/admin" || pathname === "/admin/login") {
+      return NextResponse.next()
+    }
+    // Let admin auth provider handle admin authentication
+    return NextResponse.next()
+  }
+
+  // Assistant routes
+  if (pathname.startsWith("/assistant")) {
+    if (pathname === "/assistant" || pathname === "/assistant/login") {
+      return NextResponse.next()
+    }
+    // Let assistant auth provider handle assistant authentication
+    return NextResponse.next()
+  }
+
+  // Protected customer routes
+  const protectedPaths = ["/book-appointment", "/my-appointments", "/profile", "/payment"]
+
+  const isProtected = protectedPaths.some((path) => pathname.startsWith(path))
+
+  if (!isProtected) {
+    console.log("Not a protected path, allowing access")
+    return NextResponse.next()
+  }
+
+  console.log("Protected path detected")
+
+  // Get session cookie
   const sessionId = request.cookies.get("session-id")?.value
-  console.log("Session ID found:", sessionId ? "Yes" : "No")
-  console.log("Session ID value:", sessionId)
+
+  console.log("Session ID from cookie:", sessionId ? `${sessionId.substring(0, 20)}...` : "NONE")
 
   if (!sessionId) {
-    console.log("No session found, redirecting to login")
-    // Redirect to login page based on the protected path type
-    if (isAssistantProtectedPath) {
-      return NextResponse.redirect(new URL("/assistant/login", request.url))
-    } else {
-      return NextResponse.redirect(new URL(`/login?redirect=${pathname}`, request.url))
-    }
+    console.log("No session cookie found, redirecting to login")
+    const loginUrl = new URL("/login", request.url)
+    loginUrl.searchParams.set("redirect", pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
-  console.log("Session found, allowing access")
-  return NextResponse.next()
+  try {
+    // Verify session exists in database and is not expired
+    const { data: session, error: sessionError } = await supabaseAdmin
+      .from("tbl_sessions")
+      .select("user_id, expires_at")
+      .eq("id", sessionId)
+      .maybeSingle()
+
+    if (sessionError) {
+      console.error("Session lookup error:", sessionError)
+      const loginUrl = new URL("/login", request.url)
+      loginUrl.searchParams.set("redirect", pathname)
+      const response = NextResponse.redirect(loginUrl)
+      response.cookies.delete("session-id")
+      return response
+    }
+
+    if (!session) {
+      console.log("Session not found in database")
+      const loginUrl = new URL("/login", request.url)
+      loginUrl.searchParams.set("redirect", pathname)
+      const response = NextResponse.redirect(loginUrl)
+      response.cookies.delete("session-id")
+      return response
+    }
+
+    // Check if session is expired
+    const expiresAt = new Date(session.expires_at)
+    const now = new Date()
+
+    if (expiresAt <= now) {
+      console.log("Session expired")
+      await supabaseAdmin.from("tbl_sessions").delete().eq("id", sessionId)
+      const loginUrl = new URL("/login", request.url)
+      loginUrl.searchParams.set("redirect", pathname)
+      const response = NextResponse.redirect(loginUrl)
+      response.cookies.delete("session-id")
+      return response
+    }
+
+    console.log("Session valid for user:", session.user_id)
+
+    // Session is valid, allow access and refresh cookie
+    const response = NextResponse.next()
+
+    const isProduction = process.env.NODE_ENV === "production"
+
+    response.cookies.set("session-id", sessionId, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    })
+
+    console.log("Session refreshed, allowing access")
+
+    return response
+  } catch (error) {
+    console.error("Middleware error:", error)
+    const loginUrl = new URL("/login", request.url)
+    loginUrl.searchParams.set("redirect", pathname)
+    const response = NextResponse.redirect(loginUrl)
+    response.cookies.delete("session-id")
+    return response
+  }
 }
 
 export const config = {
-  matcher: ["/profile", "/my-appointments", "/book-appointment", "/admin/:path*", "/assistant/:path*"],
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 }
