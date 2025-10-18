@@ -1,49 +1,71 @@
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
 
 export async function POST(request: Request) {
   try {
     const { username, password } = await request.json()
 
-    console.log("Admin login attempt:", username)
+    console.log("=== Admin Login Attempt ===")
+    console.log("Username:", username)
 
-    // Check admin credentials
+    // Simple authentication for demo purposes
+    // In production, this should check against a database with hashed passwords
     if (username === "admin" && password === "admin123") {
-      console.log("Admin credentials valid")
+      const adminUser = {
+        username: "admin",
+        role: "administrator",
+      }
 
-      const response = NextResponse.json({
+      // Set HTTP-only cookies for server-side authentication
+      const cookieStore = await cookies()
+
+      const isProduction = process.env.NODE_ENV === "production"
+
+      cookieStore.set("adminAuthenticated", "true", {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: "/",
+      })
+
+      cookieStore.set("adminUser", JSON.stringify(adminUser), {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: "/",
+      })
+
+      console.log("Admin login successful, cookies set")
+
+      return NextResponse.json({
         success: true,
-        message: "Admin login successful",
-        user: {
-          username: "admin",
-          role: "admin",
-        },
+        message: "Login successful",
+        user: adminUser,
       })
-
-      // Set admin authentication cookies
-      response.cookies.set({
-        name: "admin-authenticated",
-        value: "true",
-        httpOnly: true,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      })
-
-      response.cookies.set({
-        name: "admin-user",
-        value: JSON.stringify({ username: "admin", role: "admin" }),
-        httpOnly: true,
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-      })
-
-      return response
     } else {
-      return NextResponse.json({ success: false, message: "Invalid credentials" }, { status: 401 })
+      console.log("Invalid credentials")
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid username or password",
+        },
+        { status: 401 },
+      )
     }
   } catch (error) {
     console.error("Admin login error:", error)
-    return NextResponse.json({ success: false, message: "Login failed" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        message: "An error occurred during login",
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

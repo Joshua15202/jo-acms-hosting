@@ -31,18 +31,29 @@ export default function AdminLoginPage() {
     setIsLoading(true)
 
     try {
-      // Simple authentication for demo purposes
-      if (username === "admin" && password === "admin123") {
-        // Store auth state in localStorage
+      // Call the login API
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        // Store auth state in localStorage for client-side checks
         localStorage.setItem("adminAuthenticated", "true")
-        localStorage.setItem("adminUser", JSON.stringify({ username: "admin", role: "administrator" }))
+        localStorage.setItem("adminUser", JSON.stringify(data.user))
 
         // Redirect to dashboard
-        router.push("/admin/test-page")
+        router.push("/admin/dashboard")
       } else {
-        setError("Invalid username or password")
+        setError(data.message || "Invalid username or password")
       }
     } catch (err) {
+      console.error("Login error:", err)
       setError("An error occurred during login")
     } finally {
       setIsLoading(false)
@@ -54,7 +65,7 @@ export default function AdminLoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-4">
-            <span className="text-3xl font-bold text-rose-600">Jo-ACMS</span>
+            <span className="text-3xl font-bold text-rose-600">Jo-AIMS</span>
           </div>
           <CardTitle className="text-2xl font-bold text-center">Admin Dashboard</CardTitle>
           <CardDescription className="text-center">Sign in to access the administrative panel</CardDescription>

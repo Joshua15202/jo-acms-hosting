@@ -19,16 +19,32 @@ type AdminNavbarProps = {
 export default function AdminNavbar({ user }: AdminNavbarProps) {
   const router = useRouter()
 
-  const handleLogout = () => {
-    localStorage.removeItem("adminAuthenticated")
-    localStorage.removeItem("adminUser")
-    router.push("/admin/login")
+  const handleLogout = async () => {
+    try {
+      // Call logout API to clear cookies
+      await fetch("/api/admin/logout", {
+        method: "POST",
+      })
+
+      // Clear localStorage
+      localStorage.removeItem("adminAuthenticated")
+      localStorage.removeItem("adminUser")
+
+      // Redirect to login
+      router.push("/admin/login")
+    } catch (error) {
+      console.error("Logout error:", error)
+      // Still clear localStorage and redirect even if API fails
+      localStorage.removeItem("adminAuthenticated")
+      localStorage.removeItem("adminUser")
+      router.push("/admin/login")
+    }
   }
 
   return (
     <header className="h-16 border-b bg-white px-6 flex items-center justify-between">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Jo-ACMS Admin Dashboard</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Jo-AIMS Admin Dashboard</h1>
       </div>
 
       <div className="flex items-center space-x-4">

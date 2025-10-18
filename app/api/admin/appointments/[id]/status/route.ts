@@ -1,4 +1,8 @@
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
 import { supabaseAdmin } from "@/lib/supabase"
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -7,6 +11,30 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { status, notes } = await request.json()
 
     console.log(`=== Admin: Updating appointment ${id} status to ${status} ===`)
+
+    // Check admin authentication
+    const cookieStore = await cookies()
+    const adminAuthenticated = cookieStore.get("adminAuthenticated")?.value
+    const adminUserCookie = cookieStore.get("adminUser")?.value
+
+    console.log("Admin auth check:", {
+      adminAuthenticated,
+      hasAdminUser: !!adminUserCookie,
+    })
+
+    if (adminAuthenticated !== "true" || !adminUserCookie) {
+      console.log("Unauthorized: Admin not authenticated")
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized - Admin authentication required",
+        },
+        { status: 401 },
+      )
+    }
+
+    const adminUser = JSON.parse(adminUserCookie)
+    console.log("Admin user:", adminUser.username)
 
     // Validate status
     const validStatuses = [
@@ -39,7 +67,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
-      .select(`
+      .select(
+        `
         *,
         tbl_users (
           id,
@@ -47,7 +76,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           email,
           phone
         )
-      `)
+      `,
+      )
       .single()
 
     if (error) {
@@ -81,3 +111,4 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     )
   }
 }
+
