@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { MapPin, Phone, Mail, Clock, Send, Loader2, ExternalLink } from "lucide-react"
+import { MapPin, Phone, Mail, Clock, Send, Loader2, ExternalLink, MapPinned } from "lucide-react"
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -67,6 +67,18 @@ export default function ContactPage() {
 
   // Google Maps URL for Jo Pacheco Wedding and Events
   const googleMapsUrl = "https://maps.app.goo.gl/bkvHdD7mZi26wDLY7"
+
+  const serviceAreas = [
+    "Fairview",
+    "Valenzuela",
+    "Quezon City",
+    "Malolos",
+    "Novaliches",
+    "Malabon",
+    "Meycauayan",
+    "Pandi",
+    "Marilao",
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-rose-50 to-pink-50">
@@ -137,6 +149,26 @@ export default function ContactPage() {
                   </div>
                 </div>
               </div>
+
+              <div className="flex items-start space-x-4">
+                <div className="bg-rose-100 p-3 rounded-full">
+                  <MapPinned className="h-6 w-6 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Service Area</h3>
+                  <div className="text-gray-600">
+                    <p className="mb-2">We proudly serve the following areas in the Philippines:</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {serviceAreas.map((area, index) => (
+                        <div key={index} className="flex items-center space-x-1">
+                          <span className="text-rose-600">•</span>
+                          <span>{area}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Interactive Map */}
@@ -156,7 +188,7 @@ export default function ContactPage() {
                   aria-label="Open Jo Pacheco Wedding and Events location in Google Maps"
                 >
                   <img
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-6BrsUwyntb77MoXDr4j2ATtpjrUDqB.png"
+                    src="jopachecolocation.jpg"
                     alt="Jo Pacheco Wedding and Events location map showing Sullera Street, Meycauyan, Bulacan"
                     className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
                   />

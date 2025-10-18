@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Loader2,
   User,
@@ -18,7 +19,22 @@ import {
   DollarSign,
   TrendingUp,
   TrendingDown,
+  Download,
+  BarChart3,
 } from "lucide-react"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts"
 
 interface Customer {
   id: string
@@ -66,6 +82,27 @@ interface RevenueData {
   monthName: string
 }
 
+interface MonthlyData {
+  month: string
+  revenue: number
+  events: number
+}
+
+interface EventTypeData {
+  name: string
+  count: number
+  percentage: number
+}
+
+interface PeakMonth {
+  month: string
+  events: number
+  revenue: number
+  topEventType: string
+}
+
+const COLORS = ["#e11d48", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899"]
+
 export default function AdminDashboard() {
   const [showCustomers, setShowCustomers] = useState(false)
   const [showEvents, setShowEvents] = useState(false)
@@ -80,16 +117,20 @@ export default function AdminDashboard() {
   const [totalCustomers, setTotalCustomers] = useState(0)
   const [totalUpcomingEvents, setTotalUpcomingEvents] = useState(0)
   const [customerSearchTerm, setCustomerSearchTerm] = useState("")
-  const [debugInfo, setDebugInfo] = useState("")
 
-  // Fetch total customers count on component mount
+  // New states for analytics
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
+  const [eventTypeData, setEventTypeData] = useState<EventTypeData[]>([])
+  const [peakMonths, setPeakMonths] = useState<PeakMonth[]>([])
+  const [downloadFormat, setDownloadFormat] = useState<"monthly" | "yearly">("monthly")
+  const [isDownloading, setIsDownloading] = useState(false)
+
   useEffect(() => {
     fetchCustomersCount()
     fetchUpcomingEventsCount()
     fetchMonthlyRevenue()
   }, [])
 
-  // Filter customers based on search term
   useEffect(() => {
     if (!customerSearchTerm) {
       setFilteredCustomers(customers)
@@ -106,95 +147,20 @@ export default function AdminDashboard() {
 
   const fetchCustomersCount = async () => {
     try {
-      console.log("Fetching customers count...")
-
-      // Try the new comprehensive API first
-      try {
-        const response = await fetch("/api/admin/all-customers")
-        const text = await response.text()
-
-        console.log("Raw response:", text.substring(0, 200))
-
-        // Check if response is HTML (error page)
-        if (text.startsWith("<!DOCTYPE")) {
-          throw new Error("Received HTML instead of JSON - API route may not exist")
-        }
-
-        const data = JSON.parse(text)
-        console.log("All customers API response:", data)
-        setDebugInfo(`All Customers API Response: ${JSON.stringify(data, null, 2)}`)
-
-        if (data.success) {
-          setTotalCustomers(data.totalCustomers || 0)
-          console.log(`Set total customers to: ${data.totalCustomers}`)
-          return
-        }
-      } catch (apiError) {
-        console.error("All customers API failed:", apiError)
-        setDebugInfo(`All Customers API Error: ${apiError}`)
-      }
-
-      // Try the regular customers API
-      try {
-        const response = await fetch("/api/admin/customers")
-        const text = await response.text()
-
-        if (text.startsWith("<!DOCTYPE")) {
-          throw new Error("Received HTML instead of JSON")
-        }
-
-        const data = JSON.parse(text)
-        console.log("Customers API response:", data)
-
-        if (data.success) {
-          setTotalCustomers(data.totalCustomers || 0)
-          console.log(`Set total customers to: ${data.totalCustomers}`)
-          return
-        }
-      } catch (apiError) {
-        console.error("Customers API failed:", apiError)
-      }
-
-      // Fallback to debug-all-users endpoint
-      console.log("Falling back to debug-all-users endpoint...")
-      const fallbackResponse = await fetch("/api/debug-all-users")
-      const fallbackText = await fallbackResponse.text()
-
-      if (fallbackText.startsWith("<!DOCTYPE")) {
-        throw new Error("Fallback API also returned HTML")
-      }
-
-      const fallbackData = JSON.parse(fallbackText)
-      console.log("Fallback API response:", fallbackData)
-      setDebugInfo(`Fallback API Response (Limited to 10): ${JSON.stringify(fallbackData, null, 2)}`)
-
-      if (fallbackData.users) {
-        // Filter for valid emails
-        const validUsers = fallbackData.users.filter((user: any) => {
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-          return user.email && emailRegex.test(user.email)
-        })
-        setTotalCustomers(validUsers.length)
-        console.log(`Set total customers from fallback: ${validUsers.length} (Note: This may be limited)`)
+      const response = await fetch("/api/admin/all-customers")
+      const data = await response.json()
+      if (data.success) {
+        setTotalCustomers(data.totalCustomers || 0)
       }
     } catch (error) {
       console.error("Error fetching customers count:", error)
-      setDebugInfo(`Error: ${error}`)
-      setTotalCustomers(0)
     }
   }
 
   const fetchUpcomingEventsCount = async () => {
     try {
       const response = await fetch("/api/admin/appointments")
-      const text = await response.text()
-
-      if (text.startsWith("<!DOCTYPE")) {
-        console.error("Appointments API returned HTML")
-        return
-      }
-
-      const data = JSON.parse(text)
+      const data = await response.json()
 
       if (data.success && data.appointments) {
         const today = new Date()
@@ -214,17 +180,8 @@ export default function AdminDashboard() {
 
   const fetchMonthlyRevenue = async () => {
     try {
-      console.log("Fetching monthly revenue...")
       const response = await fetch("/api/admin/monthly-revenue")
-      const text = await response.text()
-
-      if (text.startsWith("<!DOCTYPE")) {
-        console.error("Monthly revenue API returned HTML")
-        return
-      }
-
-      const data = JSON.parse(text)
-      console.log("Monthly revenue API response:", data)
+      const data = await response.json()
 
       if (data.success) {
         setRevenueData(data.data)
@@ -234,86 +191,56 @@ export default function AdminDashboard() {
     }
   }
 
+  const fetchDetailedAnalytics = async () => {
+    try {
+      const response = await fetch("/api/admin/revenue-analytics")
+      const data = await response.json()
+
+      if (data.success) {
+        setMonthlyData(data.monthlyData || [])
+        setEventTypeData(data.eventTypeData || [])
+        setPeakMonths(data.peakMonths || [])
+      }
+    } catch (error) {
+      console.error("Error fetching detailed analytics:", error)
+    }
+  }
+
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true)
+    try {
+      const response = await fetch(`/api/admin/download-sales-report?format=${downloadFormat}`)
+
+      if (!response.ok) {
+        throw new Error("Failed to generate report")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `sales-report-${downloadFormat}-${new Date().toISOString().split("T")[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error("Error downloading PDF:", error)
+      alert("Failed to download report. Please try again.")
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   const fetchCustomers = async () => {
     setLoadingCustomers(true)
     try {
-      console.log("Fetching full customers list...")
+      const response = await fetch("/api/admin/all-customers")
+      const data = await response.json()
 
-      // Try the comprehensive API first
-      try {
-        const response = await fetch("/api/admin/all-customers")
-        const text = await response.text()
-
-        if (text.startsWith("<!DOCTYPE")) {
-          throw new Error("Received HTML instead of JSON")
-        }
-
-        const data = JSON.parse(text)
-        console.log("Full customers API response:", data)
-
-        if (data.success && data.customers) {
-          setCustomers(data.customers)
-          setTotalCustomers(data.totalCustomers)
-          console.log(`Loaded ${data.customers.length} customers`)
-          return
-        }
-      } catch (apiError) {
-        console.error("All customers API failed:", apiError)
-      }
-
-      // Try the regular customers API
-      try {
-        const response = await fetch("/api/admin/customers")
-        const text = await response.text()
-
-        if (text.startsWith("<!DOCTYPE")) {
-          throw new Error("Received HTML instead of JSON")
-        }
-
-        const data = JSON.parse(text)
-        console.log("Customers API response:", data)
-
-        if (data.success && data.customers) {
-          setCustomers(data.customers)
-          setTotalCustomers(data.totalCustomers)
-          console.log(`Loaded ${data.customers.length} customers`)
-          return
-        }
-      } catch (apiError) {
-        console.error("Customers API failed:", apiError)
-      }
-
-      // Fallback to debug-all-users endpoint
-      console.log("Using fallback endpoint...")
-      const fallbackResponse = await fetch("/api/debug-all-users")
-      const fallbackText = await fallbackResponse.text()
-
-      if (fallbackText.startsWith("<!DOCTYPE")) {
-        throw new Error("Fallback API also returned HTML")
-      }
-
-      const fallbackData = JSON.parse(fallbackText)
-      console.log("Using fallback endpoint:", fallbackData)
-
-      if (fallbackData.users) {
-        // Filter for valid emails and format data
-        const validUsers = fallbackData.users
-          .filter((user: any) => {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-            return user.email && emailRegex.test(user.email)
-          })
-          .map((user: any) => ({
-            id: user.id,
-            email: user.email,
-            full_name: user.full_name,
-            phone: user.phone,
-            created_at: user.created_at,
-            updated_at: user.updated_at,
-          }))
-
-        setCustomers(validUsers)
-        setTotalCustomers(validUsers.length)
-        console.log(`Loaded ${validUsers.length} customers from fallback (may be limited)`)
+      if (data.success && data.customers) {
+        setCustomers(data.customers)
+        setTotalCustomers(data.totalCustomers)
       }
     } catch (error) {
       console.error("Error fetching customers:", error)
@@ -326,17 +253,9 @@ export default function AdminDashboard() {
     setLoadingEvents(true)
     try {
       const response = await fetch("/api/admin/appointments")
-      const text = await response.text()
-
-      if (text.startsWith("<!DOCTYPE")) {
-        console.error("Appointments API returned HTML")
-        return
-      }
-
-      const data = JSON.parse(text)
+      const data = await response.json()
 
       if (data.success && data.appointments) {
-        // Filter for upcoming events (events in the future)
         const today = new Date()
         today.setHours(0, 0, 0, 0)
 
@@ -346,13 +265,11 @@ export default function AdminDashboard() {
             return eventDate >= today && appointment.status !== "cancelled" && appointment.status !== "completed"
           })
           .sort((a: UpcomingEvent, b: UpcomingEvent) => {
-            // Sort by date, then by time
             const dateA = new Date(a.event_date)
             const dateB = new Date(b.event_date)
             if (dateA.getTime() !== dateB.getTime()) {
               return dateA.getTime() - dateB.getTime()
             }
-            // If same date, sort by time
             return a.event_time.localeCompare(b.event_time)
           })
 
@@ -370,6 +287,7 @@ export default function AdminDashboard() {
     setLoadingRevenue(true)
     try {
       await fetchMonthlyRevenue()
+      await fetchDetailedAnalytics()
     } catch (error) {
       console.error("Error fetching revenue details:", error)
     } finally {
@@ -393,7 +311,7 @@ export default function AdminDashboard() {
 
   const handleRevenueClick = () => {
     setShowRevenue(true)
-    if (!revenueData) {
+    if (!revenueData || monthlyData.length === 0) {
       fetchRevenueDetails()
     }
   }
@@ -452,12 +370,6 @@ export default function AdminDashboard() {
             Tasting Confirmed
           </Badge>
         )
-      case "TASTING_RESCHEDULE_REQUESTED":
-        return (
-          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200">
-            Tasting Reschedule
-          </Badge>
-        )
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -480,88 +392,10 @@ export default function AdminDashboard() {
     return emailRegex.test(email)
   }
 
-  const testCreateCompletedEvent = async () => {
-    try {
-      console.log("Creating test completed event...")
-
-      // First create a test completed event
-      const createResponse = await fetch("/api/admin/create-test-completed-event", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          eventType: "Wedding",
-          guestCount: 50,
-          totalPackageAmount: 75000,
-          eventDate: new Date().toISOString().split("T")[0], // Today's date
-        }),
-      })
-
-      const createResult = await createResponse.json()
-      console.log("Create event result:", createResult)
-
-      if (!createResult.success) {
-        alert(`Failed to create test event: ${createResult.error}`)
-        return
-      }
-
-      // Wait a moment then fetch updated revenue
-      setTimeout(async () => {
-        const revenueResponse = await fetch("/api/admin/monthly-revenue")
-        const revenueResult = await revenueResponse.json()
-        console.log("Updated revenue result:", revenueResult)
-
-        if (revenueResult.success) {
-          const data = revenueResult.data
-          alert(`✅ Test Completed Event Created!
-          
-Event ID: ${createResult.eventId}
-Total Package Amount: ₱${createResult.totalPackageAmount.toLocaleString()}
-
-Updated Monthly Revenue:
-- Total Revenue: ₱${data.totalRevenue.toLocaleString()}
-- Completed Events: ${data.completedEvents}
-- Month: ${data.monthName} ${data.year}
-
-Check console for full details!`)
-
-          // Refresh the dashboard data
-          await fetchMonthlyRevenue()
-        } else {
-          alert(`Event created but failed to fetch updated revenue: ${revenueResult.error}`)
-        }
-      }, 1000)
-    } catch (error) {
-      console.error("Error testing completed event:", error)
-      alert(`Error: ${error}`)
-    }
-  }
-
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
-      <p className="text-gray-600 mb-4">Welcome to the Jo-ACMS admin dashboard.</p>
-
-      {/* Test Button for Monthly Revenue */}
-      <div className="mb-6">
-        <Button onClick={testCreateCompletedEvent} className="bg-green-600 hover:bg-green-700 text-white">
-          🧪 Test Create Completed Event (₱75,000)
-        </Button>
-        <p className="text-sm text-gray-500 mt-2">
-          Creates a test completed event to verify monthly revenue calculation
-        </p>
-      </div>
-
-      {/* Debug Info - Remove this in production */}
-      {debugInfo && (
-        <div className="mb-4 p-4 bg-gray-100 rounded-lg">
-          <details>
-            <summary className="cursor-pointer text-sm font-medium">Debug Info (Click to expand)</summary>
-            <pre className="mt-2 text-xs overflow-auto max-h-40">{debugInfo}</pre>
-          </details>
-        </div>
-      )}
+      <p className="text-gray-600 mb-6">Welcome to the Jo-AIMS admin dashboard.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Clickable Registered Customers Card */}
@@ -628,24 +462,6 @@ Check console for full details!`)
                 </p>
               </>
             )}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold mb-4">Upcoming Events</h3>
-          <p className="text-sm text-gray-600 mb-4">Events scheduled for the next 30 days</p>
-          <div className="h-48 bg-gray-50 rounded-md flex items-center justify-center">
-            <p className="text-gray-500">Events chart will be displayed here</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow border">
-          <h3 className="text-lg font-semibold mb-4">Revenue Analytics</h3>
-          <p className="text-sm text-gray-600 mb-4">Monthly revenue trends and projections</p>
-          <div className="h-48 bg-gray-50 rounded-md flex items-center justify-center">
-            <p className="text-gray-500">Revenue chart will be displayed here</p>
           </div>
         </div>
       </div>
@@ -721,12 +537,6 @@ Check console for full details!`)
                           <Badge variant="secondary" className="text-xs">
                             ID: {customer.id.slice(0, 8)}...
                           </Badge>
-                          {customer.updated_at && customer.updated_at !== customer.created_at && (
-                            <div className="flex items-center gap-1 text-xs">
-                              <Clock className="h-3 w-3" />
-                              Updated: {formatDate(customer.updated_at)}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -845,123 +655,231 @@ Check console for full details!`)
         </DialogContent>
       </Dialog>
 
-      {/* Monthly Revenue Modal */}
+      {/* Revenue Analytics Modal */}
       <Dialog open={showRevenue} onOpenChange={setShowRevenue}>
-        <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden">
+        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
-              {revenueData ? `${revenueData.monthName} ${revenueData.year} Revenue` : "Monthly Revenue"}
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Revenue Analytics & Reports
+              </DialogTitle>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={downloadFormat}
+                  onValueChange={(value: "monthly" | "yearly") => setDownloadFormat(value)}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleDownloadPDF} disabled={isDownloading} className="bg-rose-600 hover:bg-rose-700">
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4 mr-2" />
+                      Download PDF
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </DialogHeader>
 
-          <div className="overflow-y-auto max-h-[60vh]">
+          <div className="overflow-y-auto max-h-[75vh] space-y-6 pr-2">
             {loadingRevenue ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-                <span className="ml-2">Loading revenue data...</span>
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
+                <span className="ml-2">Loading analytics...</span>
               </div>
-            ) : revenueData ? (
-              <div className="space-y-6">
-                {/* Revenue Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-green-600">{formatCurrency(revenueData.totalRevenue)}</p>
+            ) : (
+              <>
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border border-green-200">
+                    <p className="text-sm font-medium text-green-700">Total Revenue</p>
+                    <p className="text-3xl font-bold text-green-900 mt-1">
+                      {revenueData ? formatCurrency(revenueData.totalRevenue) : "₱0"}
+                    </p>
+                    <p className="text-xs text-green-600 mt-2">
+                      {revenueData?.monthName} {revenueData?.year}
+                    </p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">Completed Events</p>
-                    <p className="text-2xl font-bold text-blue-600">{revenueData.completedEvents}</p>
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
+                    <p className="text-sm font-medium text-blue-700">Completed Events</p>
+                    <p className="text-3xl font-bold text-blue-900 mt-1">{revenueData?.completedEvents || 0}</p>
+                    <p className="text-xs text-blue-600 mt-2">Fully paid bookings</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600">vs Last Month</p>
-                    <div className="flex items-center justify-center gap-1">
-                      {revenueData.percentageChange >= 0 ? (
-                        <TrendingUp className="h-5 w-5 text-green-600" />
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200">
+                    <p className="text-sm font-medium text-purple-700">Growth Rate</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {revenueData && revenueData.percentageChange >= 0 ? (
+                        <TrendingUp className="h-6 w-6 text-green-600" />
                       ) : (
-                        <TrendingDown className="h-5 w-5 text-red-600" />
+                        <TrendingDown className="h-6 w-6 text-red-600" />
                       )}
                       <p
-                        className={`text-xl font-bold ${revenueData.percentageChange >= 0 ? "text-green-600" : "text-red-600"}`}
+                        className={`text-3xl font-bold ${revenueData && revenueData.percentageChange >= 0 ? "text-green-900" : "text-red-900"}`}
                       >
-                        {revenueData.percentageChange >= 0 ? "+" : ""}
-                        {revenueData.percentageChange}%
+                        {revenueData?.percentageChange >= 0 ? "+" : ""}
+                        {revenueData?.percentageChange || 0}%
                       </p>
                     </div>
+                    <p className="text-xs text-purple-600 mt-2">vs last month</p>
                   </div>
                 </div>
 
-                {/* Revenue Breakdown */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Completed Events Breakdown</h3>
-                  {revenueData.revenueBreakdown.length > 0 ? (
-                    <div className="space-y-3">
-                      {revenueData.revenueBreakdown.map((event) => (
-                        <div key={event.id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
-                                  <DollarSign className="h-5 w-5 text-green-600" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h4 className="font-semibold text-gray-900">{event.eventType}</h4>
-                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                                      Fully Paid
-                                    </Badge>
-                                  </div>
-                                  <p className="text-sm text-gray-600">
-                                    Client: {event.customerName} ({event.customerEmail})
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-lg font-bold text-green-600">{formatCurrency(event.amount)}</p>
-                                </div>
-                              </div>
+                {/* Monthly Revenue Trend */}
+                {monthlyData.length > 0 && (
+                  <div className="bg-white p-6 rounded-lg border">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      12-Month Revenue Trend
+                    </h3>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={monthlyData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip
+                          formatter={(value: number, name: string) => {
+                            if (name === "revenue") return [formatCurrency(value), "Revenue"]
+                            return [value, "Events"]
+                          }}
+                        />
+                        <Legend />
+                        <Bar dataKey="revenue" fill="#22c55e" name="Revenue" radius={[8, 8, 0, 0]} />
+                        <Bar dataKey="events" fill="#3b82f6" name="Events" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
 
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-4 w-4" />
-                                  <span>{formatEventDate(event.eventDate)}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Users className="h-4 w-4" />
-                                  <span>{event.guestCount} guests</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-4 w-4" />
-                                  <span>Completed: {formatDate(event.completedAt)}</span>
-                                </div>
-                                <div className="text-xs">ID: {event.id.slice(0, 8)}...</div>
-                              </div>
+                {/* Event Type Distribution & Peak Months */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {eventTypeData.length > 0 && (
+                    <div className="bg-white p-6 rounded-lg border">
+                      <h3 className="text-lg font-semibold mb-4">Event Type Distribution</h3>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <PieChart>
+                          <Pie
+                            data={eventTypeData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={(entry) => `${entry.name}: ${entry.percentage}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="count"
+                          >
+                            {eventTypeData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {peakMonths.length > 0 && (
+                    <div className="bg-white p-6 rounded-lg border">
+                      <h3 className="text-lg font-semibold mb-4">Peak Months Analysis</h3>
+                      <div className="space-y-3">
+                        {peakMonths.slice(0, 3).map((peak, index) => (
+                          <div
+                            key={peak.month}
+                            className="p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border border-orange-200"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <Badge className="bg-orange-600 text-white">#{index + 1} Peak Month</Badge>
+                              <span className="text-sm font-medium text-gray-600">{peak.events} events</span>
                             </div>
+                            <h4 className="text-xl font-bold text-gray-900">{peak.month}</h4>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Revenue:{" "}
+                              <span className="font-semibold text-green-600">{formatCurrency(peak.revenue)}</span>
+                            </p>
+                            <p className="text-sm text-gray-700">
+                              Top Event: <span className="font-semibold text-blue-600">{peak.topEventType}</span>
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Event Type Breakdown Table */}
+                {eventTypeData.length > 0 && (
+                  <div className="bg-white p-6 rounded-lg border">
+                    <h3 className="text-lg font-semibold mb-4">Event Type Breakdown</h3>
+                    <div className="space-y-2">
+                      {eventTypeData.map((type, index) => (
+                        <div key={type.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-4 h-4 rounded-full"
+                              style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                            />
+                            <span className="font-medium">{type.name}</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-semibold">{type.count} events</p>
+                            <p className="text-sm text-gray-500">{type.percentage}% of total</p>
                           </div>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">No completed events with full payment found for this month</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No revenue data available</p>
-              </div>
+                  </div>
+                )}
+
+                {/* Insights Section */}
+                {peakMonths.length > 0 && eventTypeData.length > 0 && (
+                  <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                    <h3 className="text-lg font-semibold mb-3 text-blue-900">Key Insights</h3>
+                    <ul className="space-y-2 text-sm text-blue-800">
+                      <li className="flex items-start gap-2">
+                        <span className="font-bold mt-0.5">•</span>
+                        <span>
+                          Your busiest months are{" "}
+                          {peakMonths
+                            .slice(0, 3)
+                            .map((p) => p.month)
+                            .join(", ")}
+                          . Consider increasing inventory and staff during these periods.
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="font-bold mt-0.5">•</span>
+                        <span>
+                          The most popular event type is <strong>{eventTypeData[0]?.name}</strong> with{" "}
+                          {eventTypeData[0]?.count} bookings ({eventTypeData[0]?.percentage}% of total).
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="font-bold mt-0.5">•</span>
+                        <span>
+                          Peak season revenue reaches {formatCurrency(peakMonths[0]?.revenue || 0)} in{" "}
+                          {peakMonths[0]?.month}.
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          <div className="flex justify-between items-center pt-4 border-t">
-            <p className="text-sm text-gray-500">
-              {revenueData
-                ? `${revenueData.completedEvents} completed events • ${formatCurrency(revenueData.totalRevenue)} total revenue`
-                : "Loading..."}
-            </p>
+          <div className="flex justify-end pt-4 border-t">
             <Button variant="outline" onClick={() => setShowRevenue(false)}>
               Close
             </Button>
