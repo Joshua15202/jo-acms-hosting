@@ -10,6 +10,8 @@ export async function POST(request: Request) {
 
     console.log("=== Admin Login Attempt ===")
     console.log("Username:", username)
+    console.log("Environment:", process.env.NODE_ENV)
+    console.log("Host:", request.headers.get("host"))
 
     // Simple authentication for demo purposes
     // In production, this should check against a database with hashed passwords
@@ -22,23 +24,22 @@ export async function POST(request: Request) {
       // Set HTTP-only cookies for server-side authentication
       const cookieStore = await cookies()
 
+      // Check if we're in production (HTTPS)
       const isProduction = process.env.NODE_ENV === "production"
+      const isHTTPS = request.headers.get("x-forwarded-proto") === "https"
 
-      cookieStore.set("adminAuthenticated", "true", {
+      console.log("Setting cookies with secure:", isProduction || isHTTPS)
+
+      const cookieOptions = {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: "lax",
+        secure: isProduction || isHTTPS,
+        sameSite: "lax" as const,
         maxAge: 60 * 60 * 24 * 7, // 7 days
         path: "/",
-      })
+      }
 
-      cookieStore.set("adminUser", JSON.stringify(adminUser), {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-        path: "/",
-      })
+      cookieStore.set("adminAuthenticated", "true", cookieOptions)
+      cookieStore.set("adminUser", JSON.stringify(adminUser), cookieOptions)
 
       console.log("Admin login successful, cookies set")
 

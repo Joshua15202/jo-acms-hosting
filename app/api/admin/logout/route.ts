@@ -8,20 +8,23 @@ export async function POST() {
   try {
     const cookieStore = await cookies()
 
-    // Delete admin authentication cookies
+    // Clear admin authentication cookies
     cookieStore.delete("adminAuthenticated")
     cookieStore.delete("adminUser")
 
+    console.log("Admin logout successful, cookies cleared")
+
     return NextResponse.json({
       success: true,
-      message: "Logged out successfully",
+      message: "Logout successful",
     })
   } catch (error) {
-    console.error("Logout error:", error)
+    console.error("Admin logout error:", error)
     return NextResponse.json(
       {
         success: false,
         message: "An error occurred during logout",
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     )

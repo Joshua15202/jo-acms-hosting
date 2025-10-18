@@ -27,9 +27,11 @@ import {
   ChefHat,
   Cake,
   Coffee,
+  AlertCircle,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getTimeRange } from "@/lib/utils"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type MenuItem = {
   id: string
@@ -80,6 +82,7 @@ export default function AppointmentsList() {
   const [newStatus, setNewStatus] = useState("")
   const [adminNotes, setAdminNotes] = useState("")
   const [updating, setUpdating] = useState(false)
+  const [authError, setAuthError] = useState(false)
   const { toast } = useToast()
 
   // Fetch appointments
@@ -119,11 +122,20 @@ export default function AppointmentsList() {
 
     try {
       setUpdating(true)
+      setAuthError(false)
+
+      console.log("Updating appointment status:", {
+        id: selectedAppointment.id,
+        newStatus,
+        notes: adminNotes,
+      })
+
       const response = await fetch(`/api/admin/appointments/${selectedAppointment.id}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Important: Include cookies
         body: JSON.stringify({
           status: newStatus,
           notes: adminNotes,
@@ -131,6 +143,18 @@ export default function AppointmentsList() {
       })
 
       const data = await response.json()
+
+      console.log("Update response:", data)
+
+      if (response.status === 401) {
+        setAuthError(true)
+        toast({
+          title: "Authentication Error",
+          description: "Your session may have expired. Please log out and log back in.",
+          variant: "destructive",
+        })
+        return
+      }
 
       if (data.success) {
         toast({
@@ -140,6 +164,7 @@ export default function AppointmentsList() {
         setStatusUpdateOpen(false)
         setNewStatus("")
         setAdminNotes("")
+        setAuthError(false)
         fetchAppointments()
       } else {
         toast({
@@ -263,6 +288,7 @@ export default function AppointmentsList() {
     setSelectedAppointment(appointment)
     setNewStatus(appointment.status)
     setAdminNotes(appointment.admin_notes || "")
+    setAuthError(false)
     setStatusUpdateOpen(true)
   }
 
@@ -625,6 +651,16 @@ export default function AppointmentsList() {
             <DialogTitle>Update Appointment Status</DialogTitle>
             <DialogDescription>Update the status for appointment {selectedAppointment?.id}</DialogDescription>
           </DialogHeader>
+
+          {authError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Authentication failed. Please log out and log back in, then try again.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid gap-4 py-4">
             <div>
               <label className="text-sm font-medium text-gray-500">New Status</label>
