@@ -147,7 +147,13 @@ export default function AdminDashboard() {
 
   const fetchCustomersCount = async () => {
     try {
-      const response = await fetch("/api/admin/all-customers")
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/all-customers?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       const data = await response.json()
       if (data.success) {
         setTotalCustomers(data.totalCustomers || 0)
@@ -159,7 +165,13 @@ export default function AdminDashboard() {
 
   const fetchUpcomingEventsCount = async () => {
     try {
-      const response = await fetch("/api/admin/appointments")
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/appointments?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       const data = await response.json()
 
       if (data.success && data.appointments) {
@@ -180,7 +192,13 @@ export default function AdminDashboard() {
 
   const fetchMonthlyRevenue = async () => {
     try {
-      const response = await fetch("/api/admin/monthly-revenue")
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/monthly-revenue?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       const data = await response.json()
 
       if (data.success) {
@@ -193,7 +211,13 @@ export default function AdminDashboard() {
 
   const fetchDetailedAnalytics = async () => {
     try {
-      const response = await fetch("/api/admin/revenue-analytics")
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/revenue-analytics?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       const data = await response.json()
 
       if (data.success) {
@@ -235,7 +259,13 @@ export default function AdminDashboard() {
   const fetchCustomers = async () => {
     setLoadingCustomers(true)
     try {
-      const response = await fetch("/api/admin/all-customers")
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/all-customers?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       const data = await response.json()
 
       if (data.success && data.customers) {
@@ -252,7 +282,13 @@ export default function AdminDashboard() {
   const fetchUpcomingEvents = async () => {
     setLoadingEvents(true)
     try {
-      const response = await fetch("/api/admin/appointments")
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/appointments?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       const data = await response.json()
 
       if (data.success && data.appointments) {

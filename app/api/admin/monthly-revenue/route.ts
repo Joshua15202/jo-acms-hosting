@@ -3,6 +3,9 @@ import { createClient } from "@supabase/supabase-js"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export async function GET(request: NextRequest) {
   try {
     console.log("Fetching monthly revenue data...")
@@ -139,7 +142,13 @@ export async function GET(request: NextRequest) {
       completedEvents: response.data.completedEvents,
     })
 
-    return NextResponse.json(response)
+    return NextResponse.json(response, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    })
   } catch (error) {
     console.error("Error in monthly revenue API:", error)
     return NextResponse.json(

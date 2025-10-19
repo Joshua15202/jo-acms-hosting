@@ -3,130 +3,112 @@ import { createClient } from "@supabase/supabase-js"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export async function GET() {
   try {
-    const now = new Date()
-    const currentYear = now.getFullYear()
+    console.log("Fetching revenue analytics data...")
 
-    // Fetch all completed events from the past 12 months
-    const twelveMonthsAgo = new Date(currentYear, now.getMonth() - 11, 1)
+    // Get all completed appointments from the last 12 months
+    const twelveMonthsAgo = new Date()
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
 
-    const { data: events, error } = await supabase
+    const { data: appointments, error } = await supabase
       .from("tbl_comprehensive_appointments")
-      .select("*")
+      .select(`
+        id,
+        event_type,
+        event_date,
+        guest_count,
+        total_package_amount,
+        created_at
+      `)
       .eq("status", "completed")
       .gte("event_date", twelveMonthsAgo.toISOString().split("T")[0])
       .order("event_date", { ascending: true })
 
-    if (error) throw error
-
-    // Process monthly data
-    const monthlyMap = new Map<string, { revenue: number; events: number }>()
-    const eventTypeMap = new Map<string, number>()
-    const monthlyEventsMap = new Map<string, { events: number; revenue: number; types: Map<string, number> }>()
-
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ]
-
-    // Initialize last 12 months
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date(currentYear, now.getMonth() - i, 1)
-      const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`
-      monthlyMap.set(monthKey, { revenue: 0, events: 0 })
-      monthlyEventsMap.set(monthKey, { events: 0, revenue: 0, types: new Map() })
+    if (error) {
+      console.error("Error fetching appointments:", error)
+      throw error
     }
 
-    // Process events
-    events?.forEach((event) => {
-      const eventDate = new Date(event.event_date)
-      const monthKey = `${monthNames[eventDate.getMonth()]} ${eventDate.getFullYear()}`
-      const revenue = Number.parseFloat(event.total_package_amount || "0")
+    console.log(`Found ${appointments?.length || 0} completed appointments in the last 12 months`)
+
+    // Group by month
+    const monthlyDataMap = new Map<string, { revenue: number; events: number }>()
+    const eventTypeMap = new Map<string, number>()
+
+    appointments?.forEach((appointment) => {
+      const date = new Date(appointment.event_date)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+      const monthName = date.toLocaleDateString("en-US", { month: "short", year: "numeric" })
 
       // Update monthly data
-      const monthData = monthlyMap.get(monthKey)
-      if (monthData) {
-        monthData.revenue += revenue
-        monthData.events += 1
-      }
+      const existing = monthlyDataMap.get(monthName) || { revenue: 0, events: 0 }
+      existing.revenue += Number.parseFloat(appointment.total_package_amount || "0")
+      existing.events += 1
+      monthlyDataMap.set(monthName, existing)
 
-      // Update event type data
-      const currentCount = eventTypeMap.get(event.event_type) || 0
-      eventTypeMap.set(event.event_type, currentCount + 1)
-
-      // Update monthly events data for peak analysis
-      const monthEventData = monthlyEventsMap.get(monthKey)
-      if (monthEventData) {
-        monthEventData.events += 1
-        monthEventData.revenue += revenue
-        const typeCount = monthEventData.types.get(event.event_type) || 0
-        monthEventData.types.set(event.event_type, typeCount + 1)
-      }
+      // Update event type count
+      const eventType = appointment.event_type || "Other"
+      eventTypeMap.set(eventType, (eventTypeMap.get(eventType) || 0) + 1)
     })
 
-    // Format monthly data
-    const monthlyData = Array.from(monthlyMap.entries()).map(([month, data]) => ({
-      month: month.split(" ")[0].substring(0, 3), // Short month name
-      revenue: data.revenue,
+    // Convert to arrays
+    const monthlyData = Array.from(monthlyDataMap.entries()).map(([month, data]) => ({
+      month,
+      revenue: Math.round(data.revenue),
       events: data.events,
     }))
 
-    // Format event type data
-    const totalEvents = events?.length || 0
+    const totalEvents = appointments?.length || 0
     const eventTypeData = Array.from(eventTypeMap.entries())
       .map(([name, count]) => ({
         name,
         count,
-        percentage: totalEvents > 0 ? Math.round((count / totalEvents) * 100) : 0,
+        percentage: Math.round((count / totalEvents) * 100),
       }))
       .sort((a, b) => b.count - a.count)
 
     // Find peak months
-    const peakMonths = Array.from(monthlyEventsMap.entries())
-      .map(([month, data]) => {
-        // Find top event type for this month
-        let topEventType = "N/A"
-        let maxCount = 0
-        data.types.forEach((count, type) => {
-          if (count > maxCount) {
-            maxCount = count
-            topEventType = type
-          }
-        })
-
-        return {
-          month,
-          events: data.events,
-          revenue: data.revenue,
-          topEventType,
-        }
-      })
+    const peakMonths = Array.from(monthlyDataMap.entries())
+      .map(([month, data]) => ({
+        month,
+        events: data.events,
+        revenue: Math.round(data.revenue),
+        topEventType: eventTypeData.length > 0 ? eventTypeData[0].name : "N/A",
+      }))
       .sort((a, b) => b.events - a.events)
-      .slice(0, 5)
+      .slice(0, 3)
 
-    return NextResponse.json({
+    const response = {
       success: true,
       monthlyData,
       eventTypeData,
       peakMonths,
+    }
+
+    console.log("Revenue analytics response:", {
+      monthlyDataPoints: monthlyData.length,
+      eventTypes: eventTypeData.length,
+      peakMonthsCount: peakMonths.length,
+    })
+
+    return NextResponse.json(response, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
     })
   } catch (error) {
-    console.error("Error fetching revenue analytics:", error)
+    console.error("Error in revenue analytics API:", error)
     return NextResponse.json(
       {
         success: false,
         error: "Failed to fetch revenue analytics",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
     )

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 // Weight estimation per guest (in grams)
 const WEIGHT_PER_GUEST = {
   beef: 200,
@@ -80,7 +83,12 @@ export async function GET() {
   try {
     console.log("=== Fetching Event Ingredients Overview ===")
 
-    // Get all future appointments with confirmed bookings
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date()
+    const todayStr = today.toISOString().split("T")[0]
+    console.log("Today's date:", todayStr)
+
+    // Get all future appointments - include more statuses
     const { data: appointments, error } = await supabaseAdmin
       .from("tbl_comprehensive_appointments")
       .select(`
@@ -94,8 +102,7 @@ export async function GET() {
         status,
         admin_notes
       `)
-      .gte("event_date", new Date().toISOString().split("T")[0])
-      .in("status", ["confirmed", "tasting_confirmed"])
+      .gte("event_date", todayStr)
       .order("event_date", { ascending: true })
 
     if (error) {
@@ -103,21 +110,52 @@ export async function GET() {
       return NextResponse.json({ error: "Failed to fetch appointments" }, { status: 500 })
     }
 
-    console.log(`Found ${appointments?.length || 0} upcoming appointments`)
+    console.log(`Found ${appointments?.length || 0} appointments with event_date >= ${todayStr}`)
+
+    if (appointments && appointments.length > 0) {
+      console.log("Sample appointment:", JSON.stringify(appointments[0], null, 2))
+      console.log(
+        "All appointment statuses:",
+        appointments.map((a) => ({ id: a.id, status: a.status, date: a.event_date })),
+      )
+    }
+
+    // Filter for confirmed bookings only
+    const confirmedAppointments =
+      appointments?.filter((appointment) => {
+        const isConfirmed = ["confirmed", "tasting_confirmed", "tasting_completed"].includes(
+          appointment.status?.toLowerCase() || "",
+        )
+        if (!isConfirmed) {
+          console.log(`Filtering out appointment ${appointment.id} with status: ${appointment.status}`)
+        }
+        return isConfirmed
+      }) || []
+
+    console.log(`Found ${confirmedAppointments.length} confirmed appointments`)
 
     // Filter out events that have already been confirmed for ingredients
     const pendingAppointments =
-      appointments?.filter(
+      confirmedAppointments.filter(
         (appointment) => !appointment.admin_notes || !appointment.admin_notes.includes("INGREDIENTS_CONFIRMED"),
       ) || []
+
+    console.log(`Found ${pendingAppointments.length} pending appointments (not yet confirmed for ingredients)`)
 
     const eventIngredients = pendingAppointments.map((appointment) => {
       const eventDate = new Date(appointment.event_date)
       const today = new Date()
       const daysUntilEvent = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
+      console.log(`Processing appointment ${appointment.id}:`, {
+        event_date: appointment.event_date,
+        days_until_event: daysUntilEvent,
+        main_courses: appointment.main_courses,
+      })
+
       // Parse main courses from main_courses column
       const mainCourses = parseMainCourses(appointment.main_courses)
+      console.log(`Parsed ${mainCourses.length} main courses for appointment ${appointment.id}:`, mainCourses)
 
       // Calculate weights for each main course item
       const mainCourseItems = mainCourses.map((item) => ({
@@ -149,6 +187,8 @@ export async function GET() {
     // Filter out events with no main course items
     const validEventIngredients = eventIngredients.filter((event) => event.main_course_items.length > 0)
 
+    console.log(`Found ${validEventIngredients.length} valid events with main course items`)
+
     // Calculate summary statistics
     const summary = {
       total_events: validEventIngredients.length,
@@ -179,11 +219,20 @@ export async function GET() {
 
     console.log(`Returning ${validEventIngredients.length} events with summary:`, summary)
 
-    return NextResponse.json({
-      events: validEventIngredients,
-      summary,
-      category_breakdown: categoryBreakdown,
-    })
+    return NextResponse.json(
+      {
+        events: validEventIngredients,
+        summary,
+        category_breakdown: categoryBreakdown,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
+    )
   } catch (error) {
     console.error("Error in event ingredients API:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

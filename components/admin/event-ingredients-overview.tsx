@@ -76,7 +76,13 @@ export default function EventIngredientsOverview() {
       setError(null)
 
       console.log("Fetching event ingredients...")
-      const response = await fetch("/api/admin/event-ingredients")
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/event-ingredients?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       const data = await response.json()
 
       console.log("Event ingredients response:", data)
