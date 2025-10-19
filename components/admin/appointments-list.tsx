@@ -85,18 +85,28 @@ export default function AppointmentsList() {
   const [authError, setAuthError] = useState(false)
   const { toast } = useToast()
 
-  // Fetch appointments
+  // Fetch appointments with cache busting
   const fetchAppointments = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/admin/appointments")
+
+      // Add cache busting with timestamp
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/appointments?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      })
+
       const data = await response.json()
 
       console.log("Fetched appointments data:", data)
 
       if (data.success) {
         setAppointments(data.appointments)
-        console.log("Set appointments:", data.appointments)
+        console.log("Set appointments:", data.appointments.length, "appointments")
       } else {
         toast({
           title: "Error",
@@ -134,8 +144,9 @@ export default function AppointmentsList() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
         },
-        credentials: "include", // Important: Include cookies
+        credentials: "include",
         body: JSON.stringify({
           status: newStatus,
           notes: adminNotes,
@@ -161,11 +172,18 @@ export default function AppointmentsList() {
           title: "Success",
           description: "Appointment status updated successfully",
         })
+
+        // Close the dialog first
         setStatusUpdateOpen(false)
         setNewStatus("")
         setAdminNotes("")
         setAuthError(false)
-        fetchAppointments()
+
+        // Force a fresh fetch of appointments
+        console.log("Forcing refresh after update...")
+        await fetchAppointments()
+
+        console.log("Refresh complete")
       } else {
         toast({
           title: "Error",
@@ -189,13 +207,14 @@ export default function AppointmentsList() {
     fetchAppointments()
   }, [])
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchAppointments()
-    }, 30000)
+  // Disable auto-refresh for now to avoid conflicts
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     fetchAppointments()
+  //   }, 30000)
 
-    return () => clearInterval(interval)
-  }, [])
+  //   return () => clearInterval(interval)
+  // }, [])
 
   const filteredAppointments = appointments.filter((appointment) => {
     if (filter !== "all" && appointment.status !== filter) {
@@ -273,13 +292,6 @@ export default function AppointmentsList() {
   const viewDetails = (appointment: Appointment) => {
     console.log("=== Viewing appointment details ===")
     console.log("Appointment:", appointment)
-    console.log("Menu items:", appointment.menu_items)
-    if (appointment.menu_items) {
-      console.log("Main courses:", appointment.menu_items.main_courses)
-      console.log("Main courses length:", appointment.menu_items.main_courses?.length)
-      console.log("Extras:", appointment.menu_items.extras)
-      console.log("Extras length:", appointment.menu_items.extras?.length)
-    }
     setSelectedAppointment(appointment)
     setViewDetailsOpen(true)
   }
@@ -337,13 +349,11 @@ export default function AppointmentsList() {
 
   const hasMenuItems = (appointment: Appointment | null) => {
     if (!appointment || !appointment.menu_items) {
-      console.log("No appointment or menu_items")
       return false
     }
     const menuItems = appointment.menu_items
     const hasMain = Array.isArray(menuItems.main_courses) && menuItems.main_courses.length > 0
     const hasExtras = Array.isArray(menuItems.extras) && menuItems.extras.length > 0
-    console.log("hasMain:", hasMain, "hasExtras:", hasExtras)
     return hasMain || hasExtras
   }
 
