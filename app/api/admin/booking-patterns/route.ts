@@ -23,6 +23,13 @@ interface MonthlyForecast {
 
 export async function GET(request: NextRequest) {
   try {
+    // Disable caching
+    const headers = {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    }
+
     console.log("Analyzing booking patterns from real appointment data...")
 
     // Fetch historical booking data from the last 12 months
@@ -59,12 +66,15 @@ export async function GET(request: NextRequest) {
 
         // If both tables fail, return demo data but indicate it's not real
         console.log("Using demo data as fallback...")
-        return NextResponse.json({
-          success: true,
-          data: getDemoMonthlyData(),
-          isDemo: true,
-          message: "Using demo data - no real appointment data found in database",
-        })
+        return NextResponse.json(
+          {
+            success: true,
+            data: getDemoMonthlyData(),
+            isDemo: true,
+            message: "Using demo data - no real appointment data found in database",
+          },
+          { headers },
+        )
       } else {
         appointments = regularAppointments || []
         dataSource = "regular"
@@ -78,26 +88,32 @@ export async function GET(request: NextRequest) {
     // If no real data found, use demo data
     if (appointments.length === 0) {
       console.log("No appointment data found, using demo data...")
-      return NextResponse.json({
-        success: true,
-        data: getDemoMonthlyData(),
-        isDemo: true,
-        message: "No historical appointment data found - showing demo monthly analysis",
-      })
+      return NextResponse.json(
+        {
+          success: true,
+          data: getDemoMonthlyData(),
+          isDemo: true,
+          message: "No historical appointment data found - showing demo monthly analysis",
+        },
+        { headers },
+      )
     }
 
     // Process the real appointment data for monthly analysis
     const processedData = processMonthlyAppointmentData(appointments)
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...processedData,
-        dataSource,
-        isDemo: false,
-        message: `Monthly analysis based on ${appointments.length} real appointments from ${dataSource} table`,
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          ...processedData,
+          dataSource,
+          isDemo: false,
+          message: `Monthly analysis based on ${appointments.length} real appointments from ${dataSource} table`,
+        },
       },
-    })
+      { headers },
+    )
   } catch (error) {
     console.error("Error analyzing booking patterns:", error)
     return NextResponse.json(
@@ -288,7 +304,7 @@ function getDemoMonthlyData() {
       12: 15, // December - Peak month
       6: 12, // June
       3: 8, // March
-      9: 4, // September - Fixed to 4 appointments
+      9: 4, // September
       10: 6, // October
     },
     quarterlyBookings: {
@@ -298,14 +314,14 @@ function getDemoMonthlyData() {
       Q3: 4, // July, Aug, Sept
     },
     analysis: {
-      peakMonth: { month: 12, count: 15 }, // December is now peak
+      peakMonth: { month: 12, count: 15 },
       peakQuarter: { quarter: "Q4", count: 21 },
       topMonths: [
-        { month: 12, count: 15 }, // December
-        { month: 6, count: 12 }, // June
-        { month: 3, count: 8 }, // March
-        { month: 10, count: 6 }, // October
-        { month: 9, count: 4 }, // September
+        { month: 12, count: 15 },
+        { month: 6, count: 12 },
+        { month: 3, count: 8 },
+        { month: 10, count: 6 },
+        { month: 9, count: 4 },
       ],
       insights: [
         "December is your busiest month with 15 total appointments",

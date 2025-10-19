@@ -19,7 +19,14 @@ export async function GET() {
           message: "Failed to fetch customers",
           error: usersError.message,
         },
-        { status: 500 },
+        {
+          status: 500,
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        },
       )
     }
 
@@ -33,7 +40,7 @@ export async function GET() {
 
     console.log(`Filtered to ${validCustomers.length} valid customers`)
 
-    // Fetch ALL payment transactions (not just verified ones for now)
+    // Fetch ALL payment transactions
     const { data: allPayments, error: paymentsError } = await supabaseAdmin.from("tbl_payment_transactions").select(`
         user_id,
         amount,
@@ -76,16 +83,6 @@ export async function GET() {
 
     console.log(`Found ${allAppointments.length} total appointments`)
 
-    // Debug: Check for specific user
-    const debugUserId = validCustomers.find((u) => u.email === "blacksights99@gmail.com")?.id
-    if (debugUserId) {
-      console.log(`Debug user ID: ${debugUserId}`)
-      const userPayments = (allPayments || []).filter((p) => p.user_id === debugUserId)
-      const userAppointments = allAppointments.filter((a) => a.user_id === debugUserId)
-      console.log(`Debug user payments: ${userPayments.length}`, userPayments)
-      console.log(`Debug user appointments: ${userAppointments.length}`, userAppointments)
-    }
-
     // Calculate spending and appointment counts for each customer
     const customersWithSpending = validCustomers.map((customer) => {
       // Calculate total spent from verified payments
@@ -123,48 +120,19 @@ export async function GET() {
 
       const status = hasRecentPayment || hasRecentAppointment ? "active" : "inactive"
 
-      // Find last activity (use last payment or appointment as proxy)
+      // Find last activity
       const lastActivity = [...customerPayments, ...customerAppointments]
         .map((item) => new Date(item.created_at))
         .sort((a, b) => b.getTime() - a.getTime())[0]
 
-      // Debug logging for specific user
-      if (customer.email === "blacksights99@gmail.com") {
-        console.log(`=== DEBUG FOR ${customer.email} ===`)
-        console.log(`Customer ID: ${customer.id}`)
-        console.log(`Total payments found: ${customerPayments.length}`)
-        console.log(`Verified payments: ${verifiedPayments.length}`)
-        console.log(`Total spent: ${totalSpent}`)
-        console.log(`Total appointments: ${totalAppointments}`)
-        console.log(`Completed appointments: ${completedAppointments}`)
-        console.log(`Status: ${status}`)
-        console.log(`Last activity: ${lastActivity}`)
-        console.log(
-          `Payment details:`,
-          customerPayments.map((p) => ({
-            id: p.user_id,
-            amount: p.amount,
-            status: p.status,
-          })),
-        )
-        console.log(
-          `Appointment details:`,
-          customerAppointments.map((a) => ({
-            user_id: a.user_id,
-            status: a.status,
-            created_at: a.created_at,
-          })),
-        )
-      }
-
       return {
         ...customer,
-        totalSpent: Math.round(totalSpent), // Round to nearest peso
+        totalSpent: Math.round(totalSpent),
         totalAppointments,
         completedAppointments,
         status: status as "active" | "inactive",
         lastLogin: lastActivity ? lastActivity.toISOString() : null,
-        paymentCount: verifiedPayments.length, // Only count verified payments
+        paymentCount: verifiedPayments.length,
       }
     })
 
@@ -183,48 +151,26 @@ export async function GET() {
       return sum + customer.totalSpent
     }, 0)
 
-    console.log(`Calculated stats:`, {
-      totalCustomers,
-      activeCustomers,
-      newThisMonth,
-      totalRevenue,
-    })
-
-    // Debug: Log the specific customer we're looking for
-    const debugCustomer = customersWithSpending.find((c) => c.email === "blacksights99@gmail.com")
-    if (debugCustomer) {
-      console.log(`=== FINAL DEBUG CUSTOMER DATA ===`)
-      console.log(JSON.stringify(debugCustomer, null, 2))
-    }
-
-    return NextResponse.json({
-      success: true,
-      customers: customersWithSpending,
-      totalCustomers,
-      stats: {
+    return NextResponse.json(
+      {
+        success: true,
+        customers: customersWithSpending,
         totalCustomers,
-        activeCustomers,
-        newThisMonth,
-        totalRevenue,
+        stats: {
+          totalCustomers,
+          activeCustomers,
+          newThisMonth,
+          totalRevenue,
+        },
       },
-      debug: {
-        totalUsersInDb: users?.length || 0,
-        validCustomers: validCustomers.length,
-        totalPayments: allPayments?.length || 0,
-        totalAppointments: allAppointments.length,
-        debugCustomerFound: !!debugCustomer,
-        debugCustomerData: debugCustomer
-          ? {
-              id: debugCustomer.id,
-              email: debugCustomer.email,
-              totalSpent: debugCustomer.totalSpent,
-              totalAppointments: debugCustomer.totalAppointments,
-              paymentCount: debugCustomer.paymentCount,
-              status: debugCustomer.status,
-            }
-          : null,
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
       },
-    })
+    )
   } catch (error) {
     console.error("Unexpected error in customers route:", error)
     return NextResponse.json(
@@ -233,7 +179,14 @@ export async function GET() {
         message: "An unexpected error occurred",
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 },
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
     )
   }
 }

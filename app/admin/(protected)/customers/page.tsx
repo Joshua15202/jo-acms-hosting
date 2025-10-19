@@ -103,7 +103,16 @@ export default function CustomersPage() {
       setLoading(true)
       console.log("Fetching customers with accurate spending data...")
 
-      const response = await fetch("/api/admin/customers")
+      // Add cache busting with timestamp
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/customers?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      })
+
       const data = await response.json()
 
       console.log("API Response:", data)

@@ -56,7 +56,17 @@ export default function ForecastingPage() {
   const fetchMonthlyPatterns = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/admin/booking-patterns")
+
+      // Add cache busting with timestamp
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/booking-patterns?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      })
+
       const result = await response.json()
 
       if (result.success) {
