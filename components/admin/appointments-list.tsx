@@ -90,12 +90,16 @@ export default function AppointmentsList() {
     try {
       setLoading(true)
 
+      // Multiple cache busting strategies
       const timestamp = new Date().getTime()
-      const response = await fetch(`/api/admin/appointments?_=${timestamp}`, {
+      const random = Math.random()
+      const response = await fetch(`/api/admin/appointments?_t=${timestamp}&_r=${random}`, {
+        method: "GET",
         cache: "no-store",
         headers: {
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
           Pragma: "no-cache",
+          Expires: "0",
         },
       })
 
@@ -143,13 +147,16 @@ export default function AppointmentsList() {
         notes: adminNotes,
       })
 
-      const response = await fetch(`/api/admin/appointments/${selectedAppointment.id}/status`, {
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/appointments/${selectedAppointment.id}/status?_t=${timestamp}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
         },
         credentials: "include",
+        cache: "no-store",
         body: JSON.stringify({
           status: newStatus,
           notes: adminNotes,
@@ -182,6 +189,11 @@ export default function AppointmentsList() {
         setAuthError(false)
 
         console.log("Forcing refresh after update...")
+
+        // Wait a bit for the database to settle
+        await new Promise((resolve) => setTimeout(resolve, 500))
+
+        // Force a fresh fetch
         await fetchAppointments()
 
         console.log("Refresh complete")

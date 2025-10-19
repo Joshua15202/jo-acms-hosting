@@ -29,7 +29,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           success: false,
           message: "Unauthorized - Admin authentication required",
         },
-        { status: 401 },
+        {
+          status: 401,
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        },
       )
     }
 
@@ -54,7 +61,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           success: false,
           message: "Invalid status value",
         },
-        { status: 400 },
+        {
+          status: 400,
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        },
       )
     }
 
@@ -88,17 +102,33 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
           message: "Failed to update appointment status",
           error: error.message,
         },
-        { status: 500 },
+        {
+          status: 500,
+          headers: {
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        },
       )
     }
 
     console.log(`Successfully updated appointment ${id} status to ${status}`)
 
-    return NextResponse.json({
-      success: true,
-      message: "Appointment status updated successfully",
-      appointment: data,
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Appointment status updated successfully",
+        appointment: data,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
+    )
   } catch (error) {
     console.error("Unexpected error updating appointment status:", error)
     return NextResponse.json(
@@ -107,8 +137,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         message: "An unexpected error occurred",
         error: error instanceof Error ? error.message : "Unknown error",
       },
-      { status: 500 },
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
     )
   }
 }
-
