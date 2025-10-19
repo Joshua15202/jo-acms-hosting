@@ -38,7 +38,7 @@ type MenuItem = {
   name: string
   category: string
   description?: string
-  quantity: number
+  price?: number
 }
 
 type MenuItems = {
@@ -68,7 +68,8 @@ type Appointment = {
     phone?: string
   }
   celebrant_gender?: string
-  menu_items?: MenuItems | null
+  selected_menu?: any
+  menu_items?: MenuItems
 }
 
 export default function AppointmentsList() {
@@ -85,12 +86,10 @@ export default function AppointmentsList() {
   const [authError, setAuthError] = useState(false)
   const { toast } = useToast()
 
-  // Fetch appointments with cache busting
   const fetchAppointments = async () => {
     try {
       setLoading(true)
 
-      // Add cache busting with timestamp
       const timestamp = new Date().getTime()
       const response = await fetch(`/api/admin/appointments?_=${timestamp}`, {
         cache: "no-store",
@@ -107,6 +106,11 @@ export default function AppointmentsList() {
       if (data.success) {
         setAppointments(data.appointments)
         console.log("Set appointments:", data.appointments.length, "appointments")
+
+        // Log menu items for debugging
+        if (data.appointments.length > 0) {
+          console.log("First appointment menu_items:", data.appointments[0].menu_items)
+        }
       } else {
         toast({
           title: "Error",
@@ -126,7 +130,6 @@ export default function AppointmentsList() {
     }
   }
 
-  // Update appointment status
   const updateAppointmentStatus = async () => {
     if (!selectedAppointment || !newStatus) return
 
@@ -173,13 +176,11 @@ export default function AppointmentsList() {
           description: "Appointment status updated successfully",
         })
 
-        // Close the dialog first
         setStatusUpdateOpen(false)
         setNewStatus("")
         setAdminNotes("")
         setAuthError(false)
 
-        // Force a fresh fetch of appointments
         console.log("Forcing refresh after update...")
         await fetchAppointments()
 
@@ -206,15 +207,6 @@ export default function AppointmentsList() {
   useEffect(() => {
     fetchAppointments()
   }, [])
-
-  // Disable auto-refresh for now to avoid conflicts
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     fetchAppointments()
-  //   }, 30000)
-
-  //   return () => clearInterval(interval)
-  // }, [])
 
   const filteredAppointments = appointments.filter((appointment) => {
     if (filter !== "all" && appointment.status !== filter) {
@@ -292,6 +284,7 @@ export default function AppointmentsList() {
   const viewDetails = (appointment: Appointment) => {
     console.log("=== Viewing appointment details ===")
     console.log("Appointment:", appointment)
+    console.log("Menu items:", appointment.menu_items)
     setSelectedAppointment(appointment)
     setViewDetailsOpen(true)
   }
