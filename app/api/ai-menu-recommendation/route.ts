@@ -641,7 +641,7 @@ VALIDATION RULES:
 Remember: Always maintain the fixed structure while respecting user restrictions completely. Focus on creating the perfect menu within these constraints while ensuring maximum variety for generation #${generationCount}.`
 
     const response = await generateText({
-      model: google("gemini-1.5-flash-latest"),
+      model: google("gemini-2.0-flash"),
       prompt: prompt,
       temperature: 0.8,
       maxTokens: 1500,

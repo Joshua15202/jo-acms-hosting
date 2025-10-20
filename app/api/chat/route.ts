@@ -1,22 +1,7 @@
-import { google } from "@ai-sdk/google"
-import { streamText } from "ai"
+import { createGoogleGenerativeAI } from "@ai-sdk/google"
+import { generateText } from "ai"
 
-// Add this error handler function at the top of your file, or anywhere outside the POST function.
-// It's good practice to define it once.
-function errorHandler(error: unknown) {
-  if (error == null) {
-    return "unknown error"
-  }
-  if (typeof error === "string") {
-    return error
-  }
-  if (error instanceof Error) {
-    return error.message
-  }
-  return JSON.stringify(error)
-}
-
-// Allow streaming responses up to 30 seconds
+// Allow responses up to 30 seconds
 export const maxDuration = 30
 
 export async function POST(req: Request) {
@@ -43,9 +28,15 @@ export async function POST(req: Request) {
     )
 
     try {
-      console.log("Chat API: Attempting to call streamText with Gemini model.")
-      const result = streamText({
-        model: google("gemini-1.5-flash"),
+      console.log("Chat API: Attempting to call generateText with Gemini model.")
+
+      // Create Google AI instance with your API key
+      const google = createGoogleGenerativeAI({
+        apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+      })
+
+      const result = await generateText({
+        model: google("gemini-2.0-flash"),
         messages,
         system: `You are the official AI chatbot for Jo Pacheco Wedding & Event, powered by the Jo-ACMS (AI-based Catering Management System). You are an intelligent virtual assistant designed to guide customers through event planning in an interactive and personalized manner.
 
@@ -83,13 +74,13 @@ We provide complete catering solutions including:
     - (3) Regular Colored–Balloon Garlands
     - Cut-out Name
     - Faux Grass Carpet
-    - Celebrant’s Accent Chair
+    - Celebrant's Accent Chair
     - Cake Cylinder Plinth
   • **Double Panel Backdrop:**
     - (3) Regular Colored–Balloon Garlands
     - Cut-out Name
     - Faux Grass Carpet
-    - Celebrant’s Accent Chair
+    - Celebrant's Accent Chair
     - Cake Cylinder Plinth
     - Basic Balloon Entrance Arch
   • **Triple Panel Backdrop:**
@@ -161,7 +152,7 @@ We provide complete catering solutions including:
 • Fish Tofu
 • Apple Fish Salad
 • Crispy Fish Fillet
-• Fisherman’s Delight
+• Fisherman's Delight
 
 🥬 **Vegetable Options:**
 • Chopsuey
@@ -280,18 +271,22 @@ When customers contact you:
 
 Remember: You represent 6+ years of catering excellence from Jo Pacheco Wedding & Event. Always provide accurate information about our services, pricing, and policies while maintaining the warm, professional service our clients expect.`,
       })
-      console.log("Chat API: streamText returned a result. Converting to DataStreamResponse.")
-      return result.toDataStreamResponse({
-        getErrorMessage: errorHandler,
+
+      console.log("Chat API: generateText completed successfully.")
+
+      // Return JSON response with the generated text
+      return Response.json({
+        id: Date.now().toString(),
+        role: "assistant",
+        content: result.text,
+        created_at: new Date().toISOString(),
       })
     } catch (aiError: any) {
-      console.error("Chat API: Error from AI model stream:", aiError)
-      console.error("Chat API: AI Error details:", aiError.message, aiError.stack) // Add stack trace for more details
+      console.error("Chat API: Error from AI model:", aiError)
       return Response.json({ error: "Failed to get response from AI model", details: aiError.message }, { status: 500 })
     }
   } catch (error: any) {
     console.error("Chat API: Unexpected error in POST handler:", error)
-    console.error("Chat API: Unexpected Error details:", error.message, error.stack) // Add stack trace for more details
     return Response.json(
       {
         error: "An unexpected error occurred in the chat API",
