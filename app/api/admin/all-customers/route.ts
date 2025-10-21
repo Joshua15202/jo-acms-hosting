@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 
+// Force dynamic rendering and disable caching
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export async function GET() {
   try {
     console.log("=== Admin: Fetching ALL customers (comprehensive) ===")
@@ -56,7 +60,7 @@ export async function GET() {
       )
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       customers: validCustomers,
       totalCustomers: validCustomers.length,
@@ -64,6 +68,13 @@ export async function GET() {
       gmailCustomers: gmailCustomers.length,
       message: `Successfully fetched ${validCustomers.length} valid customers out of ${totalUsersCount || 0} total users`,
     })
+
+    // Add cache-control headers
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
+
+    return response
   } catch (error) {
     console.error("Unexpected error in all-customers route:", error)
     return NextResponse.json(
