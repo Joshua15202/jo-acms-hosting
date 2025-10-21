@@ -8,7 +8,18 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { TrendingUp, Calendar, BarChart, Brain, Target, Clock, Database, AlertCircle, Crown } from "lucide-react"
+import {
+  TrendingUp,
+  Calendar,
+  BarChart,
+  Brain,
+  Target,
+  Clock,
+  Database,
+  AlertCircle,
+  Crown,
+  RefreshCw,
+} from "lucide-react"
 import { useAdminAuth } from "@/components/admin/admin-auth-provider"
 
 interface MonthlyAnalysis {
@@ -35,6 +46,7 @@ interface MonthlyAnalysis {
   dataSource?: string
   isDemo?: boolean
   message?: string
+  timestamp?: string
 }
 
 export default function ForecastingPage() {
@@ -43,6 +55,8 @@ export default function ForecastingPage() {
   const [monthlyData, setMonthlyData] = useState<MonthlyAnalysis | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastRefresh, setLastRefresh] = useState<string>("")
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -55,15 +69,19 @@ export default function ForecastingPage() {
 
   const fetchMonthlyPatterns = async () => {
     try {
+      setIsRefreshing(true)
       setLoading(true)
 
-      // Add cache busting with timestamp
+      // Strong cache busting with multiple parameters
       const timestamp = new Date().getTime()
-      const response = await fetch(`/api/admin/booking-patterns?_=${timestamp}`, {
+      const random = Math.random().toString(36).substring(7)
+      const response = await fetch(`/api/admin/booking-patterns?_t=${timestamp}&_r=${random}`, {
+        method: "GET",
         cache: "no-store",
         headers: {
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
           Pragma: "no-cache",
+          Expires: "0",
         },
       })
 
@@ -71,14 +89,19 @@ export default function ForecastingPage() {
 
       if (result.success) {
         setMonthlyData(result.data)
+        setLastRefresh(new Date().toLocaleTimeString())
+        setError(null)
+        console.log("✅ Forecasting data loaded successfully", result.data)
       } else {
         setError(result.error || "Failed to fetch monthly patterns")
+        console.error("❌ Failed to load forecasting data:", result)
       }
     } catch (err) {
       setError("Network error while fetching data")
-      console.error("Error fetching monthly patterns:", err)
+      console.error("❌ Error fetching monthly patterns:", err)
     } finally {
       setLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -119,6 +142,7 @@ export default function ForecastingPage() {
         <Card>
           <CardContent className="p-6">
             <Button onClick={fetchMonthlyPatterns} variant="outline">
+              <RefreshCw className="mr-2 h-4 w-4" />
               Retry Loading Data
             </Button>
           </CardContent>
@@ -147,9 +171,16 @@ export default function ForecastingPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">AI Forecasting & Optimization</h1>
-        <p className="text-gray-500">Monthly booking patterns and peak period analysis</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">AI Forecasting & Optimization</h1>
+          <p className="text-gray-500">Monthly booking patterns and peak period analysis</p>
+          {lastRefresh && <p className="text-xs text-gray-400 mt-1">Last refreshed: {lastRefresh}</p>}
+        </div>
+        <Button onClick={fetchMonthlyPatterns} variant="outline" size="sm" disabled={isRefreshing}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+          {isRefreshing ? "Refreshing..." : "Refresh Now"}
+        </Button>
       </div>
 
       {/* Data Source Indicator */}
@@ -162,7 +193,7 @@ export default function ForecastingPage() {
               ) : (
                 <Database className="h-5 w-5 text-green-600" />
               )}
-              <div>
+              <div className="flex-1">
                 <p className={`text-sm font-medium ${monthlyData.isDemo ? "text-amber-800" : "text-green-800"}`}>
                   {monthlyData.isDemo ? "Demo Data Mode" : "Real Data Analysis"}
                 </p>
@@ -170,6 +201,9 @@ export default function ForecastingPage() {
                   {monthlyData.message}
                 </p>
               </div>
+              {monthlyData.timestamp && (
+                <div className="text-xs text-gray-500">{new Date(monthlyData.timestamp).toLocaleString()}</div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -200,7 +234,7 @@ export default function ForecastingPage() {
           </Select>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchMonthlyPatterns}>
+          <Button variant="outline" onClick={fetchMonthlyPatterns} disabled={isRefreshing}>
             <BarChart className="mr-2 h-4 w-4" />
             Refresh Analysis
           </Button>
@@ -478,9 +512,9 @@ export default function ForecastingPage() {
                   Last updated:{" "}
                   {monthlyData?.lastUpdated ? new Date(monthlyData.lastUpdated).toLocaleString() : "Never"}
                 </p>
-                <Button variant="outline" size="sm" onClick={fetchMonthlyPatterns}>
+                <Button variant="outline" size="sm" onClick={fetchMonthlyPatterns} disabled={isRefreshing}>
                   <Clock className="mr-2 h-4 w-4" />
-                  Refresh Analysis
+                  {isRefreshing ? "Refreshing..." : "Refresh Analysis"}
                 </Button>
               </div>
             </CardFooter>

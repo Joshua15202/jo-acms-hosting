@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CalendarIcon, Clock, AlertCircle, RefreshCw } from "lucide-react"
-import { format, isSameDay, isAfter, startOfDay } from "date-fns"
+import { format, isSameDay, isAfter, startOfDay, parseISO } from "date-fns"
 import { toZonedTime, formatInTimeZone } from "date-fns-tz"
 import { cn } from "@/lib/utils"
 import { useToast } from "@/components/ui/use-toast"
@@ -37,6 +37,7 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
   const [refreshing, setRefreshing] = useState(false)
   const [currentPhilippineTime, setCurrentPhilippineTime] = useState<Date>(new Date())
   const [dateAppointmentCount, setDateAppointmentCount] = useState<number>(0)
+  const [isDateFullyBooked, setIsDateFullyBooked] = useState<boolean>(false)
 
   // Update Philippine time every minute
   useEffect(() => {
@@ -47,7 +48,7 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
     }
 
     updatePhilippineTime()
-    const interval = setInterval(updatePhilippineTime, 60000) // Update every minute
+    const interval = setInterval(updatePhilippineTime, 60000)
 
     return () => clearInterval(interval)
   }, [])
@@ -65,6 +66,7 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
       setAvailableTimeSlots([])
       setTimeSlot("")
       setDateAppointmentCount(0)
+      setIsDateFullyBooked(false)
     }
   }, [date])
 
@@ -81,9 +83,13 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
       const data = await response.json()
 
       if (data.success) {
-        const unavailable = data.unavailableDates?.map((dateStr: string) => new Date(dateStr)) || []
+        const unavailable = data.unavailableDates?.map((dateStr: string) => parseISO(dateStr)) || []
         setUnavailableDates(unavailable)
-        console.log("Loaded unavailable dates:", unavailable.length)
+        console.log(
+          "Loaded unavailable dates:",
+          unavailable.length,
+          unavailable.map((d: Date) => format(d, "yyyy-MM-dd")),
+        )
       }
     } catch (error) {
       console.error("Error loading unavailable dates:", error)
@@ -111,8 +117,19 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
         console.log("Loaded time slots for", dateStr, ":", filteredSlots)
         setAvailableTimeSlots(filteredSlots)
 
-        const bookedSlots = filteredSlots.filter((slot: TimeSlot) => slot.current_bookings > 0)
-        setDateAppointmentCount(bookedSlots.length)
+        setDateAppointmentCount(data.totalAppointments || 0)
+        setIsDateFullyBooked(data.isDateFullyBooked || false)
+
+        // If date is fully booked, clear the selection
+        if (data.isDateFullyBooked) {
+          setDate(undefined)
+          setTimeSlot("")
+          toast({
+            title: "Date Fully Booked",
+            description: "This date has reached maximum capacity (4/4 appointments)",
+            variant: "destructive",
+          })
+        }
       } else {
         console.error("Failed to load time slots:", data.error)
         toast({
@@ -143,10 +160,34 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
     const selectedDateStart = startOfDay(selectedDate)
     const currentPhilippineDate = startOfDay(currentPhilippineTime)
 
+    // Check if date is in the past
     if (!isAfter(selectedDateStart, currentPhilippineDate) && !isSameDay(selectedDateStart, currentPhilippineDate)) {
       toast({
         title: "Invalid Date",
         description: "Please select a future date",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check if date is within 7-day preparation period
+    const minimumBookingDate = new Date(currentPhilippineDate)
+    minimumBookingDate.setDate(minimumBookingDate.getDate() + 7)
+    if (selectedDateStart < minimumBookingDate) {
+      toast({
+        title: "Invalid Date",
+        description: "Bookings require 1 week advance notice for event preparation",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check if date is fully booked (4 appointments)
+    const isFullyBooked = unavailableDates.some((unavailableDate) => isSameDay(unavailableDate, selectedDate))
+    if (isFullyBooked) {
+      toast({
+        title: "Date Unavailable",
+        description: "This date is fully booked (4/4 appointments). Please select another date.",
         variant: "destructive",
       })
       return
@@ -164,18 +205,26 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
     }
   }
 
-  const isDateUnavailable = (date: Date) => {
-    const dateStart = startOfDay(date)
+  const isDateUnavailable = (checkDate: Date) => {
+    const dateStart = startOfDay(checkDate)
     const currentPhilippineDate = startOfDay(currentPhilippineTime)
 
+    // Disable dates in the past
+    if (!isAfter(dateStart, currentPhilippineDate) && !isSameDay(dateStart, currentPhilippineDate)) {
+      return true
+    }
+
+    // Disable dates within 7-day preparation period
     const minimumBookingDate = new Date(currentPhilippineDate)
     minimumBookingDate.setDate(minimumBookingDate.getDate() + 7)
-
     if (dateStart < minimumBookingDate) {
       return true
     }
 
-    return unavailableDates.some((unavailableDate) => isSameDay(unavailableDate, date))
+    // Disable dates that are fully booked (4 appointments)
+    const isFullyBooked = unavailableDates.some((unavailableDate) => isSameDay(unavailableDate, checkDate))
+
+    return isFullyBooked
   }
 
   const getTimeSlotStatus = (slot: TimeSlot) => {
@@ -226,7 +275,7 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
                   Current Philippine Time: {formatInTimeZone(currentPhilippineTime, PHILIPPINES_TIMEZONE, "PPP p")}
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
-                  Maximum 4 appointments per day • Service hours: 6:00 AM - 10:00 PM
+                  Maximum 4 appointments per day • Service hours: 6:00 AM - 7:00 PM
                 </div>
                 <div className="mt-1 text-xs text-blue-600 font-medium">
                   ⏱️ Each event lasts approximately 4 hours from the selected start time
@@ -258,6 +307,7 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
                   backgroundColor: "#fee2e2",
                   color: "#dc2626",
                   textDecoration: "line-through",
+                  cursor: "not-allowed",
                 },
               }}
             />
@@ -274,11 +324,11 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-gray-100 border border-gray-300 rounded"></div>
-              <span>Preparation Period (1 week)</span>
+              <span>Preparation Period (7 days)</span>
             </div>
           </div>
 
-          {date && (
+          {date && !isDateFullyBooked && (
             <div className="p-4 bg-blue-50 rounded-lg">
               <h3 className="font-medium text-blue-900">Selected Date: {format(date, "EEEE, MMMM d, yyyy")}</h3>
               <p className="text-sm text-blue-700 mt-1">
@@ -287,7 +337,7 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
             </div>
           )}
 
-          {date && (
+          {date && !isDateFullyBooked && (
             <div className="space-y-4">
               <h3 className="font-medium flex items-center gap-2">
                 <Clock className="h-4 w-4" />
@@ -344,7 +394,7 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
             </div>
           )}
 
-          {date && timeSlot && (
+          {date && timeSlot && !isDateFullyBooked && (
             <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
               <h4 className="font-medium text-green-900">Selection Confirmed</h4>
               <p className="text-sm text-green-700">

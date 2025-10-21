@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 
 export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
       Expires: "0",
     }
 
-    // Define all possible time slots
+    // Define all possible time slots (6 AM to 7 PM)
     const allTimeSlots = [
       "6:00 AM",
       "7:00 AM",
@@ -53,6 +54,11 @@ export async function GET(request: NextRequest) {
 
     console.log("Found appointments:", appointments)
 
+    const totalAppointments = appointments?.length || 0
+    const isDateFullyBooked = totalAppointments >= 4
+
+    console.log(`Date ${date} has ${totalAppointments} appointments. Fully booked: ${isDateFullyBooked}`)
+
     // Create a map of booked time slots
     const bookedTimeSlots = new Set(appointments?.map((apt) => apt.event_time) || [])
 
@@ -61,12 +67,15 @@ export async function GET(request: NextRequest) {
     // Build the availability response
     const availableSlots = allTimeSlots.map((timeSlot) => {
       const isBooked = bookedTimeSlots.has(timeSlot)
+      // If date is fully booked (4 appointments), all remaining slots are unavailable
+      const isAvailable = !isBooked && !isDateFullyBooked
+
       return {
         id: `${date}-${timeSlot}`,
         time_slot: timeSlot,
         max_capacity: 1,
         current_bookings: isBooked ? 1 : 0,
-        is_available: !isBooked,
+        is_available: isAvailable,
       }
     })
 
@@ -77,6 +86,8 @@ export async function GET(request: NextRequest) {
         success: true,
         availableSlots,
         date,
+        totalAppointments,
+        isDateFullyBooked,
         timestamp: new Date().toISOString(),
       },
       { headers },

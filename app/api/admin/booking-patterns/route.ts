@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
+// Force dynamic rendering and disable caching
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 interface BookingPattern {
@@ -23,13 +27,16 @@ interface MonthlyForecast {
 
 export async function GET(request: NextRequest) {
   try {
-    // Disable caching
+    // Strong cache prevention headers
     const headers = {
-      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
       Pragma: "no-cache",
       Expires: "0",
+      "Surrogate-Control": "no-store",
     }
 
+    console.log("=== BOOKING PATTERNS API CALLED ===")
+    console.log("Timestamp:", new Date().toISOString())
     console.log("Analyzing booking patterns from real appointment data...")
 
     // Fetch historical booking data from the last 12 months
@@ -47,7 +54,7 @@ export async function GET(request: NextRequest) {
       .from("tbl_comprehensive_appointments")
       .select("event_date, created_at, status, guest_count, event_type")
       .gte("event_date", oneYearAgoString)
-      .not("status", "eq", "cancelled")
+      .not("status", "in", '("cancelled","CANCELLED")')
       .order("event_date", { ascending: true })
 
     if (comprehensiveError) {
@@ -58,7 +65,7 @@ export async function GET(request: NextRequest) {
         .from("tbl_appointments")
         .select("event_date, created_at, status, guest_count, event_type")
         .gte("event_date", oneYearAgoString)
-        .not("status", "eq", "cancelled")
+        .not("status", "in", '("cancelled","CANCELLED")')
         .order("event_date", { ascending: true })
 
       if (regularError) {
@@ -72,6 +79,7 @@ export async function GET(request: NextRequest) {
             data: getDemoMonthlyData(),
             isDemo: true,
             message: "Using demo data - no real appointment data found in database",
+            timestamp: new Date().toISOString(),
           },
           { headers },
         )
@@ -94,6 +102,7 @@ export async function GET(request: NextRequest) {
           data: getDemoMonthlyData(),
           isDemo: true,
           message: "No historical appointment data found - showing demo monthly analysis",
+          timestamp: new Date().toISOString(),
         },
         { headers },
       )
@@ -101,6 +110,9 @@ export async function GET(request: NextRequest) {
 
     // Process the real appointment data for monthly analysis
     const processedData = processMonthlyAppointmentData(appointments)
+
+    console.log("=== BOOKING PATTERNS ANALYSIS COMPLETE ===")
+    console.log("Total appointments analyzed:", appointments.length)
 
     return NextResponse.json(
       {
@@ -110,6 +122,7 @@ export async function GET(request: NextRequest) {
           dataSource,
           isDemo: false,
           message: `Monthly analysis based on ${appointments.length} real appointments from ${dataSource} table`,
+          timestamp: new Date().toISOString(),
         },
       },
       { headers },
@@ -121,6 +134,7 @@ export async function GET(request: NextRequest) {
         success: false,
         error: "Failed to analyze booking patterns",
         details: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )
@@ -340,7 +354,7 @@ function getDemoMonthlyData() {
         confidence: 95,
         reason: "Based on historical data, December typically sees 15 appointments. This is your peak month!",
         expectedBookings: 15,
-        peakIndicator: "high",
+        peakIndicator: "high" as const,
       },
       {
         month: 6,
@@ -349,7 +363,7 @@ function getDemoMonthlyData() {
         reason:
           "Based on historical data, June typically sees 12 appointments. This follows your typical monthly pattern.",
         expectedBookings: 12,
-        peakIndicator: "medium",
+        peakIndicator: "medium" as const,
       },
       {
         month: 3,
@@ -358,7 +372,7 @@ function getDemoMonthlyData() {
         reason:
           "Based on historical data, March typically sees 8 appointments. This follows your typical monthly pattern.",
         expectedBookings: 8,
-        peakIndicator: "medium",
+        peakIndicator: "medium" as const,
       },
       {
         month: 10,
@@ -367,7 +381,7 @@ function getDemoMonthlyData() {
         reason:
           "Based on historical data, October typically sees 6 appointments. This follows your typical monthly pattern.",
         expectedBookings: 6,
-        peakIndicator: "low",
+        peakIndicator: "low" as const,
       },
     ],
     lastUpdated: new Date().toISOString(),
