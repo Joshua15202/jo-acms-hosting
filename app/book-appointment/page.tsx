@@ -14,6 +14,7 @@ import SmartCalendar from "@/components/smart-calendar"
 import { useAuth } from "@/components/user-auth-provider"
 import { useToast } from "@/components/ui/use-toast"
 import { Toaster } from "@/components/ui/toaster"
+import { AlertCircle } from "lucide-react"
 
 interface PersonalInfo {
   firstName: string
@@ -56,7 +57,7 @@ export default function BookAppointmentPage() {
   const [schedulingCompleted, setSchedulingCompleted] = useState(false)
   const [eventTypeSelected, setEventTypeSelected] = useState(false)
   const [backdropSelected, setBackdropSelected] = useState(false)
-  const [personalInfo, setPersonalInfo] = useState({
+  const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
     firstName: "",
     lastName: "",
     email: "",
@@ -97,6 +98,7 @@ export default function BookAppointmentPage() {
   })
 
   const [backdropStyle, setBackdropStyle] = useState("")
+  const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({})
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -110,11 +112,27 @@ export default function BookAppointmentPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setPersonalInfo((prev) => ({ ...prev, [name]: value }))
+    // Clear validation error when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
   }
 
   const handleCelebrantInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setCelebrantInfo((prev) => ({ ...prev, [name]: value }))
+    // Clear validation error when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
   }
 
   const handleSelectChange = (name: string, value: string) => {
@@ -125,36 +143,56 @@ export default function BookAppointmentPage() {
     } else {
       setCelebrantInfo((prev) => ({ ...prev, [name]: value }))
     }
+    // Clear validation error when user makes a selection
+    if (validationErrors[name]) {
+      setValidationErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
   }
 
   const handlePersonalInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("Personal info submit triggered")
+    console.log("Personal info data:", personalInfo)
 
+    const errors: { [key: string]: string } = {}
+
+    // Validate all fields
     if (!personalInfo.firstName.trim()) {
-      toast({ title: "Validation Error", description: "First Name is required.", variant: "destructive" })
-      return
+      errors.firstName = "First Name is required"
     }
     if (!personalInfo.lastName.trim()) {
-      toast({ title: "Validation Error", description: "Last Name is required.", variant: "destructive" })
-      return
+      errors.lastName = "Last Name is required"
     }
-    if (!personalInfo.email.trim() || !isValidEmail(personalInfo.email)) {
+    if (!personalInfo.email.trim()) {
+      errors.email = "Email Address is required"
+    } else if (!isValidEmail(personalInfo.email)) {
+      errors.email = "Please enter a valid email address"
+    }
+    if (!personalInfo.phone.trim()) {
+      errors.phone = "Phone Number is required"
+    } else if (!isValidPhilippineMobile(personalInfo.phone)) {
+      errors.phone = "Please enter a valid Philippine mobile number (09xxxxxxxxx or +639xxxxxxxxx)"
+    }
+
+    // If there are errors, show them
+    if (Object.keys(errors).length > 0) {
+      console.log("Validation errors:", errors)
+      setValidationErrors(errors)
       toast({
         title: "Validation Error",
-        description: "A valid Email Address is required.",
-        variant: "destructive",
-      })
-      return
-    }
-    if (!personalInfo.phone.trim() || !isValidPhilippineMobile(personalInfo.phone)) {
-      toast({
-        title: "Validation Error",
-        description: "A valid Philippine Mobile Number is required.",
+        description: "Please fill in all required fields correctly.",
         variant: "destructive",
       })
       return
     }
 
+    // Success - proceed to next step
+    console.log("Validation passed, proceeding to scheduling")
+    setValidationErrors({})
     setPersonalInfoCompleted(true)
     toast({
       title: "Personal Information Saved",
@@ -362,33 +400,51 @@ export default function BookAppointmentPage() {
               <form onSubmit={handlePersonalInfoSubmit} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <label htmlFor="firstName">First Name</label>
+                    <label htmlFor="firstName" className="text-sm font-medium">
+                      First Name <span className="text-red-600">*</span>
+                    </label>
                     <Input
                       id="firstName"
                       name="firstName"
                       value={personalInfo.firstName}
                       onChange={handleInputChange}
                       placeholder="Enter your first name"
-                      className="bg-gray-50"
+                      className={validationErrors.firstName ? "border-red-500" : ""}
                       required
                     />
+                    {validationErrors.firstName && (
+                      <div className="flex items-center gap-1 text-red-600 text-sm">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>{validationErrors.firstName}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="grid gap-2">
-                    <label htmlFor="lastName">Last Name</label>
+                    <label htmlFor="lastName" className="text-sm font-medium">
+                      Last Name <span className="text-red-600">*</span>
+                    </label>
                     <Input
                       id="lastName"
                       name="lastName"
                       value={personalInfo.lastName}
                       onChange={handleInputChange}
                       placeholder="Enter your last name"
-                      className="bg-gray-50"
+                      className={validationErrors.lastName ? "border-red-500" : ""}
                       required
                     />
+                    {validationErrors.lastName && (
+                      <div className="flex items-center gap-1 text-red-600 text-sm">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>{validationErrors.lastName}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="grid gap-4">
                   <div className="grid gap-2">
-                    <label htmlFor="email">Email Address</label>
+                    <label htmlFor="email" className="text-sm font-medium">
+                      Email Address <span className="text-red-600">*</span>
+                    </label>
                     <Input
                       id="email"
                       name="email"
@@ -396,21 +452,35 @@ export default function BookAppointmentPage() {
                       value={personalInfo.email}
                       onChange={handleInputChange}
                       placeholder="Enter your email address"
-                      className="bg-gray-50"
+                      className={validationErrors.email ? "border-red-500" : ""}
                       required
                     />
+                    {validationErrors.email && (
+                      <div className="flex items-center gap-1 text-red-600 text-sm">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>{validationErrors.email}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="grid gap-2">
-                    <label htmlFor="phone">Phone Number</label>
+                    <label htmlFor="phone" className="text-sm font-medium">
+                      Phone Number <span className="text-red-600">*</span>
+                    </label>
                     <Input
                       id="phone"
                       name="phone"
                       value={personalInfo.phone}
                       onChange={handleInputChange}
                       placeholder="e.g., 09xxxxxxxxx or +639xxxxxxxxx"
-                      className="bg-gray-50"
+                      className={validationErrors.phone ? "border-red-500" : ""}
                       required
                     />
+                    {validationErrors.phone && (
+                      <div className="flex items-center gap-1 text-red-600 text-sm">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>{validationErrors.phone}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex justify-end pt-4">
