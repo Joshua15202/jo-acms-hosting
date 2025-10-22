@@ -192,14 +192,24 @@ export default function AdminDashboard() {
 
   const fetchMonthlyRevenue = async () => {
     try {
+      console.log("=== FETCHING MONTHLY REVENUE FROM DASHBOARD ===")
       const timestamp = new Date().getTime()
-      const response = await fetch(`/api/admin/monthly-revenue?_=${timestamp}`, {
+      const randomParam = Math.random().toString(36).substring(7)
+      const response = await fetch(`/api/admin/monthly-revenue?_=${timestamp}&r=${randomParam}`, {
         cache: "no-store",
         headers: {
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
         },
       })
       const data = await response.json()
+
+      console.log("=== MONTHLY REVENUE RESPONSE ===")
+      console.log("Success:", data.success)
+      console.log("Completed Events:", data.data?.completedEvents)
+      console.log("Total Revenue:", data.data?.totalRevenue)
+      console.log("Full data:", JSON.stringify(data, null, 2))
 
       if (data.success) {
         setRevenueData(data.data)
@@ -212,10 +222,13 @@ export default function AdminDashboard() {
   const fetchDetailedAnalytics = async () => {
     try {
       const timestamp = new Date().getTime()
-      const response = await fetch(`/api/admin/revenue-analytics?_=${timestamp}`, {
+      const randomParam = Math.random().toString(36).substring(7)
+      const response = await fetch(`/api/admin/revenue-analytics?_=${timestamp}&r=${randomParam}`, {
         cache: "no-store",
         headers: {
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
         },
       })
       const data = await response.json()
@@ -347,9 +360,7 @@ export default function AdminDashboard() {
 
   const handleRevenueClick = () => {
     setShowRevenue(true)
-    if (!revenueData || monthlyData.length === 0) {
-      fetchRevenueDetails()
-    }
+    fetchRevenueDetails() // Always fetch fresh data when opening modal
   }
 
   const formatCurrency = (amount: number) => {
