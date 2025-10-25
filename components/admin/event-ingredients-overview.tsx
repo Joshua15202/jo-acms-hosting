@@ -219,8 +219,8 @@ export default function EventIngredientsOverview() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
             <Card key={i}>
               <CardHeader className="pb-2">
                 <Skeleton className="h-4 w-24" />
@@ -265,9 +265,9 @@ export default function EventIngredientsOverview() {
         </Button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Now 3 columns instead of 4 */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Total Events</CardTitle>
@@ -300,18 +300,6 @@ export default function EventIngredientsOverview() {
               <div className="flex items-center gap-2">
                 <Weight className="h-5 w-5 text-purple-600" />
                 <span className="text-2xl font-bold">est {summary.total_weight_kg} kg</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Ready to Confirm</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-red-600" />
-                <span className="text-2xl font-bold">{summary.ready_to_confirm}</span>
               </div>
             </CardContent>
           </Card>

@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -18,14 +19,11 @@ export default function AboutPage() {
             </div>
             <div className="flex justify-center">
               <div className="relative w-full aspect-video overflow-hidden rounded-xl">
-                
-                  <img src="New Logo.png" alt="logo" style={{ width: '400px', height: 'auto'}} />
-                  
-                </div>
+                <img src="/New Logo.png" alt="logo" style={{ width: "400px", height: "auto" }} />
               </div>
             </div>
           </div>
-        
+        </div>
       </section>
 
       {/* Our Story Section */}
@@ -34,19 +32,17 @@ export default function AboutPage() {
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center">
             <div className="order-2 lg:order-1">
               <div className="relative w-full overflow-hidden rounded-xl">
-                <div className="">
-                  <img src="room logo.jpg" alt="room logo" />
-                  
-                </div>
+                <img src="/room logo.jpg" alt="room logo" />
               </div>
             </div>
             <div className="space-y-4 order-1 lg:order-2">
               <div className="inline-block rounded-lg bg-rose-100 px-3 py-1 text-sm text-rose-700">Our Story</div>
               <h2 className="text-3xl font-bold tracking-tighter">A Passion for Culinary Excellence</h2>
               <p className="text-gray-500">
-                Jo Pacheco Wedding & Event began in 2018 as a small family business with a big dream: to create memorable
-                dining experiences that bring people together. What started as a passion project between two friends
-                with a love for food has grown into one of the most trusted catering services in the Philippines.
+                Jo Pacheco Wedding & Event began in 2018 as a small family business with a big dream: to create
+                memorable dining experiences that bring people together. What started as a passion project between two
+                friends with a love for food has grown into one of the most trusted catering services in the
+                Philippines.
               </p>
               <p className="text-gray-500">
                 Our journey has been defined by a commitment to quality, creativity, and exceptional service. From
@@ -55,9 +51,9 @@ export default function AboutPage() {
                 impressions.
               </p>
               <p className="text-gray-500">
-                Today, Jo Jo Pacheco Wedding & Event continues to be guided by the same principles that inspired its founding:
-                using the freshest ingredients, crafting dishes with care and creativity, and delivering service that
-                exceeds expectations.
+                Today, Jo Jo Pacheco Wedding & Event continues to be guided by the same principles that inspired its
+                founding: using the freshest ingredients, crafting dishes with care and creativity, and delivering
+                service that exceeds expectations.
               </p>
             </div>
           </div>
@@ -83,8 +79,14 @@ export default function AboutPage() {
             {/* Photo Container */}
             <div className="flex-shrink-0">
               <Card className="overflow-hidden">
-                <div className="aspect-square w-80 bg-gray-200 flex items-center justify-center">
-                  <p className="text-gray-500">Sir Jo Photo</p>
+                <div className="aspect-square w-80 relative">
+                  <Image
+                    src="/ownerpic.jpg"
+                    alt="Jonel Ray Pacheco - Event Planner & Owner"
+                    fill
+                    className="object-cover"
+                    priority
+                  />
                 </div>
               </Card>
             </div>
