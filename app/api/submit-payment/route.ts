@@ -184,6 +184,28 @@ export async function POST(request: NextRequest) {
 
     console.log("Appointment payment status updated to pending_payment with pending_payment_type:", paymentType)
 
+    try {
+      const paymentTypeLabel =
+        paymentType === "down_payment"
+          ? "Down Payment (50%)"
+          : paymentType === "remaining_balance"
+            ? "Remaining Balance"
+            : "Full Payment"
+
+      await supabaseAdmin.from("tbl_notifications").insert({
+        user_id: user.id,
+        appointment_id: appointmentId,
+        title: "Payment Submitted",
+        message: `Your ${paymentTypeLabel} of ₱${amount.toLocaleString()} has been submitted and is pending verification. We'll notify you once it's verified.`,
+        type: "payment",
+        is_read: false,
+      })
+
+      console.log("✅ Payment submission notification created for user:", user.id)
+    } catch (notificationError) {
+      console.error("❌ Error creating payment submission notification:", notificationError)
+    }
+
     // Send confirmation email to user
     try {
       const paymentTypeLabel =

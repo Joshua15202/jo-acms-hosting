@@ -195,6 +195,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ tr
               ? "Remaining Balance"
               : "Full Payment"
 
+        try {
+          await supabaseAdmin.from("tbl_notifications").insert({
+            user_id: user.id,
+            appointment_id: appointmentId,
+            title: "Payment Verified",
+            message: `Your ${paymentTypeLabel} of ₱${updatedTransaction.amount.toLocaleString()} has been verified! Your booking is now ${paymentType === "full_payment" || paymentType === "remaining_balance" ? "fully confirmed" : "confirmed"}.`,
+            type: "payment",
+            is_read: false,
+          })
+
+          console.log("✅ Payment verification notification created for user:", user.id)
+        } catch (notificationError) {
+          console.error("❌ Error creating payment verification notification:", notificationError)
+        }
+
         const emailContent = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #10b981;">✅ Payment Verified!</h2>
@@ -237,6 +252,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ tr
             : paymentType === "remaining_balance"
               ? "Remaining Balance"
               : "Full Payment"
+
+        try {
+          await supabaseAdmin.from("tbl_notifications").insert({
+            user_id: user.id,
+            appointment_id: appointmentId,
+            title: "Payment Issue",
+            message: `Your ${paymentTypeLabel} submission could not be verified. ${notes ? `Reason: ${notes}` : "Please resubmit your payment with correct details."}`,
+            type: "payment",
+            is_read: false,
+          })
+
+          console.log("✅ Payment rejection notification created for user:", user.id)
+        } catch (notificationError) {
+          console.error("❌ Error creating payment rejection notification:", notificationError)
+        }
 
         const emailContent = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

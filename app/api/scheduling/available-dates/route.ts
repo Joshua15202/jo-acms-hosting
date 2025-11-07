@@ -24,6 +24,20 @@ export async function GET(request: NextRequest) {
 
     console.log("Date range:", startDate, "to", endDate)
 
+    const { data: blockedDates, error: blockedError } = await supabaseAdmin
+      .from("tbl_blocked_dates")
+      .select("blocked_date")
+      .gte("blocked_date", startDate)
+      .lte("blocked_date", endDate)
+
+    if (blockedError) {
+      console.error("Error fetching blocked dates:", blockedError)
+    }
+
+    const blockedDateStrings = new Set(blockedDates?.map((bd) => bd.blocked_date) || [])
+    console.log("Admin blocked dates:", Array.from(blockedDateStrings))
+    // </CHANGE>
+
     // Get all appointments in the next 6 months with active statuses
     const { data: appointments, error } = await supabaseAdmin
       .from("tbl_comprehensive_appointments")
@@ -49,7 +63,6 @@ export async function GET(request: NextRequest) {
 
     console.log("Date appointment counts:", Array.from(dateAppointmentCounts.entries()))
 
-    // Find dates with 4 or more appointments (fully booked)
     const unavailableDates: string[] = []
     const availableDates: string[] = []
 
@@ -58,16 +71,22 @@ export async function GET(request: NextRequest) {
     while (currentDate <= sixMonthsLater) {
       const dateStr = currentDate.toISOString().split("T")[0]
       const appointmentCount = dateAppointmentCounts.get(dateStr) || 0
+      const isAdminBlocked = blockedDateStrings.has(dateStr)
 
-      if (appointmentCount >= 4) {
+      if (appointmentCount >= 4 || isAdminBlocked) {
         unavailableDates.push(dateStr)
-        console.log(`Date ${dateStr} is UNAVAILABLE with ${appointmentCount} appointments`)
+        if (isAdminBlocked) {
+          console.log(`Date ${dateStr} is BLOCKED by admin`)
+        } else {
+          console.log(`Date ${dateStr} is FULLY BOOKED with ${appointmentCount} appointments`)
+        }
       } else {
         availableDates.push(dateStr)
       }
 
       currentDate.setDate(currentDate.getDate() + 1)
     }
+    // </CHANGE>
 
     console.log("Total available dates:", availableDates.length)
     console.log("Total unavailable dates:", unavailableDates.length)

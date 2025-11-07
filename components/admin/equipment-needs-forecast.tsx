@@ -1,0 +1,502 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Package,
+  Calendar,
+  Users,
+  AlertTriangle,
+  RefreshCw,
+  Wrench,
+  Table,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react"
+
+interface EquipmentPrediction {
+  category: string
+  item: string
+  quantity: number
+  reason: string
+}
+
+interface EventEquipmentForecast {
+  id: string
+  appointment_id: string
+  event_date: string
+  event_type: string
+  customer_name: string
+  guest_count: number
+  main_courses: string[]
+  equipment_predictions: EquipmentPrediction[]
+  days_until_event: number
+  urgency_level: "critical" | "high" | "medium" | "low"
+}
+
+interface Summary {
+  total_events: number
+  total_guests: number
+  critical_events: number
+  high_priority_events: number
+}
+
+export default function EquipmentNeedsForecast() {
+  const [events, setEvents] = useState<EventEquipmentForecast[]>([])
+  const [summary, setSummary] = useState<Summary | null>(null)
+  const [equipmentBreakdown, setEquipmentBreakdown] = useState<Record<string, number>>({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const [selectedEquipment, setSelectedEquipment] = useState<{
+    item: string
+    quantity: number
+    category: string
+  } | null>(null)
+  const [inventoryAnalysis, setInventoryAnalysis] = useState<any>(null)
+  const [checkingInventory, setCheckingInventory] = useState(false)
+
+  const fetchEquipmentForecast = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      console.log("Fetching equipment needs forecast...")
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/equipment-needs-forecast?_=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
+      const data = await response.json()
+
+      console.log("Equipment forecast response:", data)
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch equipment forecast")
+      }
+
+      setEvents(data.events || [])
+      setSummary(data.summary || null)
+      setEquipmentBreakdown(data.equipment_breakdown || {})
+    } catch (err) {
+      console.error("Error fetching equipment forecast:", err)
+      setError(err instanceof Error ? err.message : "Failed to load equipment forecast")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchEquipmentForecast()
+  }, [])
+
+  const getUrgencyColor = (urgencyLevel: string) => {
+    switch (urgencyLevel) {
+      case "critical":
+        return "bg-red-100 text-red-800 border-red-200"
+      case "high":
+        return "bg-orange-100 text-orange-800 border-orange-200"
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "low":
+        return "bg-green-100 text-green-800 border-green-200"
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200"
+    }
+  }
+
+  const getCategoryIcon = (category: string) => {
+    switch (category.toLowerCase()) {
+      case "furniture":
+        return "🪑"
+      case "seating":
+        return "💺"
+      case "dinnerware":
+        return "🍽️"
+      case "glassware":
+        return "🥤"
+      case "silverware":
+        return "🍴"
+      case "linens":
+        return "🧺"
+      case "serving equipment":
+        return "🍲"
+      case "chafing dishes":
+        return "🔥"
+      default:
+        return "📦"
+    }
+  }
+
+  const checkInventoryAvailability = async (item: string, quantity: number, category: string) => {
+    setSelectedEquipment({ item, quantity, category })
+    setCheckingInventory(true)
+    setInventoryAnalysis(null)
+
+    try {
+      const response = await fetch("/api/admin/equipment-inventory-check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          equipmentItem: item,
+          quantityNeeded: quantity,
+          category: category,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to check inventory")
+      }
+
+      setInventoryAnalysis(data)
+    } catch (err) {
+      console.error("Error checking inventory:", err)
+      setInventoryAnalysis({
+        error: err instanceof Error ? err.message : "Failed to check inventory",
+      })
+    } finally {
+      setCheckingInventory(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert className="border-red-200 bg-red-50">
+        <AlertTriangle className="h-4 w-4 text-red-600" />
+        <AlertDescription className="text-red-800">
+          {error}
+          <Button variant="outline" size="sm" onClick={fetchEquipmentForecast} className="ml-2 bg-transparent">
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Equipment Needs Forecast</h2>
+          <p className="text-gray-600 mt-1">AI-powered equipment predictions for upcoming events</p>
+        </div>
+        <Button onClick={fetchEquipmentForecast} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Summary Cards */}
+      {summary && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Events</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                <span className="text-2xl font-bold">{summary.total_events}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Guests</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-green-600" />
+                <span className="text-2xl font-bold">{summary.total_guests}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Critical Events</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <span className="text-2xl font-bold">{summary.critical_events}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">High Priority</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Wrench className="h-5 w-5 text-orange-600" />
+                <span className="text-2xl font-bold">{summary.high_priority_events}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Equipment Category Breakdown */}
+      {Object.keys(equipmentBreakdown).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Equipment Category Breakdown
+            </CardTitle>
+            <CardDescription>Total equipment needed across all upcoming events</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Object.entries(equipmentBreakdown).map(([category, quantity]) => (
+                <div key={category} className="text-center p-3 bg-gray-50 rounded-lg">
+                  <div className="text-2xl mb-1">{getCategoryIcon(category)}</div>
+                  <div className="font-semibold capitalize text-sm">{category}</div>
+                  <div className="text-lg font-bold text-blue-600">{quantity}</div>
+                  <div className="text-xs text-gray-600">items needed</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Events List */}
+      {events.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Table className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No upcoming events</h3>
+            <p className="text-gray-600">There are no confirmed upcoming events requiring equipment forecasting.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-6">
+          {events.map((event) => (
+            <Card key={event.id} className="relative">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{event.customer_name}</CardTitle>
+                    <CardDescription>
+                      {event.event_type} • {new Date(event.event_date).toLocaleDateString()} • {event.guest_count}{" "}
+                      guests
+                    </CardDescription>
+                  </div>
+                  <Badge className={getUrgencyColor(event.urgency_level)}>
+                    {event.days_until_event === 0
+                      ? "Today"
+                      : event.days_until_event === 1
+                        ? "Tomorrow"
+                        : `${event.days_until_event} days`}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* AI-Predicted Equipment Needs */}
+                  <div>
+                    <h4 className="font-medium text-sm text-gray-700 mb-3 flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-blue-600" />
+                      AI-Predicted Equipment Needs:
+                    </h4>
+                    <div className="space-y-2">
+                      {event.equipment_predictions.map((prediction, index) => (
+                        <button
+                          key={index}
+                          onClick={() =>
+                            checkInventoryAvailability(prediction.item, prediction.quantity, prediction.category)
+                          }
+                          className="w-full p-3 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer text-left"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3 flex-1">
+                              <span className="text-xl">{getCategoryIcon(prediction.category)}</span>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-semibold text-gray-900">{prediction.item}</span>
+                                  <Badge variant="outline" className="bg-white">
+                                    {prediction.category}
+                                  </Badge>
+                                </div>
+                                <p className="text-xs text-gray-600">{prediction.reason}</p>
+                              </div>
+                            </div>
+                            <div className="text-right ml-4">
+                              <div className="text-2xl font-bold text-blue-600">{prediction.quantity}</div>
+                              <div className="text-xs text-gray-600">needed</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Menu Items */}
+                  {event.main_courses.length > 0 && (
+                    <div className="pt-2 border-t">
+                      <h4 className="font-medium text-sm text-gray-700 mb-2">Menu Items:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {event.main_courses.map((course, index) => (
+                          <Badge key={index} variant="outline" className="bg-gray-50">
+                            {course}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={selectedEquipment !== null} onOpenChange={(open) => !open && setSelectedEquipment(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Inventory Availability Check</DialogTitle>
+            <DialogDescription>
+              Checking inventory for: <strong>{selectedEquipment?.item}</strong> ({selectedEquipment?.quantity} needed)
+            </DialogDescription>
+          </DialogHeader>
+
+          {checkingInventory ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+                <p className="text-gray-600">AI is analyzing inventory availability...</p>
+              </div>
+            </div>
+          ) : inventoryAnalysis?.error ? (
+            <Alert className="border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">{inventoryAnalysis.error}</AlertDescription>
+            </Alert>
+          ) : inventoryAnalysis ? (
+            <div className="space-y-4">
+              {/* Summary */}
+              <Card
+                className={inventoryAnalysis.can_fulfill ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    {inventoryAnalysis.can_fulfill ? (
+                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                    ) : (
+                      <XCircle className="h-6 w-6 text-red-600" />
+                    )}
+                    <div>
+                      <h3 className="font-semibold text-lg">
+                        {inventoryAnalysis.can_fulfill ? "Sufficient Inventory" : "Insufficient Inventory"}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Available: {inventoryAnalysis.total_available} / Needed: {inventoryAnalysis.total_needed}
+                        {inventoryAnalysis.shortfall > 0 && ` (Shortfall: ${inventoryAnalysis.shortfall})`}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Matching Items */}
+              {inventoryAnalysis.matches && inventoryAnalysis.matches.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-3">Matching Inventory Items:</h4>
+                  <div className="space-y-2">
+                    {inventoryAnalysis.matches.map((match: any, index: number) => (
+                      <Card key={index} className="border-gray-200">
+                        <CardContent className="pt-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium">{match.item_name}</span>
+                                <Badge
+                                  variant="outline"
+                                  className={
+                                    match.match_confidence === "exact"
+                                      ? "bg-green-100 text-green-800"
+                                      : match.match_confidence === "high"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : "bg-yellow-100 text-yellow-800"
+                                  }
+                                >
+                                  {match.match_confidence} match
+                                </Badge>
+                                {match.sufficient && (
+                                  <Badge variant="outline" className="bg-green-100 text-green-800">
+                                    Sufficient
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 mb-2">{match.reason}</p>
+                              <div className="flex gap-4 text-sm">
+                                <span>
+                                  Available: <strong>{match.available}</strong>
+                                </span>
+                                <span>
+                                  Needed: <strong>{match.needed}</strong>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recommendations */}
+              {inventoryAnalysis.recommendations && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader>
+                    <CardTitle className="text-sm">AI Recommendations</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-700">{inventoryAnalysis.recommendations}</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

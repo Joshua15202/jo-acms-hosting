@@ -8,25 +8,56 @@ export const revalidate = 0
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("=== MONTHLY REVENUE API CALLED ===")
-    console.log("Fetching monthly revenue data...")
+    const searchParams = request.nextUrl.searchParams
+    const period = searchParams.get("period") || "monthly"
 
-    // Get current month and previous month dates
+    console.log("=== REVENUE API CALLED ===")
+    console.log("Period:", period)
+
     const now = new Date()
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+
+    let startDate: Date
+    let endDate: Date
+    let prevStartDate: Date
+    let prevEndDate: Date
+    let periodLabel: string
+
+    if (period === "yearly") {
+      startDate = new Date(now.getFullYear(), 0, 1)
+      endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
+      prevStartDate = new Date(now.getFullYear() - 1, 0, 1)
+      prevEndDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999)
+      periodLabel = now.getFullYear().toString()
+    } else {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+      prevStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      prevEndDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ]
+      periodLabel = monthNames[now.getMonth()]
+    }
 
     console.log("Date ranges:", {
-      currentMonthStart: currentMonthStart.toISOString(),
-      currentMonthEnd: currentMonthEnd.toISOString(),
-      previousMonthStart: previousMonthStart.toISOString(),
-      previousMonthEnd: previousMonthEnd.toISOString(),
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      prevStartDate: prevStartDate.toISOString(),
+      prevEndDate: prevEndDate.toISOString(),
     })
 
-    // Fetch ALL completed events (regardless of event_date) that were completed this month
-    const { data: currentMonthEvents, error: currentError } = await supabase
+    const { data: currentEvents, error: currentError } = await supabase
       .from("tbl_comprehensive_appointments")
       .select(`
         id,
@@ -44,59 +75,58 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq("status", "completed")
-      .gte("updated_at", currentMonthStart.toISOString())
-      .lte("updated_at", currentMonthEnd.toISOString())
-      .order("updated_at", { ascending: false })
+      .gte("event_date", startDate.toISOString().split("T")[0])
+      .lte("event_date", endDate.toISOString().split("T")[0])
+      .order("event_date", { ascending: false })
 
     if (currentError) {
-      console.error("Error fetching current month events:", currentError)
+      console.error("Error fetching current period events:", currentError)
       throw currentError
     }
 
-    console.log("Current month completed events found:", currentMonthEvents?.length || 0)
-    console.log("Current month events:", JSON.stringify(currentMonthEvents, null, 2))
+    console.log("Current period completed events found:", currentEvents?.length || 0)
 
-    // Fetch previous month completed events
-    const { data: previousMonthEvents, error: previousError } = await supabase
+    const { data: previousEvents, error: previousError } = await supabase
       .from("tbl_comprehensive_appointments")
-      .select("total_package_amount, status, updated_at")
+      .select("total_package_amount, status, event_date")
       .eq("status", "completed")
-      .gte("updated_at", previousMonthStart.toISOString())
-      .lte("updated_at", previousMonthEnd.toISOString())
+      .gte("event_date", prevStartDate.toISOString().split("T")[0])
+      .lte("event_date", prevEndDate.toISOString().split("T")[0])
 
     if (previousError) {
-      console.error("Error fetching previous month events:", previousError)
+      console.error("Error fetching previous period events:", previousError)
       throw previousError
     }
 
-    console.log("Previous month completed events found:", previousMonthEvents?.length || 0)
+    console.log("Previous period completed events found:", previousEvents?.length || 0)
 
-    // Calculate current month revenue
-    const currentMonthRevenue =
-      currentMonthEvents?.reduce((sum, event) => {
+    // Calculate current period revenue
+    const currentRevenue =
+      currentEvents?.reduce((sum, event) => {
         const amount = Number.parseFloat(event.total_package_amount || "0")
-        console.log(`Event ${event.id}: ${event.event_type} - Amount: ${amount}`)
         return sum + amount
       }, 0) || 0
 
-    // Calculate previous month revenue
-    const previousMonthRevenue =
-      previousMonthEvents?.reduce((sum, event) => {
+    // Calculate previous period revenue
+    const previousRevenue =
+      previousEvents?.reduce((sum, event) => {
         const amount = Number.parseFloat(event.total_package_amount || "0")
         return sum + amount
       }, 0) || 0
 
     // Calculate percentage change
     let percentageChange = 0
-    if (previousMonthRevenue > 0) {
-      percentageChange = ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100
-    } else if (currentMonthRevenue > 0) {
-      percentageChange = 100 // If no previous month data but current month has revenue
+    if (previousRevenue > 0) {
+      percentageChange = ((currentRevenue - previousRevenue) / previousRevenue) * 100
+    } else if (currentRevenue > 0) {
+      percentageChange = 100
+    } else if (previousRevenue > 0 && currentRevenue === 0) {
+      percentageChange = -100
     }
 
     // Format revenue breakdown for display
     const revenueBreakdown =
-      currentMonthEvents?.map((event) => ({
+      currentEvents?.map((event) => ({
         id: event.id,
         customerName: event.tbl_users?.full_name || "Unknown Customer",
         customerEmail: event.tbl_users?.email || "No email",
@@ -108,42 +138,27 @@ export async function GET(request: NextRequest) {
         completedAt: event.updated_at || event.created_at,
       })) || []
 
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ]
-
     const response = {
       success: true,
       data: {
-        totalRevenue: currentMonthRevenue,
-        prevMonthRevenue: previousMonthRevenue,
+        totalRevenue: currentRevenue,
+        prevPeriodRevenue: previousRevenue,
         percentageChange: Math.round(percentageChange * 100) / 100,
-        completedEvents: currentMonthEvents?.length || 0,
+        completedEvents: currentEvents?.length || 0,
         revenueBreakdown,
         month: now.getMonth() + 1,
         year: now.getFullYear(),
-        monthName: monthNames[now.getMonth()],
+        monthName: periodLabel,
+        period,
       },
-      message: "Monthly revenue data fetched successfully",
+      message: `${period === "yearly" ? "Yearly" : "Monthly"} revenue data fetched successfully`,
     }
 
     console.log("=== RESPONSE SUMMARY ===")
-    console.log("Current month revenue:", currentMonthRevenue)
-    console.log("Previous month revenue:", previousMonthRevenue)
+    console.log("Current period revenue:", currentRevenue)
+    console.log("Previous period revenue:", previousRevenue)
     console.log("Percentage change:", response.data.percentageChange)
     console.log("Completed events count:", response.data.completedEvents)
-    console.log("Revenue breakdown count:", revenueBreakdown.length)
 
     return NextResponse.json(response, {
       headers: {
@@ -154,12 +169,12 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("=== ERROR IN MONTHLY REVENUE API ===")
+    console.error("=== ERROR IN REVENUE API ===")
     console.error("Error details:", error)
     return NextResponse.json(
       {
         success: false,
-        error: "Failed to fetch monthly revenue data",
+        error: "Failed to fetch revenue data",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },

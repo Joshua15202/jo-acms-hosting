@@ -124,6 +124,7 @@ export default function AdminDashboard() {
   const [peakMonths, setPeakMonths] = useState<PeakMonth[]>([])
   const [downloadFormat, setDownloadFormat] = useState<"monthly" | "yearly">("monthly")
   const [isDownloading, setIsDownloading] = useState(false)
+  const [viewPeriod, setViewPeriod] = useState<"monthly" | "yearly">("monthly")
 
   useEffect(() => {
     fetchCustomersCount()
@@ -192,10 +193,11 @@ export default function AdminDashboard() {
 
   const fetchMonthlyRevenue = async () => {
     try {
-      console.log("=== FETCHING MONTHLY REVENUE FROM DASHBOARD ===")
+      console.log("=== FETCHING REVENUE FROM DASHBOARD ===")
+      console.log("View Period:", viewPeriod)
       const timestamp = new Date().getTime()
       const randomParam = Math.random().toString(36).substring(7)
-      const response = await fetch(`/api/admin/monthly-revenue?_=${timestamp}&r=${randomParam}`, {
+      const response = await fetch(`/api/admin/monthly-revenue?period=${viewPeriod}&_=${timestamp}&r=${randomParam}`, {
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -205,17 +207,16 @@ export default function AdminDashboard() {
       })
       const data = await response.json()
 
-      console.log("=== MONTHLY REVENUE RESPONSE ===")
+      console.log("=== REVENUE RESPONSE ===")
       console.log("Success:", data.success)
       console.log("Completed Events:", data.data?.completedEvents)
       console.log("Total Revenue:", data.data?.totalRevenue)
-      console.log("Full data:", JSON.stringify(data, null, 2))
 
       if (data.success) {
         setRevenueData(data.data)
       }
     } catch (error) {
-      console.error("Error fetching monthly revenue:", error)
+      console.error("Error fetching revenue:", error)
     }
   }
 
@@ -439,10 +440,16 @@ export default function AdminDashboard() {
     return emailRegex.test(email)
   }
 
+  useEffect(() => {
+    if (showRevenue) {
+      fetchRevenueDetails()
+    }
+  }, [viewPeriod])
+
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
-      <p className="text-gray-600 mb-6">Welcome to the Jo-AIMS admin dashboard.</p>
+      <p className="text-gray-600 mb-6">Welcome to the Jo-ACMS Admin Dashboard.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Clickable Registered Customers Card */}
@@ -712,10 +719,7 @@ export default function AdminDashboard() {
                 Revenue Analytics & Reports
               </DialogTitle>
               <div className="flex items-center gap-2">
-                <Select
-                  value={downloadFormat}
-                  onValueChange={(value: "monthly" | "yearly") => setDownloadFormat(value)}
-                >
+                <Select value={viewPeriod} onValueChange={(value: "monthly" | "yearly") => setViewPeriod(value)}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
@@ -757,7 +761,7 @@ export default function AdminDashboard() {
                       {revenueData ? formatCurrency(revenueData.totalRevenue) : "₱0"}
                     </p>
                     <p className="text-xs text-green-600 mt-2">
-                      {revenueData?.monthName} {revenueData?.year}
+                      {viewPeriod === "yearly" ? revenueData?.year : `${revenueData?.monthName} ${revenueData?.year}`}
                     </p>
                   </div>
                   <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border border-blue-200">
@@ -780,7 +784,7 @@ export default function AdminDashboard() {
                         {revenueData?.percentageChange || 0}%
                       </p>
                     </div>
-                    <p className="text-xs text-purple-600 mt-2">vs last month</p>
+                    <p className="text-xs text-purple-600 mt-2">vs last {viewPeriod === "yearly" ? "year" : "month"}</p>
                   </div>
                 </div>
 
