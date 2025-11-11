@@ -3,7 +3,18 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Calendar, Users, CreditCard, BarChart3, Settings, ChefHat, Package, TrendingUp, CalendarX } from "lucide-react"
+import {
+  Calendar,
+  Users,
+  CreditCard,
+  BarChart3,
+  Settings,
+  ChefHat,
+  Package,
+  TrendingUp,
+  CalendarX,
+  XCircle,
+} from "lucide-react"
 
 const sidebarItems = [
   {
@@ -15,6 +26,11 @@ const sidebarItems = [
     title: "Appointments",
     href: "/admin/appointments",
     icon: Calendar,
+  },
+  {
+    title: "Cancellation Requests",
+    href: "/admin/cancellation-requests",
+    icon: XCircle,
   },
   {
     title: "Calendar Control",
@@ -37,12 +53,12 @@ const sidebarItems = [
     icon: ChefHat,
   },
   {
-    title: "Menu Management",
+    title: "Inventory",
     href: "/admin/inventory",
     icon: Package,
   },
   {
-    title: "Equipment Management",
+    title: "Equipment Inventory",
     href: "/admin/equipment-inventory",
     icon: Package,
   },
@@ -50,6 +66,11 @@ const sidebarItems = [
     title: "Forecasting",
     href: "/admin/forecasting",
     icon: TrendingUp,
+  },
+  {
+    title: "Settings",
+    href: "/admin/settings",
+    icon: Settings,
   },
 ]
 

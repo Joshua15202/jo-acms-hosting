@@ -18,6 +18,7 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  Download,
 } from "lucide-react"
 
 interface EquipmentPrediction {
@@ -53,6 +54,7 @@ export default function EquipmentNeedsForecast() {
   const [equipmentBreakdown, setEquipmentBreakdown] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
   const [selectedEquipment, setSelectedEquipment] = useState<{
     item: string
@@ -168,6 +170,40 @@ export default function EquipmentNeedsForecast() {
       })
     } finally {
       setCheckingInventory(false)
+    }
+  }
+
+  const downloadEquipmentPDF = async (appointmentId: string, customerName: string) => {
+    try {
+      setDownloadingId(appointmentId)
+
+      console.log("[v0] Downloading equipment PDF for appointment:", appointmentId)
+
+      const response = await fetch(`/api/admin/equipment-forecast/download-pdf?appointmentId=${appointmentId}`)
+
+      console.log("[v0] Equipment PDF response status:", response.status)
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to generate PDF")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `Equipment_List_${customerName.replace(/\s+/g, "_")}_${new Date().toISOString().split("T")[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      console.log("[v0] Equipment PDF downloaded successfully")
+    } catch (err) {
+      console.error("[v0] Error downloading PDF:", err)
+      alert(err instanceof Error ? err.message : "Failed to download PDF")
+    } finally {
+      setDownloadingId(null)
     }
   }
 
@@ -318,13 +354,27 @@ export default function EquipmentNeedsForecast() {
                       guests
                     </CardDescription>
                   </div>
-                  <Badge className={getUrgencyColor(event.urgency_level)}>
-                    {event.days_until_event === 0
-                      ? "Today"
-                      : event.days_until_event === 1
-                        ? "Tomorrow"
-                        : `${event.days_until_event} days`}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getUrgencyColor(event.urgency_level)}>
+                      {event.days_until_event === 0
+                        ? "Today"
+                        : event.days_until_event === 1
+                          ? "Tomorrow"
+                          : `${event.days_until_event} days`}
+                    </Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => downloadEquipmentPDF(event.appointment_id, event.customer_name)}
+                      disabled={downloadingId === event.appointment_id}
+                    >
+                      {downloadingId === event.appointment_id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -464,7 +514,7 @@ export default function EquipmentNeedsForecast() {
                                   </Badge>
                                 )}
                               </div>
-                              <p className="text-sm text-gray-600 mb-2">{match.reason}</p>
+                              <p className="text-sm text-gray-700 mb-2">{match.reason}</p>
                               <div className="flex gap-4 text-sm">
                                 <span>
                                   Available: <strong>{match.available}</strong>

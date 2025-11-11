@@ -1835,7 +1835,7 @@ export default function AIRecommendation({
         <>
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">AI-Powered Event Planning</h3>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">AI-Based Event Planning</h3>
               <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
                 Fill in your preferences below and our AI will recommend the perfect menu for your{" "}
                 <span className="font-medium text-rose-600">{eventInfo.eventType}</span> event using our standard

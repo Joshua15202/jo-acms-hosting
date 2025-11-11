@@ -41,7 +41,13 @@ export function Navbar() {
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
-          <Image src="/images/New Logo.png" alt="Jo Pacheco Catering" width={40} height={40} className="rounded" />
+          <Image
+            src="/images/jo-pacheco-logo.png"
+            alt="Jo Pacheco Wedding and Events"
+            width={50}
+            height={50}
+            className="rounded-full"
+          />
           <span className="text-xl font-bold">Jo-ACMS</span>
         </Link>
 

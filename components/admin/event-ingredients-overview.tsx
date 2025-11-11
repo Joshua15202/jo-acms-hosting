@@ -6,7 +6,18 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ChefHat, Calendar, Users, Weight, CheckCircle, Clock, AlertTriangle, Package, RefreshCw } from "lucide-react"
+import {
+  ChefHat,
+  Calendar,
+  Users,
+  Weight,
+  CheckCircle,
+  Clock,
+  AlertTriangle,
+  Package,
+  RefreshCw,
+  Download,
+} from "lucide-react"
 
 interface MainCourseItem {
   name: string
@@ -69,6 +80,7 @@ export default function EventIngredientsOverview() {
   const [researchingDish, setResearchingDish] = useState<string | null>(null)
   const [showIngredientsModal, setShowIngredientsModal] = useState(false)
   const [ingredientsError, setIngredientsError] = useState<string | null>(null)
+  const [downloadingEventId, setDownloadingEventId] = useState<string | null>(null)
 
   const fetchEventIngredients = async () => {
     try {
@@ -180,6 +192,34 @@ export default function EventIngredientsOverview() {
     }
   }
 
+  const handleDownloadEventPDF = async (appointmentId: string, customerName: string) => {
+    setDownloadingEventId(appointmentId)
+    try {
+      const response = await fetch(`/api/admin/event-ingredients/download-pdf?appointmentId=${appointmentId}`)
+
+      if (!response.ok) {
+        throw new Error("Failed to generate report")
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      // Use customer name in filename
+      const safeCustomerName = customerName.replace(/[^a-z0-9]/gi, "-").toLowerCase()
+      a.download = `ingredients-${safeCustomerName}-${new Date().toISOString().split("T")[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error("Error downloading PDF:", error)
+      alert("Failed to download ingredients report. Please try again.")
+    } finally {
+      setDownloadingEventId(null)
+    }
+  }
+
   useEffect(() => {
     fetchEventIngredients()
   }, [])
@@ -259,10 +299,12 @@ export default function EventIngredientsOverview() {
             Track and manage ingredients for upcoming events - Click any dish for AI-powered ingredient analysis
           </p>
         </div>
-        <Button onClick={fetchEventIngredients} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={fetchEventIngredients} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards - Now 3 columns instead of 4 */}
@@ -413,6 +455,26 @@ export default function EventIngredientsOverview() {
                     <span className="font-medium">Total Weight:</span>
                     <span className="font-bold text-lg">est {event.total_weight_kg} kg</span>
                   </div>
+
+                  {/* Download PDF Button */}
+                  <Button
+                    onClick={() => handleDownloadEventPDF(event.appointment_id, event.customer_name)}
+                    disabled={downloadingEventId === event.appointment_id}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {downloadingEventId === event.appointment_id ? (
+                      <>
+                        <Clock className="h-4 w-4 mr-2 animate-spin" />
+                        Generating PDF...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download Ingredient List
+                      </>
+                    )}
+                  </Button>
 
                   {/* Confirm Button */}
                   {event.can_confirm && (
