@@ -1,30 +1,15 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
-import {
-  ChevronRight,
-  Loader2,
-  Shuffle,
-  Calendar,
-  Clock,
-  Users,
-  MapPin,
-  Palette,
-  User,
-  Mail,
-  Phone,
-  Home,
-  Sparkles,
-} from "lucide-react"
+import { ChevronRight, Loader2, Shuffle, Mail, Home, Sparkles, User, Calendar, Clock, MapPin, Phone } from 'lucide-react'
 import { cn } from "@/lib/utils"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 interface PersonalInfo {
   firstName: string
@@ -53,6 +38,7 @@ interface AIRecommendationProps {
   personalInfo: PersonalInfo
   eventInfo: EventInfo
   schedulingInfo: SchedulingInfo
+  backdropStyle?: string
   onChangeEventType?: () => void
 }
 
@@ -76,16 +62,16 @@ interface MenuItems {
 
 const initialFormDataState = {
   guestCount: "",
-  preferredMenus: "",
-  venueName: "",
-  venueProvince: "",
-  venueCity: "",
-  venueBarangay: "",
-  venueStreetAddress: "",
-  venueZipCode: "",
-  theme: "",
-  colorMotif: "",
+  aiPreferences: "", // Now combines menu, location, theme preferences
   additionalEventInfo: "",
+  venueName: "", // Added for venue name
+  venueStreetAddress: "", // Added for venue street address
+  venueBarangay: "", // Added for venue barangay
+  venueCity: "", // Added for venue city
+  venueProvince: "", // Added for venue province
+  venueZipCode: "", // Added for venue zip code
+  theme: "", // Added for theme
+  colorMotif: "", // Added for color motif
 }
 
 // Address data structure
@@ -132,7 +118,7 @@ const addressData = {
       "Gulod",
       "Holy Spirit",
       "Horseshoe",
-      "Immaculate Concepcion",
+      "Immaculate Conception",
       "Kaligayahan",
       "Kalusugan",
       "Kamuning",
@@ -417,11 +403,14 @@ export default function AIRecommendation({
   personalInfo,
   eventInfo,
   schedulingInfo,
+  backdropStyle,
   onChangeEventType,
 }: AIRecommendationProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isGenerating, setIsGenerating] = useState(false)
+
+  // const [isBooking, setIsBooking] = useState(false) // Updated from updates
   const [isBooking, setIsBooking] = useState(false)
   const [isBookingComplete, setIsBookingComplete] = useState(false)
   const [bookingResponse, setBookingResponse] = useState<any>(null)
@@ -992,9 +981,66 @@ export default function AIRecommendation({
       quantities.push("light")
     }
 
-    if (lowerPrefs.includes("heavy") || lowerPrefs.includes("large portions") || lowerPrefs.includes("generous")) {
+    if (lowerPrefs.heavy || lowerPrefs.includes("large portions") || lowerPrefs.includes("generous")) {
       quantities.push("heavy")
     }
+
+    // AI needs to parse location and theme from preferences as well
+    const locationKeywords = [
+      "metro manila",
+      "bulacan",
+      "quezon city",
+      "valenzuela",
+      "malabon",
+      "malolos",
+      "meycauayan",
+      "pandi",
+      "marilao",
+    ]
+    const themeKeywords = [
+      "modern",
+      "rustic",
+      "elegant",
+      "traditional",
+      "garden",
+      "vintage",
+      "minimalist",
+      "bohemian",
+      "classic",
+    ]
+    const colorKeywords = [
+      "rose gold",
+      "blush",
+      "navy",
+      "gold",
+      "ivory",
+      "sage green",
+      "emerald",
+      "burgundy",
+      "peach",
+      "silver",
+      "white",
+      "black",
+    ]
+
+    locationKeywords.forEach((loc) => {
+      if (lowerPrefs.includes(loc)) {
+        // Add logic to map location keywords to province/city if needed for venue suggestions
+        // For now, just capture the preference
+      }
+    })
+
+    themeKeywords.forEach((theme) => {
+      if (lowerPrefs.includes(theme)) {
+        emphasis.push(`theme: ${theme}`) // Use emphasis to signal theme preference
+      }
+    })
+
+    colorKeywords.forEach((color) => {
+      if (lowerPrefs.includes(color)) {
+        emphasis.push(`color: ${color}`) // Use emphasis to signal color preference
+      }
+    })
 
     return {
       restrictions: [...new Set(restrictions)],
@@ -1005,6 +1051,45 @@ export default function AIRecommendation({
       quantities,
     }
   }
+
+  const getBackdropPrice = useCallback((backdropType: string): number => {
+    switch (backdropType) {
+      case "SINGLE_PANEL_BACKDROP":
+        return 7000
+      case "DOUBLE_PANEL_BACKDROP":
+        return 8000
+      case "TRIPLE_PANEL_BACKDROP":
+        return 10000
+      default:
+        return 0
+    }
+  }, [])
+
+  const getBackdropDetails = useCallback((backdropType: string): string => {
+    switch (backdropType) {
+      case "SINGLE_PANEL_BACKDROP":
+        return "• (3) Regular Colored Balloon Garlands\n• Cut-Out Name\n• Faux Grass Carpet\n• Celebrant's Accent Chair\n• Cake Cylinder Plinth"
+      case "DOUBLE_PANEL_BACKDROP":
+        return "• (3) Regular Colored Balloon Garlands\n• Cut-Out Name\n• Faux Grass Carpet\n• Celebrant's Accent Chair\n• Cake Cylinder Plinth\n• Basic Balloon Entrance Arch"
+      case "TRIPLE_PANEL_BACKDROP":
+        return "• (3–4) Regular Colored Balloon Garlands\n• Cut-Out Name\n• Faux Grass Carpet\n• Celebrant's Accent Chair\n• Cake Cylinder Plinth\n• Basic Balloon Entrance Arch\n• 18x24 Sintra Board Welcome Signage\n• (2) 2D Styro Character Standees"
+      default:
+        return "Backdrop details not available"
+    }
+  }, [])
+
+  const getBackdropName = useCallback((backdropType: string): string => {
+    switch (backdropType) {
+      case "SINGLE_PANEL_BACKDROP":
+        return "Single Panel Backdrop"
+      case "DOUBLE_PANEL_BACKDROP":
+        return "Double Panel Backdrop"
+      case "TRIPLE_PANEL_BACKDROP":
+        return "Triple Panel Backdrop"
+      default:
+        return "No backdrop selected"
+    }
+  }, [])
 
   const handleBookPackage = async (pkg: any) => {
     setIsBooking(true)
@@ -1036,9 +1121,11 @@ export default function AIRecommendation({
         pasta: selectedMenuItems.pasta.join(", "),
         dessert: selectedMenuItems.dessert.join(", "),
         beverage: selectedMenuItems.beverage.join(", "),
-        additionalRequests: formData.preferredMenus ? `AI Preferences: ${formData.preferredMenus}` : "",
+        additionalRequests: formData.aiPreferences ? `AI Preferences: ${formData.aiPreferences}` : "",
         totalAmount: pkg.menuTotal + pkg.serviceFee,
         downPayment: pkg.downPayment,
+        backdropStyle: backdropStyle || undefined,
+        backdropPrice: backdropStyle ? getBackdropPrice(backdropStyle) : undefined,
         bookingSource: "AI Recommendation",
       }
 
@@ -1255,11 +1342,11 @@ export default function AIRecommendation({
       const aiRequest = {
         eventType: eventInfo.eventType,
         guestCount: formData.guestCount,
-        preferredMenus: formData.preferredMenus,
-        venue: `${formData.venueName ? formData.venueName + ", " : ""}${formData.venueStreetAddress}, ${formData.venueBarangay}, ${formData.venueCity}, ${formData.venueProvince}${formData.venueZipCode ? ", " + formData.venueZipCode : ""}`,
-        venueCity: formData.venueCity,
-        theme: formData.theme,
-        colorMotif: formData.colorMotif,
+        aiPreferences: formData.aiPreferences, // Combined preferences
+        // venue: `${formData.venueName ? formData.venueName + ", " : ""}${formData.venueStreetAddress}, ${formData.venueBarangay}, ${formData.venueCity}, ${formData.venueProvince}${formData.venueZipCode ? ", " + formData.venueZipCode : ""}`,
+        // venueCity: formData.venueCity,
+        // theme: formData.theme,
+        // colorMotif: formData.colorMotif,
         availableMenuItems: allMenuItems,
         generationCount: generationCount,
       }
@@ -1280,7 +1367,34 @@ export default function AIRecommendation({
       if (result.success && result.recommendations) {
         console.log("AI recommendations received successfully")
 
-        const userPrefs = parseUserPreferences(formData.preferredMenus || "")
+        if (result.venueRecommendation) {
+          const venue = result.venueRecommendation
+
+          setFormData((prev) => ({
+            ...prev,
+            venueName: venue.venueName || "",
+            venueBarangay: venue.barangay || "",
+            venueStreetAddress: venue.streetAddress || "",
+            venueCity: venue.city || "",
+            venueProvince: venue.province || "Metro Manila",
+            venueZipCode: venue.postalCode || "",
+            theme: result.eventTheme || "",
+            colorMotif: result.colorMotif || "",
+          }))
+
+          console.log("Venue and theme populated from AI:", {
+            venueName: venue.venueName,
+            barangay: venue.barangay,
+            street: venue.streetAddress,
+            city: venue.city,
+            province: venue.province,
+            postalCode: venue.postalCode,
+            theme: result.eventTheme,
+            colorMotif: result.colorMotif,
+          })
+        }
+
+        const userPrefs = parseUserPreferences(formData.aiPreferences || "")
 
         const applyUserRestrictions = (items: MenuItem[], category: string) => {
           if (userPrefs.restrictions.includes(category.toLowerCase())) {
@@ -1364,10 +1478,13 @@ export default function AIRecommendation({
 
         const menuPricing = calculateMenuPricing(finalMenu)
         const numGuests = Number.parseInt(formData.guestCount) || 50
-
-        let serviceFee = 0
+        const isBirthdayEvent = eventInfo.eventType === "birthday"
         const isWeddingEvent = eventInfo.eventType === "wedding"
         const isDebutEvent = eventInfo.eventType === "debut"
+        const backdropPrice = isBirthdayEvent && backdropStyle ? getBackdropPrice(backdropStyle) : 0
+
+        let serviceFee = 0
+        const serviceFeePerGuest = 0
 
         if (isWeddingEvent) {
           const weddingPackagePricing: { [key: string]: number } = {
@@ -1398,7 +1515,7 @@ export default function AIRecommendation({
           serviceFee = serviceFees[formData.guestCount] || 11500
         }
 
-        const finalTotalAmount = menuPricing.total + serviceFee
+        const finalTotalAmount = menuPricing.total + serviceFee + backdropPrice
         const finalDownPayment = Math.round(finalTotalAmount * 0.5)
 
         const weddingPackageInclusions = isWeddingEvent
@@ -1479,7 +1596,7 @@ export default function AIRecommendation({
           }
 
           features.push(`${numGuests} guests`)
-          features.push(`AI-personalized based on your preferences`)
+          features.push(`AI-curated based on your preferences`)
           features.push(`Fixed structure: exactly 1 main course, 1 pasta, 1 dessert, 1 beverage`)
 
           return features
@@ -1495,18 +1612,26 @@ export default function AIRecommendation({
               isRecommended: true,
               reasoning:
                 result.recommendations.reasoning ||
-                `This AI-curated package strictly follows your menu preferences: "${formData.preferredMenus}". Your dietary restrictions have been carefully respected while maintaining our standard menu structure of exactly 1 main course, 1 pasta, 1 dessert, and 1 beverage.`,
+                `This AI-curated package strictly follows your menu preferences: "${formData.aiPreferences}". Your dietary restrictions have been carefully respected while maintaining our standard menu structure of exactly 1 main course, 1 pasta, 1 dessert, and 1 beverage.`,
               menuTotal: menuPricing.total,
               serviceFee: serviceFee,
+              backdropPrice: backdropPrice,
+              backdropStyle: backdropStyle,
               serviceFeeInclusions: serviceFeeInclusions,
               weddingPackageInclusions: weddingPackageInclusions,
               debutPackageInclusions: debutPackageInclusions,
               downPayment: finalDownPayment,
               isWeddingEvent: isWeddingEvent,
               isDebutEvent: isDebutEvent,
+              isBirthdayEvent: isBirthdayEvent,
               userPreferences: userPrefs,
               menuSelections: finalMenu,
               generationCount: generationCount,
+              suggestedVenue: result.venueRecommendation
+                ? `${result.venueRecommendation.venueName}, ${result.venueRecommendation.city}`
+                : undefined,
+              eventTheme: result.eventTheme,
+              colorMotif: result.colorMotif,
             },
           ],
           menu: finalMenu,
@@ -1530,7 +1655,7 @@ export default function AIRecommendation({
     if (!menuItems) return
 
     const numGuests = Number.parseInt(formData.guestCount) || 50
-    const userPrefs = parseUserPreferences(formData.preferredMenus || "")
+    const userPrefs = parseUserPreferences(formData.aiPreferences || "")
 
     const applyUserRestrictions = (items: MenuItem[], category: string) => {
       if (userPrefs.restrictions.includes(category.toLowerCase())) {
@@ -1708,7 +1833,7 @@ export default function AIRecommendation({
           price: `₱${finalTotalAmount.toLocaleString()}`,
           features: createFallbackPackageFeatures(finalMenu),
           isRecommended: true,
-          reasoning: `This package has been customized to follow your preferences: "${formData.preferredMenus}". Your dietary restrictions have been respected while maintaining our standard menu structure of exactly 1 main course, 1 pasta, 1 dessert, and 1 beverage.`,
+          reasoning: `This package has been customized to follow your preferences: "${formData.aiPreferences}". Your dietary restrictions have been respected while maintaining our standard menu structure of exactly 1 main course, 1 pasta, 1 dessert, and 1 beverage.`,
           menuTotal: finalMenuCost,
           serviceFee: serviceFee,
           serviceFeeInclusions: serviceFeeInclusions,
@@ -1874,232 +1999,77 @@ export default function AIRecommendation({
                   </Select>
                 </div>
 
-                {/* AI Menu Preferences - Moved below guest count */}
+                {/* AI Preferences - Combined menu, location, theme preferences */}
                 <div className="space-y-3 md:col-span-2">
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-rose-600" />
-                    <label htmlFor="preferredMenus" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      AI Menu Preferences & Dietary Restrictions <span className="text-gray-500">(Optional)</span>
+                    <label htmlFor="aiPreferences" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      AI Preferences <span className="text-red-500">*</span>
                     </label>
                   </div>
                   <Textarea
-                    id="preferredMenus"
-                    name="preferredMenus"
+                    id="aiPreferences"
+                    name="aiPreferences"
                     disabled={isFormDisabled}
-                    value={formData.preferredMenus}
+                    value={formData.aiPreferences}
                     onChange={handleInputChange}
-                    placeholder="Tell us about your dietary preferences or restrictions..."
-                    className="min-h-[100px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                    placeholder="Tell the AI about your menu preferences, location, and theme preferences..."
+                    className="min-h-[150px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
                   />
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <h5 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
                       💡 How to use AI Preferences:
                     </h5>
-                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1.5">
+                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-2">
                       <li>
-                        <strong>To exclude items:</strong> "no pork", "no seafood", "halal" (automatically excludes
-                        pork)
+                        <strong>Menu Preferences:</strong> Tell us what you like or want to avoid
+                        <div className="ml-4 mt-1 space-y-0.5">
+                          <div>• To exclude: "no pork", "no seafood", "halal" (excludes pork)</div>
+                          <div>• To emphasize: "more beef", "lots of chicken", "I love seafood"</div>
+                          <div>• Note: AI will select from all menu categories (pork/beef, chicken, seafood/vegetables) but prioritize your preferences</div>
+                        </div>
                       </li>
                       <li>
-                        <strong>To emphasize favorites:</strong> "more beef", "lots of chicken", "I love seafood"
+                        <strong>Location/Area:</strong> Where is your event happening?
+                        <div className="ml-4 mt-1 space-y-0.5">
+                          <div>• Examples: "Quezon City", "Valenzuela area", "Malolos Bulacan"</div>
+                          <div>• The AI will suggest nearby venues for your event</div>
+                        </div>
                       </li>
                       <li>
-                        <strong>For specific diets:</strong> "vegetarian", "pescatarian" (fish only), "only chicken"
+                        <strong>Theme & Color Preferences (Optional):</strong> What style do you want?
+                        <div className="ml-4 mt-1 space-y-0.5">
+                          <div>• Examples: "elegant and modern", "rustic garden theme"</div>
+                          <div>• Colors: "rose gold and blush", "navy and gold"</div>
+                        </div>
                       </li>
-                      <li>
-                        <strong>Examples:</strong> "halal", "no pork, more beef", "vegetarian options", "only chicken
-                        and seafood", "I love pasta"
+                      <li className="pt-2 border-t border-blue-200 dark:border-blue-700">
+                        <strong>Complete Example:</strong>
+                        <div className="ml-4 mt-1 italic">
+                          "I'm in Quezon City. I love seafood and chicken but no pork. I want an elegant garden theme
+                          with sage green and ivory colors."
+                        </div>
                       </li>
                     </ul>
                   </div>
-                </div>
-
-                {/* Venue Information */}
-                <div className="space-y-4 md:col-span-2">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-rose-600" />
-                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Venue Information</h4>
-                  </div>
-
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                    <p className="text-xs text-blue-700 dark:text-blue-300">
-                      <strong>📍 Service Area:</strong> Jo Pacheco serves Quezon City, Valenzuela, Malabon, Bulacan
-                      (Malolos, Meycauayan, Pandi, Marilao), and nearby areas.
-                    </p>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label htmlFor="venueName" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Venue/Hall Name <span className="text-gray-500">(Optional)</span>
-                      </label>
-                      <Input
-                        id="venueName"
-                        name="venueName"
-                        disabled={isFormDisabled}
-                        value={formData.venueName}
-                        onChange={handleInputChange}
-                        placeholder="e.g., Garden Palace, Grand Ballroom"
-                        className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="venueProvince" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Province <span className="text-rose-600">*</span>
-                      </label>
-                      <Select
-                        name="venueProvince"
-                        disabled={isFormDisabled}
-                        value={formData.venueProvince}
-                        onValueChange={(value) => handleSelectChange("venueProvince", value)}
-                      >
-                        <SelectTrigger className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                          <SelectValue placeholder="Select province" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Metro Manila">Metro Manila</SelectItem>
-                          <SelectItem value="Bulacan">Bulacan</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="venueCity" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        City/Municipality <span className="text-rose-600">*</span>
-                      </label>
-                      <Select
-                        name="venueCity"
-                        disabled={isFormDisabled || !formData.venueProvince}
-                        value={formData.venueCity}
-                        onValueChange={(value) => handleSelectChange("venueCity", value)}
-                      >
-                        <SelectTrigger className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                          <SelectValue placeholder="Select city" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableCities.map((city) => (
-                            <SelectItem key={city} value={city}>
-                              {city}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="venueBarangay" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Barangay <span className="text-rose-600">*</span>
-                      </label>
-                      <Select
-                        name="venueBarangay"
-                        disabled={isFormDisabled || !formData.venueCity}
-                        value={formData.venueBarangay}
-                        onValueChange={(value) => handleSelectChange("venueBarangay", value)}
-                      >
-                        <SelectTrigger className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                          <SelectValue placeholder="Select barangay" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableBarangays.map((barangay) => (
-                            <SelectItem key={barangay} value={barangay}>
-                              {barangay}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2 md:col-span-2">
-                      <label
-                        htmlFor="venueStreetAddress"
-                        className="text-sm font-medium text-gray-700 dark:text-gray-300"
-                      >
-                        Street Address <span className="text-rose-600">*</span>
-                      </label>
-                      <Input
-                        id="venueStreetAddress"
-                        name="venueStreetAddress"
-                        disabled={isFormDisabled}
-                        value={formData.venueStreetAddress}
-                        onChange={handleInputChange}
-                        placeholder="e.g., 123 Main Street"
-                        className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label htmlFor="venueZipCode" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Zip Code <span className="text-gray-500">(Optional)</span>
-                      </label>
-                      <Input
-                        id="venueZipCode"
-                        name="venueZipCode"
-                        disabled={isFormDisabled}
-                        value={formData.venueZipCode}
-                        onChange={handleInputChange}
-                        placeholder="e.g., 1400"
-                        maxLength={4}
-                        className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <label htmlFor="theme" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Theme (Optional)
-                  </label>
-                  <Input
-                    id="theme"
-                    name="theme"
-                    disabled={isFormDisabled}
-                    value={formData.theme}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Rustic, Modern, Traditional"
-                    className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                  />
-                </div>
-
-                <div className="space-y-3 md:col-span-2">
-                  <label htmlFor="colorMotif" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Color Motif (Optional)
-                  </label>
-                  <Input
-                    id="colorMotif"
-                    name="colorMotif"
-                    disabled={isFormDisabled}
-                    value={formData.colorMotif}
-                    onChange={handleInputChange}
-                    placeholder="e.g., Rose gold and blush, Navy and gold"
-                    className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                  />
                 </div>
               </div>
 
               <div className="mt-8 flex justify-center">
                 <Button
                   onClick={generateAIRecommendations}
-                  disabled={
-                    isFormDisabled ||
-                    !formData.guestCount ||
-                    !formData.venueProvince ||
-                    !formData.venueCity ||
-                    !formData.venueBarangay ||
-                    !formData.venueStreetAddress ||
-                    isGenerating
-                  }
+                  disabled={isFormDisabled || !formData.guestCount}
                   className="px-8 py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isGenerating ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Generating AI Menu...
+                      Generating AI Preferences...
                     </>
                   ) : (
                     <>
                       <Shuffle className="mr-2 h-5 w-5" />
-                      Generate AI Menu {generationCount > 0 && `(#${generationCount + 1})`}
+                      Generate AI Preference {generationCount > 0 && `(#${generationCount + 1})`}
                     </>
                   )}
                 </Button>
@@ -2115,451 +2085,560 @@ export default function AIRecommendation({
               <p className="text-gray-600 dark:text-gray-400">
                 Based on your preferences, here's your personalized menu with our standard structure:
               </p>
-              {recommendations && (
-                <div className="space-y-6">
-                  <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-900/20">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                        <User className="h-5 w-5" />
-                        Personal Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-blue-600" />
-                          <span className="text-gray-600 dark:text-gray-400">Name:</span>
-                          <span className="font-medium text-gray-800 dark:text-gray-200">
-                            {personalInfo.firstName} {personalInfo.lastName}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-blue-600" />
-                          <span className="text-gray-600 dark:text-gray-400">Email:</span>
-                          <span className="font-medium text-gray-800 dark:text-gray-200">{personalInfo.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-blue-600" />
-                          <span className="text-gray-600 dark:text-gray-400">Phone:</span>
-                          <span className="font-medium text-gray-800 dark:text-gray-200">{personalInfo.phone}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-900/20">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
-                        <Calendar className="h-5 w-5" />
-                        Event Details
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-600 dark:text-gray-400">Event Type:</span>
-                          <span className="font-medium capitalize text-gray-800 dark:text-gray-200">
-                            {eventInfo.eventType}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-green-600" />
-                          <span className="text-gray-600 dark:text-gray-400">Guests:</span>
-                          <span className="font-medium text-gray-800 dark:text-gray-200">
-                            {formData.guestCount} people
-                          </span>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <MapPin className="h-4 w-4 text-green-600 mt-0.5" />
-                          <div className="flex-1">
-                            <span className="text-gray-600 dark:text-gray-400">Venue: </span>
-                            <span className="font-medium text-gray-800 dark:text-gray-200">
-                              {[
-                                formData.venueName,
-                                formData.venueStreetAddress,
-                                formData.venueBarangay,
-                                formData.venueCity,
-                                formData.venueProvince,
-                                formData.venueZipCode,
-                              ]
-                                .filter(Boolean)
-                                .join(", ")}
-                            </span>
-                          </div>
-                        </div>
-                        {formData.theme && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-600 dark:text-gray-400">Theme:</span>
-                            <span className="font-medium text-gray-800 dark:text-gray-200">{formData.theme}</span>
-                          </div>
-                        )}
-                        {formData.colorMotif && (
-                          <div className="flex items-center gap-2">
-                            <Palette className="h-4 w-4 text-green-600" />
-                            <span className="text-gray-600 dark:text-gray-400">Color Motif:</span>
-                            <span className="font-medium text-gray-800 dark:text-gray-200">{formData.colorMotif}</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-purple-200 bg-purple-50/50 dark:border-purple-800 dark:bg-purple-900/20">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-purple-800 dark:text-purple-200">
-                        <Clock className="h-5 w-5" />
-                        Scheduling Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-purple-600" />
-                          <span className="text-gray-600 dark:text-gray-400">Event Date:</span>
-                          <span className="font-medium text-gray-800 dark:text-gray-200">
-                            {new Date(schedulingInfo.eventDate).toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-purple-600" />
-                          <span className="text-gray-600 dark:text-gray-400">Time Slot:</span>
-                          <span className="font-medium capitalize text-gray-800 dark:text-gray-200">
-                            {schedulingInfo.timeSlot}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
             </div>
 
-            <div className="grid gap-6">
-              {recommendations.packages.map((pkg: any, index: number) => (
-                <Card
-                  key={index}
-                  className={cn(
-                    "overflow-hidden transition-all duration-200 hover:shadow-lg border-2",
-                    pkg.isRecommended
-                      ? "border-rose-300 bg-gradient-to-br from-rose-50 to-pink-50 dark:from-rose-900/20 dark:to-pink-900/20"
-                      : "border-gray-200 dark:border-gray-700",
-                  )}
-                >
-                  <CardHeader className="pb-6">
-                    {pkg.isRecommended && (
-                      <div className="flex justify-end mb-2">
-                        <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white px-3 py-1 text-sm font-semibold rounded-full">
-                          AI Recommended - Fixed Structure
+            {/* Personal Information */}
+            <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-900 dark:text-blue-100">
+                  <User className="h-5 w-5" />
+                  Personal Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Name:</span>
+                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                        {personalInfo.firstName} {personalInfo.lastName}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Email:</span>
+                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{personalInfo.email}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Phone:</span>
+                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{personalInfo.phone}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Event Details */}
+            <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-900 dark:text-green-100">
+                  <Calendar className="h-5 w-5" />
+                  Event Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600 dark:text-gray-400">Event Type:</span>
+                    <span className="ml-2 font-medium text-gray-900 dark:text-gray-100 capitalize">
+                      {eventInfo.eventType}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-600 dark:text-gray-400">Guests:</span>
+                    <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                      {formData.guestCount} people
+                    </span>
+                  </div>
+
+                  {eventInfo.eventType === "birthday" && eventInfo.celebrantName && (
+                    <>
+                      <div>
+                        <span className="text-gray-600 dark:text-gray-400">Celebrant's Name:</span>
+                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                          {eventInfo.celebrantName}
+                        </span>
+                      </div>
+                      {eventInfo.celebrantAge && (
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Celebrant's Age:</span>
+                          <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                            {eventInfo.celebrantAge}
+                          </span>
                         </div>
+                      )}
+                      {eventInfo.celebrantGender && (
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Celebrant's Gender:</span>
+                          <span className="ml-2 font-medium text-gray-900 dark:text-gray-100 capitalize">
+                            {eventInfo.celebrantGender}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {eventInfo.eventType === "wedding" && (
+                    <>
+                      {eventInfo.groomName && (
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Groom's Name:</span>
+                          <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                            {eventInfo.groomName}
+                          </span>
+                        </div>
+                      )}
+                      {eventInfo.brideName && (
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Bride's Name:</span>
+                          <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                            {eventInfo.brideName}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {eventInfo.eventType?.toLowerCase() === 'debut' && (
+                    <>
+                      <div>
+                        <span className="text-gray-600 dark:text-gray-400">Debutante's Name:</span>
+                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                          {eventInfo.celebrantName}
+                        </span>
                       </div>
-                    )}
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                          {pkg.name}
-                        </CardTitle>
-                        <CardDescription className="text-gray-600 dark:text-gray-400 text-base">
-                          {pkg.description}
-                        </CardDescription>
-                      </div>
-                      <div className="flex justify-end">
-                        <div className="text-right">
-                          <div className="text-3xl font-bold text-rose-600">{pkg.price}</div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Down Payment: ₱{pkg.downPayment.toLocaleString()}
-                          </div>
+                      {eventInfo.debutanteGender && (
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Debutante's Gender:</span>
+                          <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                            {eventInfo.debutanteGender === 'other' || eventInfo.debutanteGender === 'Other'
+                              ? 'Rather not say'
+                              : eventInfo.debutanteGender}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {(formData.venueName || recommendations.packages[0]?.suggestedVenue) && (
+                    <div className="md:col-span-2">
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-green-600 mt-1 flex-shrink-0" />
+                        <div className="flex-1">
+                          <span className="text-gray-600 dark:text-gray-400 block mb-1">Venue:</span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100 block">
+                            {formData.venueName || recommendations.packages[0]?.suggestedVenue}
+                            {formData.venueStreetAddress && `, ${formData.venueStreetAddress}`}
+                            {formData.venueBarangay && `, ${formData.venueBarangay}`}
+                            {formData.venueCity && `, ${formData.venueCity}`}
+                            {formData.venueProvince && `, ${formData.venueProvince}`}
+                            {formData.venueZipCode && `, ${formData.venueZipCode}`}
+                          </span>
                         </div>
                       </div>
                     </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-6">
-                    {pkg.userPreferences &&
-                      (pkg.userPreferences.restrictions.length > 0 ||
-                        pkg.userPreferences.emphasis.length > 0 ||
-                        pkg.userPreferences.onlyRequests.length > 0) && (
-                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                          <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">
-                            ✓ Your Preferences Applied
-                          </h4>
-                          <div className="space-y-1 text-sm text-green-700 dark:text-green-300">
-                            {pkg.userPreferences.restrictions.length > 0 && (
-                              <p>
-                                <strong>Excluded:</strong> {pkg.userPreferences.restrictions.join(", ")}
-                              </p>
-                            )}
-                            {pkg.userPreferences.emphasis.length > 0 && (
-                              <p>
-                                <strong>Emphasized:</strong> {pkg.userPreferences.emphasis.join(", ")}
-                              </p>
-                            )}
-                            {pkg.userPreferences.onlyRequests.length > 0 && (
-                              <p>
-                                <strong>Only includes:</strong> {pkg.userPreferences.onlyRequests.join(", ")}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
+                  )}
+                  {recommendations.packages[0]?.eventTheme && (
                     <div>
-                      <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Package Includes:</h4>
-                      <div className="space-y-3">
-                        {pkg.menuSelections && (
-                          <>
-                            {(pkg.menuSelections.menu1?.length > 0 ||
-                              pkg.menuSelections.menu2?.length > 0 ||
-                              pkg.menuSelections.menu3?.length > 0) && (
-                              <div className="flex items-start space-x-3">
-                                <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
-                                <div>
-                                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                                    Main Courses (
-                                    {(pkg.menuSelections.menu1?.length || 0) +
-                                      (pkg.menuSelections.menu2?.length || 0) +
-                                      (pkg.menuSelections.menu3?.length || 0)}
-                                    ):
-                                  </span>
-                                  <span className="text-gray-700 dark:text-gray-300 ml-1">
-                                    {[
-                                      ...(pkg.menuSelections.menu1 || []).map((item: string) => `${item} (Menu 1)`),
-                                      ...(pkg.menuSelections.menu2 || []).map((item: string) => `${item} (Menu 2)`),
-                                      ...(pkg.menuSelections.menu3 || []).map((item: string) => `${item} (Menu 3)`),
-                                    ].join(", ")}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
+                      <span className="text-gray-600 dark:text-gray-400">Theme:</span>
+                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                        {recommendations.packages[0].eventTheme}
+                      </span>
+                    </div>
+                  )}
+                  {recommendations.packages[0]?.colorMotif && (
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Color Motif:</span>
+                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                        {recommendations.packages[0].colorMotif}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
-                            {pkg.menuSelections.pasta?.length > 0 && (
-                              <div className="flex items-start space-x-3">
-                                <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
-                                <div>
-                                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                                    Pasta ({pkg.menuSelections.pasta.length}):
-                                  </span>
-                                  <span className="text-gray-700 dark:text-gray-300 ml-1">
-                                    {pkg.menuSelections.pasta.join(", ")}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
+            {/* Scheduling Information */}
+            <Card className="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-purple-900 dark:text-purple-100">
+                  <Clock className="h-5 w-5" />
+                  Scheduling Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-purple-600" />
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Event Date:</span>
+                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                        {schedulingInfo.eventDate}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-purple-600" />
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">Time Slot:</span>
+                      <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                        {schedulingInfo.timeSlot}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                            {pkg.menuSelections.dessert?.length > 0 && (
-                              <div className="flex items-start space-x-3">
-                                <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
-                                <div>
-                                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                                    Desserts ({pkg.menuSelections.dessert.length}):
-                                  </span>
-                                  <span className="text-gray-700 dark:text-gray-300 ml-1">
-                                    {pkg.menuSelections.dessert.join(", ")}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-
-                            {pkg.menuSelections.beverage?.length > 0 && (
-                              <div className="flex items-start space-x-3">
-                                <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
-                                <div>
-                                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                                    Beverages ({pkg.menuSelections.beverage.length}):
-                                  </span>
-                                  <span className="text-gray-700 dark:text-gray-300 ml-1">
-                                    {pkg.menuSelections.beverage.join(", ")}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
-
-                        <div className="flex items-start space-x-3">
-                          <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
-                          <span className="text-gray-700 dark:text-gray-300">{formData.guestCount} guests</span>
+            {/* Package Cards */}
+            {recommendations.packages.map((pkg: any, index: number) => (
+              <Card
+                key={index}
+                className={cn(
+                  "overflow-hidden transition-all duration-200 hover:shadow-lg border-2",
+                  pkg.isRecommended
+                    ? "border-rose-300 bg-gradient-to-br from-rose-50 to-pink-50 dark:from-rose-900/20 dark:to-pink-900/20"
+                    : "border-gray-200 dark:border-gray-700",
+                )}
+              >
+                <CardHeader className="pb-6">
+                  {pkg.isRecommended && (
+                    <div className="flex justify-end mb-2">
+                      <div className="bg-gradient-to-r from-rose-600 to-pink-600 text-white px-3 py-1 text-sm font-semibold rounded-full">
+                        AI Recommended - Fixed Structure
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">{pkg.name}</CardTitle>
+                      <CardDescription className="text-gray-600 dark:text-gray-400 text-base">
+                        {pkg.description}
+                      </CardDescription>
+                    </div>
+                    <div className="flex justify-end">
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-rose-600">{pkg.price}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          Down Payment: ₱{pkg.downPayment.toLocaleString()}
                         </div>
-                        <div className="flex items-start space-x-3">
-                          <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
-                          <span className="text-gray-700 dark:text-gray-300">
-                            Fixed structure: exactly 1 main course, 1 pasta, 1 dessert, 1 beverage
-                          </span>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-6">
+                  {pkg.userPreferences &&
+                    (pkg.userPreferences.restrictions.length > 0 ||
+                      pkg.userPreferences.emphasis.length > 0 ||
+                      pkg.userPreferences.onlyRequests.length > 0) && (
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                        <h4 className="font-semibold text-green-800 dark:text-green-200 mb-2">
+                          ✓ Your Preferences Applied
+                        </h4>
+                        <div className="space-y-1 text-sm text-green-700 dark:text-green-300">
+                          {pkg.userPreferences.restrictions.length > 0 && (
+                            <p>
+                              <strong>Excluded:</strong> {pkg.userPreferences.restrictions.join(", ")}
+                            </p>
+                          )}
+                          {pkg.userPreferences.emphasis.length > 0 && (
+                            <p>
+                              <strong>Emphasized:</strong> {pkg.userPreferences.emphasis.join(", ")}
+                            </p>
+                          )}
+                          {pkg.userPreferences.onlyRequests.length > 0 && (
+                            <p>
+                              <strong>Only includes:</strong> {pkg.userPreferences.onlyRequests.join(", ")}
+                            </p>
+                          )}
                         </div>
-                        {pkg.userPreferences &&
-                          (pkg.userPreferences.restrictions.length > 0 ||
-                            pkg.userPreferences.emphasis.length > 0 ||
-                            pkg.userPreferences.onlyRequests.length > 0) && (
+                      </div>
+                    )}
+
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Package Includes:</h4>
+                    <div className="space-y-3">
+                      {pkg.menuSelections && (
+                        <>
+                          {(pkg.menuSelections.menu1?.length > 0 ||
+                            pkg.menuSelections.menu2?.length > 0 ||
+                            pkg.menuSelections.menu3?.length > 0) && (
                             <div className="flex items-start space-x-3">
                               <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
-                              <span className="text-gray-700 dark:text-gray-300">
-                                AI-personalized based on your preferences
-                              </span>
+                              <div>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                  Main Courses (
+                                  {(pkg.menuSelections.menu1?.length || 0) +
+                                    (pkg.menuSelections.menu2?.length || 0) +
+                                    (pkg.menuSelections.menu3?.length || 0)}
+                                  ):
+                                </span>
+                                <span className="text-gray-700 dark:text-gray-300 ml-1">
+                                  {[
+                                    ...(pkg.menuSelections.menu1 || []).map((item: string) => `${item} (Menu 1)`),
+                                    ...(pkg.menuSelections.menu2 || []).map((item: string) => `${item} (Menu 2)`),
+                                    ...(pkg.menuSelections.menu3 || []).map((item: string) => `${item} (Menu 3)`),
+                                  ].join(", ")}
+                                </span>
+                              </div>
                             </div>
                           )}
-                        {pkg.generationCount && (
+
+                          {pkg.menuSelections.pasta?.length > 0 && (
+                            <div className="flex items-start space-x-3">
+                              <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
+                              <div>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                  Pasta ({pkg.menuSelections.pasta.length}):
+                                </span>
+                                <span className="text-gray-700 dark:text-gray-300 ml-1">
+                                  {pkg.menuSelections.pasta.join(", ")}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {pkg.menuSelections.dessert?.length > 0 && (
+                            <div className="flex items-start space-x-3">
+                              <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
+                              <div>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                  Desserts ({pkg.menuSelections.dessert.length}):
+                                </span>
+                                <span className="text-gray-700 dark:text-gray-300 ml-1">
+                                  {pkg.menuSelections.dessert.join(", ")}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {pkg.menuSelections.beverage?.length > 0 && (
+                            <div className="flex items-start space-x-3">
+                              <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
+                              <div>
+                                <span className="font-medium text-gray-900 dark:text-gray-100">
+                                  Beverages ({pkg.menuSelections.beverage.length}):
+                                </span>
+                                <span className="text-gray-700 dark:text-gray-300 ml-1">
+                                  {pkg.menuSelections.beverage.join(", ")}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      <div className="flex items-start space-x-3">
+                        <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
+                        <span className="text-gray-700 dark:text-gray-300">{formData.guestCount} guests</span>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
+                        <span className="text-gray-700 dark:text-gray-300">
+                          Fixed structure: exactly 1 main course, 1 pasta, 1 dessert, 1 beverage
+                        </span>
+                      </div>
+                      {pkg.userPreferences &&
+                        (pkg.userPreferences.restrictions.length > 0 ||
+                          pkg.userPreferences.emphasis.length > 0 ||
+                          pkg.userPreferences.onlyRequests.length > 0) && (
                           <div className="flex items-start space-x-3">
                             <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
                             <span className="text-gray-700 dark:text-gray-300">
-                              Generation #{pkg.generationCount} - Fresh variety
+                              AI-personalized based on your preferences
                             </span>
                           </div>
                         )}
-                      </div>
-                    </div>
-
-                    {pkg.isWeddingEvent && pkg.weddingPackageInclusions && pkg.weddingPackageInclusions.length > 0 && (
-                      <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-4">
-                        <h4 className="text-lg font-semibold text-rose-900 dark:text-rose-100 mb-3">
-                          Wedding Package Includes:
-                        </h4>
-                        <div className="grid gap-2">
-                          {pkg.weddingPackageInclusions.map((inclusion: string, inclusionIndex: number) => (
-                            <div key={inclusionIndex} className="flex items-start space-x-3">
-                              <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
-                              <span className="text-rose-800 dark:text-rose-200">{inclusion}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {pkg.isDebutEvent && pkg.debutPackageInclusions && pkg.debutPackageInclusions.length > 0 && (
-                      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-                        <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">
-                          Debut Package Includes:
-                        </h4>
-                        <div className="grid gap-2">
-                          {pkg.debutPackageInclusions.map((inclusion: string, inclusionIndex: number) => (
-                            <div key={inclusionIndex} className="flex items-start space-x-3">
-                              <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0" />
-                              <span className="text-purple-800 dark:text-purple-200">{inclusion}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {!pkg.isWeddingEvent &&
-                      !pkg.isDebutEvent &&
-                      pkg.serviceFeeInclusions &&
-                      pkg.serviceFeeInclusions.length > 0 && (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                          <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
-                            Service Fee Includes:
-                          </h4>
-                          <div className="grid gap-2">
-                            {pkg.serviceFeeInclusions.map((inclusion: string, inclusionIndex: number) => (
-                              <div key={inclusionIndex} className="flex items-start space-x-3">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
-                                <span className="text-blue-800 dark:text-blue-200">{inclusion}</span>
-                              </div>
-                            ))}
-                          </div>
+                      {pkg.generationCount && (
+                        <div className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
+                          <span className="text-gray-700 dark:text-gray-300">
+                            Generation #{pkg.generationCount} - Fresh variety
+                          </span>
                         </div>
                       )}
+                    </div>
+                  </div>
 
-                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
-                      <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                        Pricing Breakdown:
+                  {pkg.isWeddingEvent && pkg.weddingPackageInclusions && pkg.weddingPackageInclusions.length > 0 && (
+                    <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-4">
+                      <h4 className="text-lg font-semibold text-rose-900 dark:text-rose-100 mb-3">
+                        Wedding Package Includes:
                       </h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center py-2">
-                          <span className="text-gray-600 dark:text-gray-400">Menu Total:</span>
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">
-                            ₱{pkg.menuTotal.toLocaleString()}
-                          </span>
+                      <div className="grid gap-2">
+                        {pkg.weddingPackageInclusions.map((inclusion: string, inclusionIndex: number) => (
+                          <div key={inclusionIndex} className="flex items-start space-x-3">
+                            <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
+                            <span className="text-rose-800 dark:text-rose-200">{inclusion}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {pkg.isDebutEvent && pkg.debutPackageInclusions && pkg.debutPackageInclusions.length > 0 && (
+                    <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                      <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">
+                        Debut Package Includes:
+                      </h4>
+                      <div className="grid gap-2">
+                        {pkg.debutPackageInclusions.map((inclusion: string, inclusionIndex: number) => (
+                          <div key={inclusionIndex} className="flex items-start space-x-3">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0" />
+                            <span className="text-purple-800 dark:text-purple-200">{inclusion}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!pkg.isWeddingEvent &&
+                    !pkg.isDebutEvent &&
+                    pkg.serviceFeeInclusions &&
+                    pkg.serviceFeeInclusions.length > 0 && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                        <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-3">
+                          Service Fee Includes:
+                        </h4>
+                        <div className="grid gap-2">
+                          {pkg.serviceFeeInclusions.map((inclusion: string, inclusionIndex: number) => (
+                            <div key={inclusionIndex} className="flex items-start space-x-3">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                              <span className="text-blue-800 dark:text-blue-200">{inclusion}</span>
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="text-gray-600 dark:text-gray-400">
-                            {pkg.isWeddingEvent
-                              ? "Wedding Package Fee:"
-                              : pkg.isDebutEvent
-                                ? "Debut Package Fee:"
-                                : "Service Fee:"}
-                          </span>
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">
-                            ₱{pkg.serviceFee.toLocaleString()}
-                          </span>
+                      </div>
+                    )}
+
+                  {pkg.isBirthdayEvent && pkg.backdropStyle && (
+                    <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-4">
+                      <h4 className="text-lg font-semibold text-rose-900 dark:text-rose-100 mb-3">Backdrop Styling:</h4>
+                      <div className="space-y-3 mb-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-rose-800 dark:text-rose-200">Selected Backdrop:</span>
+                          <span className="font-semibold text-rose-600">{getBackdropName(pkg.backdropStyle)}</span>
                         </div>
-                        <div className="border-t border-gray-200 dark:border-gray-600 pt-3 flex justify-between items-center">
-                          <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">Total Amount:</span>
-                          <span className="text-xl font-bold text-rose-600">{pkg.price}</span>
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-rose-800 dark:text-rose-200">Backdrop Price:</span>
+                          <span className="font-semibold text-rose-600">₱{pkg.backdropPrice.toLocaleString()}</span>
                         </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="text-gray-600 dark:text-gray-400">Down Payment (50%):</span>
-                          <span className="font-semibold text-gray-900 dark:text-gray-100">
-                            ₱{pkg.downPayment.toLocaleString()}
-                          </span>
+                      </div>
+                      <div className="bg-white dark:bg-rose-950/30 p-3 rounded border border-rose-300 dark:border-rose-700">
+                        <div className="font-medium text-rose-800 dark:text-rose-200 mb-2">Backdrop Includes:</div>
+                        <div className="grid gap-2">
+                          {getBackdropDetails(pkg.backdropStyle)
+                            .split("\n")
+                            .map((detail: string, detailIndex: number) => (
+                              <div key={detailIndex} className="flex items-start space-x-2">
+                                <div className="w-1.5 h-1.5 bg-rose-500 rounded-full mt-1.5 flex-shrink-0" />
+                                <span className="text-sm text-rose-700 dark:text-rose-300">
+                                  {detail.replace("• ", "")}
+                                </span>
+                              </div>
+                            ))}
                         </div>
                       </div>
                     </div>
+                  )}
 
-                    <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-                      <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">AI Reasoning:</h4>
-                      <p className="text-purple-800 dark:text-purple-200 leading-relaxed">{pkg.reasoning}</p>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Pricing Breakdown:</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-gray-600 dark:text-gray-400">Menu Total:</span>
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">
+                          ₱{pkg.menuTotal.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-gray-600 dark:text-gray-400">
+                          {pkg.isWeddingEvent
+                            ? "Wedding Package Fee:"
+                            : pkg.isDebutEvent
+                              ? "Debut Package Fee:"
+                              : "Service Fee:"}
+                        </span>
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">
+                          ₱{pkg.serviceFee.toLocaleString()}
+                        </span>
+                      </div>
+                      {pkg.isBirthdayEvent && pkg.backdropStyle && pkg.backdropPrice > 0 && (
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-gray-600 dark:text-gray-400">Backdrop Styling:</span>
+                          <span className="font-semibold text-rose-600">₱{pkg.backdropPrice.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <hr className="border-gray-300 dark:border-gray-600" />
+                      <div className="flex justify-between items-center py-2">
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">Total Amount:</span>
+                        <span className="text-2xl font-bold text-rose-600">₱{pkg.price.replace("₱", "")}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 bg-green-50 dark:bg-green-900/20 px-4 rounded-lg">
+                        <span className="font-semibold text-green-800 dark:text-green-200">Down Payment (50%):</span>
+                        <span className="text-xl font-bold text-green-600">₱{pkg.downPayment.toLocaleString()}</span>
+                      </div>
                     </div>
-                  </CardContent>
+                  </div>
 
-                  <CardFooter className="pt-6">
-                    <div className="flex gap-3 w-full">
-                      <Button
-                        onClick={() => handleBookPackage(pkg)}
-                        disabled={isBooking}
-                        className="flex-1 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold py-4 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        {isBooking ? (
-                          <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Booking...
-                          </>
-                        ) : (
-                          <>
-                            Book This Package
-                            <ChevronRight className="ml-2 h-5 w-5" />
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setRecommendations(null)
-                          generateAIRecommendations()
-                        }}
-                        variant="outline"
-                        className="px-6 py-4 border-rose-300 text-rose-600 hover:bg-rose-50 hover:border-rose-400 text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <Shuffle className="mr-2 h-5 w-5" />
-                        Generate New Menu
-                      </Button>
-                    </div>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+                  <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">AI Reasoning:</h4>
+                    <p className="text-purple-800 dark:text-purple-200 leading-relaxed">{pkg.reasoning}</p>
+                  </div>
+                </CardContent>
 
-            <div className="flex justify-center">
-              <Button
-                onClick={() => {
-                  setRecommendations(null)
-                  setSelectedMenuItems({
-                    menu1: [],
-                    menu2: [],
-                    menu3: [],
-                    pasta: [],
-                    dessert: [],
-                    beverage: [],
-                  })
-                }}
-                variant="outline"
-                className="px-6 py-2 border-rose-300 text-rose-600 hover:bg-rose-50 hover:border-rose-400"
-              >
-                <Shuffle className="mr-2 h-4 w-4" />
-                Generate New Menu
-              </Button>
-            </div>
+                <CardFooter className="pt-6">
+                  <div className="flex gap-3 w-full">
+                    <Button
+                      onClick={() => handleBookPackage(pkg)}
+                      disabled={isBooking}
+                      className="flex-1 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-semibold py-4 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      {isBooking ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Booking...
+                        </>
+                      ) : (
+                        <>
+                          Book This Package
+                          <ChevronRight className="ml-2 h-5 w-5" />
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setRecommendations(null)
+                        generateAIRecommendations()
+                      }}
+                      variant="outline"
+                      className="px-6 py-4 border-rose-300 text-rose-600 hover:bg-rose-50 hover:border-rose-400 text-lg font-semibold rounded-lg shadow-xl transition-all duration-200"
+                    >
+                      <Shuffle className="mr-2 h-5 w-5" />
+                      Generate New Preference
+                    </Button>
+                  </div>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+
+          <div className="flex justify-center">
+            <Button
+              onClick={() => {
+                setRecommendations(null)
+                setSelectedMenuItems({
+                  menu1: [],
+                  menu2: [],
+                  menu3: [],
+                  pasta: [],
+                  dessert: [],
+                  beverage: [],
+                })
+              }}
+              variant="outline"
+              className="px-6 py-2 border-rose-300 text-rose-600 hover:bg-rose-50 hover:border-rose-400"
+            >
+              <Shuffle className="mr-2 h-4 w-4" />
+              Generate New Preference
+            </Button>
           </div>
         </>
       )}

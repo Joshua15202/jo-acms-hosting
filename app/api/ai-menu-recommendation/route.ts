@@ -1,17 +1,21 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
 import { google } from "@ai-sdk/google"
+import { readFileSync } from "fs"
+import { join } from "path"
+
+const METRO_MANILA_VENUES = readFileSync(join(process.cwd(), "data/venues-metro-manila.txt"), "utf-8")
+const BULACAN_VENUES = readFileSync(join(process.cwd(), "data/venues-bulacan.txt"), "utf-8")
+const ALL_VENUES_DATA = `${METRO_MANILA_VENUES}\n\n${BULACAN_VENUES}`
 
 export async function POST(request: Request) {
   try {
-    const { eventType, guestCount, preferredMenus, venue, theme, colorMotif, availableMenuItems, generationCount } =
-      await request.json()
+    const { eventType, guestCount, aiPreferences, availableMenuItems, generationCount } = await request.json()
 
     if (!eventType || !guestCount || !availableMenuItems) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    // Check if Gemini API key is available
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
 
     if (!apiKey) {
@@ -23,167 +27,12 @@ export async function POST(request: Request) {
       })
     }
 
-    // Enhanced preference parsing for fixed structure
     const parseAdvancedUserPreferences = (preferences: string) => {
       const lowerPrefs = preferences.toLowerCase()
       const restrictions: string[] = []
       const emphasis: string[] = []
-      const onlyRequests: string[] = []
+      
 
-      // Enhanced "only" pattern detection with more comprehensive patterns
-      const onlyPatterns = {
-        beef: [
-          "only beef",
-          "beef only",
-          "just beef",
-          "beef alone",
-          "exclusively beef",
-          "nothing but beef",
-          "purely beef",
-          "solely beef",
-          "beef dishes only",
-          "beef main course only",
-          "main course beef only",
-          "beef for main course",
-          "beef main dishes only",
-        ],
-        pork: [
-          "only pork",
-          "pork only",
-          "just pork",
-          "pork alone",
-          "exclusively pork",
-          "nothing but pork",
-          "purely pork",
-          "solely pork",
-          "pork dishes only",
-          "pork main course only",
-          "main course pork only",
-          "pork for main course",
-          "pork main dishes only",
-        ],
-        chicken: [
-          "only chicken",
-          "chicken only",
-          "just chicken",
-          "chicken alone",
-          "exclusively chicken",
-          "nothing but chicken",
-          "purely chicken",
-          "solely chicken",
-          "chicken dishes only",
-          "chicken main course only",
-          "main course chicken only",
-          "chicken for main course",
-          "chicken main dishes only",
-        ],
-        seafood: [
-          "only seafood",
-          "seafood only",
-          "just seafood",
-          "seafood alone",
-          "exclusively seafood",
-          "nothing but seafood",
-          "purely seafood",
-          "solely seafood",
-          "seafood dishes only",
-          "only fish",
-          "fish only",
-          "just fish",
-          "seafood main course only",
-          "main course seafood only",
-          "seafood for main course",
-          "seafood main dishes only",
-        ],
-        vegetables: [
-          "only vegetables",
-          "vegetables only",
-          "just vegetables",
-          "vegetables alone",
-          "exclusively vegetables",
-          "nothing but vegetables",
-          "purely vegetables",
-          "solely vegetables",
-          "vegetable dishes only",
-          "only veggies",
-          "veggies only",
-          "just veggies",
-          "vegetable main course only",
-          "main course vegetables only",
-          "vegetables for main course",
-          "vegetable main dishes only",
-        ],
-        pasta: [
-          "only pasta",
-          "pasta only",
-          "just pasta",
-          "pasta alone",
-          "exclusively pasta",
-          "nothing but pasta",
-          "purely pasta",
-          "solely pasta",
-          "pasta dishes only",
-          "pasta main course only",
-          "main course pasta only",
-          "pasta for main course",
-          "pasta main dishes only",
-        ],
-      }
-
-      // Handle combination "only" requests like "only pork & chicken" or "only beef and pork"
-      const combinationPatterns = [
-        {
-          pattern:
-            /only\s+(beef|pork|chicken|seafood|vegetables|pasta)(\s*(&|and)\s*(beef|pork|chicken|seafood|vegetables|pasta))+/i,
-          extract: (match: string) => {
-            const categories = match
-              .toLowerCase()
-              .replace(/only\s+/, "")
-              .replace(/\s*(&|and)\s*/g, ",")
-              .split(",")
-              .map((cat) => cat.trim())
-              .filter((cat) => ["beef", "pork", "chicken", "seafood", "vegetables", "pasta"].includes(cat))
-            return categories
-          },
-        },
-        {
-          pattern:
-            /(beef|pork|chicken|seafood|vegetables|pasta)(\s*(&|and)\s*(beef|pork|chicken|seafood|vegetables|pasta))+\s+only/i,
-          extract: (match: string) => {
-            const categories = match
-              .toLowerCase()
-              .replace(/\s+only$/, "")
-              .replace(/\s*(&|and)\s*/g, ",")
-              .split(",")
-              .map((cat) => cat.trim())
-              .filter((cat) => ["beef", "pork", "chicken", "seafood", "vegetables", "pasta"].includes(cat))
-            return categories
-          },
-        },
-      ]
-
-      // Check for combination "only" requests first
-      for (const pattern of combinationPatterns) {
-        const match = lowerPrefs.match(pattern.pattern)
-        if (match) {
-          const categories = pattern.extract(match[0])
-          onlyRequests.push(...categories)
-          console.log(`Detected combination "only" request:`, categories)
-          break // Only process the first match to avoid duplicates
-        }
-      }
-
-      // If no combination patterns matched, check individual "only" requests
-      if (onlyRequests.length === 0) {
-        Object.keys(onlyPatterns).forEach((category) => {
-          const patterns = onlyPatterns[category as keyof typeof onlyPatterns]
-          if (patterns.some((pattern) => lowerPrefs.includes(pattern))) {
-            onlyRequests.push(category)
-          }
-        })
-      }
-
-      // Enhanced restriction patterns
       const restrictionPatterns = {
         beef: [
           "no beef",
@@ -284,7 +133,6 @@ export async function POST(request: Request) {
         ],
       }
 
-      // Enhanced emphasis patterns
       const emphasisPatterns = {
         beef: [
           "more beef",
@@ -416,17 +264,15 @@ export async function POST(request: Request) {
         ],
       }
 
-      // Check for restrictions (but not if "only" is specified for that category)
       Object.keys(restrictionPatterns).forEach((category) => {
-        if (!onlyRequests.includes(category)) {
+        // if (!onlyRequests.includes(category)) { // Removed this condition
           const patterns = restrictionPatterns[category as keyof typeof restrictionPatterns]
           if (patterns.some((pattern) => lowerPrefs.includes(pattern))) {
             restrictions.push(category)
           }
-        }
+        // } // Removed this condition
       })
 
-      // Check for emphasis (but not if restricted)
       Object.keys(emphasisPatterns).forEach((category) => {
         if (!restrictions.includes(category)) {
           const patterns = emphasisPatterns[category as keyof typeof emphasisPatterns]
@@ -436,26 +282,25 @@ export async function POST(request: Request) {
         }
       })
 
-      // Special dietary requirements
-      if (lowerPrefs.includes("vegetarian") || lowerPrefs.includes("veggie only") || lowerPrefs.includes("no meat")) {
-        onlyRequests.push("vegetables")
-        restrictions.push("beef", "pork", "chicken", "seafood")
+      // Users can still express preferences, but AI must select from ALL categories
+      
+      if (lowerPrefs.includes("vegetarian") || lowerPrefs.includes("veggie") || lowerPrefs.includes("plant based")) {
+        emphasis.push("vegetables")
+        // Don't restrict meat - AI will still select from all categories but emphasize vegetables
       }
 
-      if (lowerPrefs.includes("pescatarian") || lowerPrefs.includes("fish only")) {
-        onlyRequests.push("seafood")
-        restrictions.push("beef", "pork", "chicken")
-        emphasis.push("seafood", "vegetables")
+      if (lowerPrefs.includes("pescatarian") || lowerPrefs.includes("fish lover") || lowerPrefs.includes("seafood lover")) {
+        emphasis.push("seafood")
+        // Don't restrict meat - AI will still select from all categories but emphasize seafood
       }
+
 
       return {
         restrictions: [...new Set(restrictions)],
         emphasis: [...new Set(emphasis)],
-        onlyRequests: [...new Set(onlyRequests)],
       }
     }
 
-    // Helper function to validate selections
     const validateSelections = (selections: string[], availableItems: string[], category: string) => {
       return selections.filter((item) => {
         const exists = availableItems.some((available) => available.toLowerCase().trim() === item.toLowerCase().trim())
@@ -466,14 +311,8 @@ export async function POST(request: Request) {
       })
     }
 
-    // Helper function to apply user constraints
     const applyUserConstraints = (items: string[], category: string, userPrefs: any) => {
-      // If there are "only" requests and this category is not in the list, return empty
-      if (userPrefs.onlyRequests.length > 0 && !userPrefs.onlyRequests.includes(category.toLowerCase())) {
-        return []
-      }
 
-      // If this category is restricted, return empty
       if (userPrefs.restrictions.includes(category.toLowerCase())) {
         return []
       }
@@ -481,10 +320,8 @@ export async function POST(request: Request) {
       return items
     }
 
-    // Parse user preferences
-    const userPrefs = parseAdvancedUserPreferences(preferredMenus || "")
+    const userPrefs = parseAdvancedUserPreferences(aiPreferences || "")
 
-    // Randomize menu items to ensure variety in recommendations
     const shuffleArray = (array: string[]) => {
       const shuffled = [...array]
       for (let i = shuffled.length - 1; i > 0; i--) {
@@ -494,7 +331,6 @@ export async function POST(request: Request) {
       return shuffled
     }
 
-    // Apply user constraints to available items
     const filteredMenuItems = {
       beef: applyUserConstraints(availableMenuItems.beef || [], "beef", userPrefs),
       pork: applyUserConstraints(availableMenuItems.pork || [], "pork", userPrefs),
@@ -506,7 +342,6 @@ export async function POST(request: Request) {
       beverage: availableMenuItems.beverage || [],
     }
 
-    // Randomize all menu categories for variety - include generation count for more randomness
     const randomizedMenuItems = {
       beef: shuffleArray([...filteredMenuItems.beef]).sort(() => Math.random() - 0.5),
       pork: shuffleArray([...filteredMenuItems.pork]).sort(() => Math.random() - 0.5),
@@ -518,139 +353,246 @@ export async function POST(request: Request) {
       beverage: shuffleArray([...filteredMenuItems.beverage]).sort(() => Math.random() - 0.5),
     }
 
-    // Generate a random session ID to ensure variety in AI responses
     const sessionId = Math.random().toString(36).substring(2, 15)
     const timestamp = new Date().toISOString()
 
-    // Create the enhanced AI prompt with CORRECTED structure enforcement
-    const prompt = `You are an expert catering menu curator for Jo Pacheco Wedding & Event Catering Services with deep understanding of Filipino cuisine and dietary preferences.
+    const parseUserLocation = (preferences: string) => {
+      const lowerPrefs = preferences.toLowerCase()
+      
+      // Define all service area cities
+      const cities = ['quezon city', 'valenzuela', 'malabon', 'malolos', 'meycauayan', 'pandi', 'marilao']
+      
+      // Define common barangays from venue database for better matching
+      const knownBarangays = [
+        // Metro Manila barangays
+        'cubao', 'bagumbayan', 'kamuning', 'sacred heart', 'ugong norte', 'balingasa', 'bahay toro',
+        'commonwealth', 'fairview', 'talipapa', 'batasan hills', 'novaliches', 'diliman',
+        'gen t de leon', 'karuhatan', 'marulas', 'malinta', 'malanday', 'bagong barrio', 'tugatog',
+        'potrero', 'santolan', 'longos', 'tañong', 'acacia', 'niugan', 'concepcion', 'tonsuya',
+        // Bulacan barangays  
+        'loma de gato', 'atlag', 'mojon', 'san pablo', 'bulihan', 'caingin', 'sta rosa',
+        'calvario', 'canalate', 'catmon', 'dakila', 'ligas', 'longos', 'pamarawan', 'panasahan',
+        'barangca', 'banga', 'bancal', 'hulo', 'lawa', 'paligsahan', 'pulo', 'sta rita',
+        'bagbaguin', 'buhol na mangga', 'camalig', 'cacarong bata', 'cacarong matanda', 'ibayo',
+        'ilang ilang', 'loma de gato', 'namayan', 'patubig', 'prenza', 'tabing ilog'
+      ]
+      
+      let mentionedCity: string | undefined = undefined
+      let mentionedBarangay: string | null = null
+      
+      // First, try to find city mentions
+      mentionedCity = cities.find(city => lowerPrefs.includes(city))
+      
+      // Try multiple strategies to extract barangay
+      
+      // Strategy 1: Look for known barangays directly in the text
+      for (const barangay of knownBarangays) {
+        if (lowerPrefs.includes(barangay)) {
+          mentionedBarangay = barangay
+          break
+        }
+      }
+      
+      // Strategy 2: Pattern matching for common phrases
+      if (!mentionedBarangay) {
+        const barangayPatterns = [
+          // "i live in [barangay] [city]" pattern - captures text between "in" and city name
+          new RegExp(`(?:live in|from|at|in)\\s+([a-z\\s]+?)\\s+(${cities.join('|')})`, 'i'),
+          // "barangay [name]" or "brgy [name]" pattern
+          /(?:barangay|brgy\.?)\s+([a-z\s]+?)(?:\s|,|$)/i,
+          // "[barangay], [city]" pattern with comma
+          new RegExp(`([a-z\\s]+?),\\s+(${cities.join('|')})`, 'i'),
+        ]
+        
+        for (const pattern of barangayPatterns) {
+          const match = preferences.match(pattern)
+          if (match && match[1]) {
+            const extracted = match[1].trim().toLowerCase()
+            // Validate: barangay should be 2-30 characters and not be a city name
+            if (extracted.length >= 2 && extracted.length <= 30 && !cities.includes(extracted)) {
+              mentionedBarangay = extracted
+              break
+            }
+          }
+        }
+      }
+      
+      return { city: mentionedCity, barangay: mentionedBarangay }
+    }
 
-CRITICAL FIXED STRUCTURE REQUIREMENT:
-You MUST provide EXACTLY:
-- 1 beef dish OR empty if restricted
-- 1 pork dish OR empty if restricted  
-- 1 chicken dish OR empty if restricted
-- 1 seafood dish OR empty if restricted
-- 1 vegetable dish OR empty if restricted
-- 1 pasta dish OR empty if restricted
-- 1 dessert
-- 1 beverage
+    const userLocation = parseUserLocation(aiPreferences || "")
+    console.log("Parsed user location:", userLocation)
 
-NEVER exceed these quantities. NEVER provide more than 1 item per main course category (beef, pork, chicken, seafood, vegetables).
+    let venueSelectionGuidance = ""
+    if (userLocation.barangay) {
+      venueSelectionGuidance = `
+   - User mentioned SPECIFIC BARANGAY: "${userLocation.barangay}"
+   - FIRST: Search for venues IN THIS EXACT BARANGAY from the database
+   - If barangay EXISTS in database: Select that venue and mention "Selected [VENUE] in [BARANGAY] because you live in [BARANGAY]"
+   - If barangay NOT in database: Find closest venue in the same city "${userLocation.city || 'nearby area'}"
+   - IMPORTANT: In your reasoning, EXPLAIN this: "I couldn't find a venue in ${userLocation.barangay}, so I selected [VENUE NAME] in [ACTUAL BARANGAY] which is close to your location in ${userLocation.city || 'your area'}."
+   `
+    } else if (userLocation.city) {
+      venueSelectionGuidance = `
+   - User mentioned CITY/MUNICIPALITY ONLY: "${userLocation.city}"
+   - NO specific barangay mentioned
+   - RANDOMIZE: Select ANY venue from this city randomly
+   - DO NOT always pick the same venue - ensure variety across generations
+   - In reasoning: "Selected [VENUE NAME] in [BARANGAY], ${userLocation.city} based on your location"
+   `
+    } else {
+      venueSelectionGuidance = `
+   - User did NOT mention specific location
+   - Select popular/accessible venue from our service area
+   - Randomize selection to provide variety
+   - In reasoning: "Selected [VENUE NAME] as a convenient location in our service area"
+   `
+    }
 
-IMPORTANT: This is session ${sessionId} at ${timestamp}. Generation #${generationCount}. You MUST provide COMPLETELY DIFFERENT menu selections from previous recommendations to ensure maximum variety and prevent any repetition. Randomize ALL categories while following user preferences strictly.
+    const prompt = `You are an expert catering menu curator for Jo Pacheco Wedding & Event Catering Services with deep understanding of Filipino cuisine, dietary preferences, venue recommendations, and event design.
+
+**CRITICAL MENU COMPOSITION RULE - NON-NEGOTIABLE:**
+You MUST ALWAYS select from ALL available categories following this EXACT structure:
+- Exactly 1 dish from Menu 1 (Pork and Beef category)
+- Exactly 1 dish from Menu 2 (Chicken category)
+- Exactly 1 dish from Menu 3 (Seafood and Vegetables category)
+- Exactly 1 Pasta
+- Exactly 1 Dessert
+- Exactly 1 Beverage
+
+**IMPORTANT:** 
+- You CANNOT skip any category even if the user says "vegetarian only", "no meat", or "seafood only"
+- You CANNOT provide only 1 total item from all categories
+- You MUST maintain the 3 main course structure (1 from each menu) + 1 pasta + 1 dessert + 1 beverage
+- User preferences guide your CHOICES WITHIN each category, but you still select from ALL categories
+
+For example:
+- If user says "I'm vegetarian": Select the lightest/most vegetable-forward options from each category, but still select from pork/beef, chicken, and seafood categories
+- If user says "I love seafood": Emphasize seafood choices but still select from all 3 main course categories
+
+IMPORTANT: This is session ${sessionId} at ${timestamp}. Generation #${generationCount}. You MUST provide COMPLETELY DIFFERENT menu selections from previous recommendations to ensure maximum variety and prevent any repetition.
 
 EVENT DETAILS:
 - Event Type: ${eventType}
 - Guest Count: ${guestCount}
-- Venue: ${venue || "Not specified"}
-- Theme: ${theme || "Not specified"}
-- Color Motif: ${colorMotif || "Not specified"}
 
-ENHANCED USER PREFERENCES ANALYSIS:
-"${preferredMenus || "No specific preferences mentioned - RANDOMIZE ALL CATEGORIES for maximum variety"}"
+USER'S COMBINED AI PREFERENCES:
+"${aiPreferences || "No specific preferences provided - please randomize menu and suggest venue based on service area"}"
 
-PARSED USER RESTRICTIONS (MUST EXCLUDE THESE COMPLETELY):
+YOUR TASKS:
+1. **Parse Menu Preferences**: Extract dietary restrictions (hard nos), preferences (would like), and emphasis (love/prefer) from user input
+2. **Identify Location**: Extract the area/city mentioned and suggest appropriate venues nearby
+3. **Understand Theme/Color Preferences**: Extract style preferences and suggest event theme and color motif
+4. **Maintain Menu Composition**: ALWAYS follow the fixed structure - select 1 item from each of the 3 main course categories plus extras
+5. **Pool/Resort Requirements**: If user mentions wanting a pool/swimming, ONLY suggest venues with "Resort" or "Pool" in the name
+
+SERVICE AREA FOR VENUE SUGGESTIONS:
+Jo Pacheco serves: Quezon City, Valenzuela, Malabon (Metro Manila Province), and Malolos, Meycauayan, Pandi, Marilao (Bulacan Province), and nearby areas.
+
+AVAILABLE VENUES DATABASE (Select venues ONLY from this list):
+${ALL_VENUES_DATA}
+
+PARSED USER RESTRICTIONS (Avoid these if user explicitly said "no" or "allergic"):
 ${userPrefs.restrictions.length > 0 ? userPrefs.restrictions.join(", ") : "None"}
 
-PARSED USER EMPHASIS (PRIORITIZE THESE HEAVILY):
+PARSED USER EMPHASIS (Prioritize these within each category when possible):
 ${userPrefs.emphasis.length > 0 ? userPrefs.emphasis.join(", ") : "None"}
 
-EXCLUSIVE "ONLY" REQUESTS (FOCUS EXCLUSIVELY ON THESE):
-${userPrefs.onlyRequests.length > 0 ? userPrefs.onlyRequests.join(", ") : "None"}
+AVAILABLE MENU ITEMS BY CATEGORY (ALREADY FILTERED FOR USER HARD RESTRICTIONS):
+Menu 1 - Pork and Beef:
+  Beef: ${randomizedMenuItems.beef.join(", ")}
+  Pork: ${randomizedMenuItems.pork.join(", ")}
 
-AVAILABLE MENU ITEMS BY CATEGORY (ALREADY FILTERED FOR USER RESTRICTIONS):
-Beef: ${randomizedMenuItems.beef.join(", ")}
-Pork: ${randomizedMenuItems.pork.join(", ")}
-Chicken: ${randomizedMenuItems.chicken.join(", ")}
-Seafood: ${randomizedMenuItems.seafood.join(", ")}
-Vegetables: ${randomizedMenuItems.vegetables.join(", ")}
-Pasta: ${randomizedMenuItems.pasta.join(", ")}
-Desserts: ${randomizedMenuItems.dessert.join(", ")}
-Beverages: ${randomizedMenuItems.beverage.join(", ")}
+Menu 2 - Chicken: ${randomizedMenuItems.chicken.join(", ")}
 
-ENHANCED PREFERENCE HANDLING RULES:
+Menu 3 - Seafood and Vegetables:
+  Seafood: ${randomizedMenuItems.seafood.join(", ")}
+  Vegetables: ${randomizedMenuItems.vegetables.join(", ")}
 
-1. RESTRICTION ENFORCEMENT (HIGHEST PRIORITY):
-   - If user restricts a category (e.g., "no beef"), that category MUST be completely excluded
-   - If user restricts beef: beef = []
-   - If user restricts pork: pork = []
-   - If user restricts chicken: chicken = []
-   - If user restricts seafood: seafood = []
-   - If user restricts vegetables: vegetables = []
-   - If user restricts pasta: pasta = []
+Extras:
+  Pasta: ${randomizedMenuItems.pasta.join(", ")}
+  Desserts: ${randomizedMenuItems.dessert.join(", ")}
+  Beverages: ${randomizedMenuItems.beverage.join(", ")}
 
-2. MAIN COURSE DISTRIBUTION RULES:
-   - ALWAYS provide exactly 0 or 1 item per main course category (beef, pork, chicken, seafood, vegetables)
-   - NEVER exceed 1 item per category under any circumstances
-   - When a category is restricted, other categories can still have 1 item each
-
-3. RESTRICTION EXAMPLES:
-   - "no beef" → beef = [], pork = [1 item], chicken = [1 item], seafood = [1 item], vegetables = [1 item]
-   - "no pork" → beef = [1 item], pork = [], chicken = [1 item], seafood = [1 item], vegetables = [1 item]
-   - "no chicken" → beef = [1 item], pork = [1 item], chicken = [], seafood = [1 item], vegetables = [1 item]
-   - "no seafood" → beef = [1 item], pork = [1 item], chicken = [1 item], seafood = [], vegetables = [1 item]
-   - "vegetarian" → beef = [], pork = [], chicken = [], seafood = [], vegetables = [1 item]
-   - "halal" (no pork) → beef = [1 item], pork = [], chicken = [1 item], seafood = [1 item], vegetables = [1 item]
-
-4. EMPHASIS AMPLIFICATION (SECOND PRIORITY):
-   - Prioritize emphasized categories when selecting within available options
-   - If user emphasizes chicken and chicken is available, select chicken
-   - Ensure emphasized categories are well-represented within the 1-item limit per category
-
-5. NORMAL DISTRIBUTION (NO SPECIAL REQUESTS):
-   - Distribute exactly 1 item per available main course category
-   - Try to include variety across all non-restricted categories
-   - NEVER exceed 1 item per main course category
-
-CRITICAL SUCCESS FACTORS:
-- User satisfaction is paramount - follow their restrictions exactly
-- ALWAYS provide exactly 0 or 1 item per main course category
-- NEVER exceed these quantities under any circumstances
-- Respect all dietary restrictions completely
-- Provide clear reasoning for all selections
-- MAXIMUM RANDOMIZATION for generation #${generationCount}
+**SELECTION INSTRUCTIONS:**
+1. From Menu 1: Choose EITHER 1 beef OR 1 pork dish (return the other as empty array)
+2. From Menu 2: Choose exactly 1 chicken dish
+3. From Menu 3: Choose EITHER 1 seafood OR 1 vegetable dish (return the other as empty array)
+4. Choose exactly 1 pasta, 1 dessert, 1 beverage
 
 RESPONSE FORMAT REQUIREMENTS:
 Respond with a JSON object containing:
 {
-  "beef": ["selected beef item - EMPTY array [] if user restricted beef"],
-  "pork": ["selected pork item - EMPTY array [] if user restricted pork"],
-  "chicken": ["selected chicken item - EMPTY array [] if user restricted chicken"], 
-  "seafood": ["selected seafood item - EMPTY array [] if user restricted seafood"],
-  "vegetables": ["selected vegetable item - EMPTY array [] if user restricted vegetables"],
-  "pasta": ["exactly 1 pasta item - EMPTY array [] if user restricted pasta"],
+  "beef": ["selected beef item if chosen from Menu 1, otherwise EMPTY array []"],
+  "pork": ["selected pork item if chosen from Menu 1, otherwise EMPTY array []"],
+  "chicken": ["exactly 1 chicken item from Menu 2"], 
+  "seafood": ["selected seafood item if chosen from Menu 3, otherwise EMPTY array []"],
+  "vegetables": ["selected vegetable item if chosen from Menu 3, otherwise EMPTY array []"],
+  "pasta": ["exactly 1 pasta item"],
   "dessert": ["exactly 1 dessert item"],
   "beverage": ["exactly 1 beverage item"],
-  "reasoning": "Detailed explanation of how user preferences were interpreted and applied, including how restrictions were respected",
-  "explanation": "Step-by-step breakdown of selection process and any trade-offs made to respect user restrictions"
+  "venueRecommendation": {
+    "venueName": "Exact venue name from database",
+    "barangay": "Exact barangay from database",
+    "streetAddress": "Exact street address from database",
+    "city": "City name (Quezon City, Valenzuela, Malabon, Malolos, Meycauayan, Pandi, or Marilao)",
+    "province": "Province name (Metro Manila or Bulacan)",
+    "postalCode": "Exact postal/zip code from database",
+    "reasoning": "Why this venue suits the user's location and needs"
+  },
+  "eventTheme": "Suggested theme based on preferences",
+  "colorMotif": "Suggested color palette",
+  "reasoning": "CRITICAL: Write 2-3 sentences that SPECIFICALLY reference the EXACT dishes you selected (from Menu 1, Menu 2, Menu 3), the EXACT venue you chose, and the EXACT theme/colors. Explain WHY each was chosen based on the user's AI preferences.",
+  "explanation": "Step-by-step breakdown of recommendations"
 }
 
-VALIDATION RULES:
-- beef.length MUST BE 0 or 1 (0 if beef is restricted, 1 otherwise)
-- pork.length MUST BE 0 or 1 (0 if pork is restricted, 1 otherwise)
-- chicken.length MUST BE 0 or 1 (0 if chicken is restricted, 1 otherwise)
-- seafood.length MUST BE 0 or 1 (0 if seafood is restricted, 1 otherwise)
-- vegetables.length MUST BE 0 or 1 (0 if vegetables is restricted, 1 otherwise)
-- pasta.length MUST BE 0 or 1 (0 if pasta is restricted, 1 otherwise)
-- dessert.length MUST EQUAL exactly 1
-- beverage.length MUST EQUAL exactly 1
-- NEVER provide more than 1 item per main course category
-- ALWAYS respect user restrictions completely
+CRITICAL VENUE SELECTION RULES:
+1. Parse the user's location from their AI Preferences (city, barangay, neighborhood, landmarks)
+2. If user mentions wanting a POOL or swimming: ONLY suggest venues with "Resort", "Pool", or "Private Resort" in the name
+3. **VENUE SELECTION LOGIC:**
+   ${venueSelectionGuidance}
+4. Select a venue from the AVAILABLE VENUES DATABASE that matches the logic above
+5. Extract the EXACT barangay, street address, city, and postal code from the database entry
+6. Format in database: "Venue Name — Barangay Name — Street Address, City — Postal Code"
+7. ALWAYS provide complete address components (venue name, barangay, street, city, province, postal code)
+8. Match city names correctly: Malolos/Meycauayan/Pandi/Marilao are in Bulacan Province, Quezon City/Valenzuela/Malabon are in Metro Manila
 
-Remember: Always maintain the fixed structure while respecting user restrictions completely. Focus on creating the perfect menu within these constraints while ensuring maximum variety for generation #${generationCount}.`
+CRITICAL REASONING REQUIREMENT:
+Your "reasoning" field MUST include these SPECIFIC elements:
+
+1. **MENU ITEMS** - List the EXACT dish names you selected from each menu:
+   - Example: "From Menu 1, I selected Roast Beef with Mashed Potato. From Menu 2, I chose Chicken Lollipop. From Menu 3, I picked Fish Tofu..."
+   - NEVER say generic items like "Pork Mahonado" or "Fisherman's Delight" unless those are the actual names
+   - Quote the EXACT menu item names as they appear in the categories above
+
+2. **WHY THESE DISHES** - Reference the user's food preferences:
+   - Example: "...because you mentioned loving seafood and elegant dishes"
+   - Quote or paraphrase what the user actually said in "${aiPreferences || "preferences"}"
+
+3. **VENUE SELECTION** - Explain the venue choice with EXACT location:
+   ${userLocation.barangay ? `
+   - If venue IS in ${userLocation.barangay}: Say "I chose [EXACT VENUE NAME] in ${userLocation.barangay}, ${userLocation.city || ''} because you live in ${userLocation.barangay}"
+   - If venue NOT in ${userLocation.barangay}: Say "I couldn't find a venue in ${userLocation.barangay}, so I selected [EXACT VENUE NAME] in [ACTUAL BARANGAY] which is close to your location in ${userLocation.city || 'your area'}"
+   ` : userLocation.city ? `
+   - Say "I selected [EXACT VENUE NAME] in [BARANGAY], ${userLocation.city} based on your location"
+   ` : `
+   - Say "I selected [EXACT VENUE NAME] as a convenient location in our service area"
+   `}
+
+4. **THEME & COLORS** - Reference user's aesthetic preferences:
+   - Example: "The Elegant Seaside theme with Navy Blue and Silver reflects your preference for elegant style"
+
+Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 from Menu 3, plus pasta/dessert/beverage). User preferences guide your choices WITHIN each required category. Maximum variety for generation #${generationCount}.`
 
     const response = await generateText({
       model: google("gemini-2.0-flash"),
       prompt: prompt,
       temperature: 0.8,
-      maxTokens: 1500,
+      maxTokens: 2000,
     })
 
-    // Parse the AI response
     let aiRecommendations
     try {
-      // Extract JSON from the response
       const jsonMatch = response.text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
         aiRecommendations = JSON.parse(jsonMatch[0])
@@ -667,7 +609,6 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       })
     }
 
-    // Validate and clean the AI selections with STRICT enforcement of 1 item per category
     const validatedRecommendations = {
       beef: [] as string[],
       pork: [] as string[],
@@ -679,45 +620,53 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       beverage: [] as string[],
       reasoning:
         aiRecommendations.reasoning ||
-        `Menu curated with fixed structure: exactly 1 item per main course category (beef, pork, chicken, seafood, vegetables), 1 pasta, 1 dessert, 1 beverage. Your dietary restrictions and preferences: "${preferredMenus}" have been carefully respected.`,
+        `Menu curated with fixed structure: exactly 1 item per main course category (beef, pork, chicken, seafood, vegetables), 1 pasta, 1 dessert, 1 beverage. Your dietary restrictions and preferences: "${aiPreferences}" have been carefully respected.`,
       explanation:
         aiRecommendations.explanation ||
         `This menu was carefully selected to follow your dietary preferences and restrictions while maintaining our standard structure of exactly 1 item per main course category, 1 pasta, 1 dessert, and 1 beverage.`,
     }
 
-    // Beef: Only add if available and not restricted
-    if (filteredMenuItems.beef.length > 0) {
-      const beefSelections = validateSelections(aiRecommendations.beef || [], filteredMenuItems.beef, "Beef")
+    // Logic to select one item from Menu 1 (Beef or Pork)
+    let menu1Selected = false
+    const menu1Available = [...(randomizedMenuItems.beef || []), ...(randomizedMenuItems.pork || [])]
+    const menu1Selections = validateSelections(
+        [...(aiRecommendations.beef || []), ...(aiRecommendations.pork || [])],
+        menu1Available,
+        "Menu 1 (Beef/Pork)"
+    )
 
-      if (beefSelections.length > 0) {
-        validatedRecommendations.beef = [beefSelections[0]]
-        console.log(
-          `Beef: Selected "${beefSelections[0]}" (AI provided ${beefSelections.length} items, took first only)`,
-        )
-      } else if (filteredMenuItems.beef.length > 0) {
-        const randomItem = filteredMenuItems.beef[Math.floor(Math.random() * filteredMenuItems.beef.length)]
-        validatedRecommendations.beef = [randomItem]
-        console.log(`Beef: Fallback selected "${randomItem}"`)
-      }
+    if (menu1Selections.length > 0) {
+        // Prioritize beef if available and requested/emphasized, otherwise pork
+        const selectedItem = menu1Selections[0]
+        if (userPrefs.emphasis.includes('beef') && randomizedMenuItems.beef.includes(selectedItem)) {
+            validatedRecommendations.beef = [selectedItem]
+            menu1Selected = true
+        } else if (userPrefs.emphasis.includes('pork') && randomizedMenuItems.pork.includes(selectedItem)) {
+            validatedRecommendations.pork = [selectedItem]
+            menu1Selected = true
+        } else if (randomizedMenuItems.beef.includes(selectedItem)) {
+            validatedRecommendations.beef = [selectedItem]
+            menu1Selected = true
+        } else if (randomizedMenuItems.pork.includes(selectedItem)) {
+            validatedRecommendations.pork = [selectedItem]
+            menu1Selected = true
+        }
     }
 
-    // Pork: Only add if available and not restricted
-    if (filteredMenuItems.pork.length > 0) {
-      const porkSelections = validateSelections(aiRecommendations.pork || [], filteredMenuItems.pork, "Pork")
-
-      if (porkSelections.length > 0) {
-        validatedRecommendations.pork = [porkSelections[0]]
-        console.log(
-          `Pork: Selected "${porkSelections[0]}" (AI provided ${porkSelections.length} items, took first only)`,
-        )
-      } else if (filteredMenuItems.pork.length > 0) {
-        const randomItem = filteredMenuItems.pork[Math.floor(Math.random() * filteredMenuItems.pork.length)]
-        validatedRecommendations.pork = [randomItem]
-        console.log(`Pork: Fallback selected "${randomItem}"`)
-      }
+    if (!menu1Selected && menu1Available.length > 0) {
+        // Fallback: randomly pick one if AI didn't provide a valid selection or if no emphasis matched
+        const randomItem = menu1Available[Math.floor(Math.random() * menu1Available.length)]
+        if (randomizedMenuItems.beef.includes(randomItem)) {
+            validatedRecommendations.beef = [randomItem]
+            console.log(`Menu 1: Fallback selected beef "${randomItem}"`)
+        } else {
+            validatedRecommendations.pork = [randomItem]
+            console.log(`Menu 1: Fallback selected pork "${randomItem}"`)
+        }
     }
 
-    // Chicken: Only add if available and not restricted
+
+    // Logic to select one item from Menu 2 (Chicken)
     if (filteredMenuItems.chicken.length > 0) {
       const chickenSelections = validateSelections(
         aiRecommendations.chicken || [],
@@ -728,7 +677,7 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       if (chickenSelections.length > 0) {
         validatedRecommendations.chicken = [chickenSelections[0]]
         console.log(
-          `Chicken: Selected "${chickenSelections[0]}" (AI provided ${chickenSelections.length} items, took first only)`,
+          `Chicken: Selected "${chickenSelections[0]}"`,
         )
       } else {
         const randomItem = filteredMenuItems.chicken[Math.floor(Math.random() * filteredMenuItems.chicken.length)]
@@ -737,54 +686,53 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       }
     }
 
-    // Seafood: Only add if available and not restricted
-    if (filteredMenuItems.seafood.length > 0) {
-      const seafoodSelections = validateSelections(
-        aiRecommendations.seafood || [],
-        filteredMenuItems.seafood,
-        "Seafood",
-      )
+    // Logic to select one item from Menu 3 (Seafood or Vegetables)
+    let menu3Selected = false
+    const menu3Available = [...(randomizedMenuItems.seafood || []), ...(randomizedMenuItems.vegetables || [])]
+    const menu3Selections = validateSelections(
+        [...(aiRecommendations.seafood || []), ...(aiRecommendations.vegetables || [])],
+        menu3Available,
+        "Menu 3 (Seafood/Vegetables)"
+    )
 
-      if (seafoodSelections.length > 0) {
-        validatedRecommendations.seafood = [seafoodSelections[0]]
-        console.log(
-          `Seafood: Selected "${seafoodSelections[0]}" (AI provided ${seafoodSelections.length} items, took first only)`,
-        )
-      } else if (filteredMenuItems.seafood.length > 0) {
-        const randomItem = filteredMenuItems.seafood[Math.floor(Math.random() * filteredMenuItems.seafood.length)]
-        validatedRecommendations.seafood = [randomItem]
-        console.log(`Seafood: Fallback selected "${randomItem}"`)
-      }
+    if (menu3Selections.length > 0) {
+        // Prioritize seafood if emphasized, otherwise vegetables if emphasized, otherwise take the first valid selection
+        const selectedItem = menu3Selections[0]
+        if (userPrefs.emphasis.includes('seafood') && randomizedMenuItems.seafood.includes(selectedItem)) {
+            validatedRecommendations.seafood = [selectedItem]
+            menu3Selected = true
+        } else if (userPrefs.emphasis.includes('vegetables') && randomizedMenuItems.vegetables.includes(selectedItem)) {
+            validatedRecommendations.vegetables = [selectedItem]
+            menu3Selected = true
+        } else if (randomizedMenuItems.seafood.includes(selectedItem)) {
+            validatedRecommendations.seafood = [selectedItem]
+            menu3Selected = true
+        } else if (randomizedMenuItems.vegetables.includes(selectedItem)) {
+            validatedRecommendations.vegetables = [selectedItem]
+            menu3Selected = true
+        }
     }
 
-    // Vegetables: Only add if available and not restricted
-    if (filteredMenuItems.vegetables.length > 0) {
-      const vegetableSelections = validateSelections(
-        aiRecommendations.vegetables || [],
-        filteredMenuItems.vegetables,
-        "Vegetables",
-      )
-
-      if (vegetableSelections.length > 0) {
-        validatedRecommendations.vegetables = [vegetableSelections[0]]
-        console.log(
-          `Vegetables: Selected "${vegetableSelections[0]}" (AI provided ${vegetableSelections.length} items, took first only)`,
-        )
-      } else if (filteredMenuItems.vegetables.length > 0) {
-        const randomItem = filteredMenuItems.vegetables[Math.floor(Math.random() * filteredMenuItems.vegetables.length)]
-        validatedRecommendations.vegetables = [randomItem]
-        console.log(`Vegetables: Fallback selected "${randomItem}"`)
-      }
+    if (!menu3Selected && menu3Available.length > 0) {
+        // Fallback: randomly pick one if AI didn't provide a valid selection or if no emphasis matched
+        const randomItem = menu3Available[Math.floor(Math.random() * menu3Available.length)]
+        if (randomizedMenuItems.seafood.includes(randomItem)) {
+            validatedRecommendations.seafood = [randomItem]
+            console.log(`Menu 3: Fallback selected seafood "${randomItem}"`)
+        } else {
+            validatedRecommendations.vegetables = [randomItem]
+            console.log(`Menu 3: Fallback selected vegetables "${randomItem}"`)
+        }
     }
 
-    // Pasta: Exactly 1 item (if not restricted)
+    // Logic for Pasta
     if (filteredMenuItems.pasta.length > 0) {
       const pastaSelections = validateSelections(aiRecommendations.pasta || [], filteredMenuItems.pasta, "Pasta")
 
       if (pastaSelections.length > 0) {
         validatedRecommendations.pasta = [pastaSelections[0]]
         console.log(
-          `Pasta: Selected "${pastaSelections[0]}" (AI provided ${pastaSelections.length} items, took first only)`,
+          `Pasta: Selected "${pastaSelections[0]}"`,
         )
       } else {
         const randomItem = filteredMenuItems.pasta[Math.floor(Math.random() * filteredMenuItems.pasta.length)]
@@ -793,7 +741,7 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       }
     }
 
-    // Dessert: Exactly 1 item (always required)
+    // Logic for Dessert
     if (filteredMenuItems.dessert.length > 0) {
       const dessertSelections = validateSelections(
         aiRecommendations.dessert || [],
@@ -804,7 +752,7 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       if (dessertSelections.length > 0) {
         validatedRecommendations.dessert = [dessertSelections[0]]
         console.log(
-          `Dessert: Selected "${dessertSelections[0]}" (AI provided ${dessertSelections.length} items, took first only)`,
+          `Dessert: Selected "${dessertSelections[0]}"`,
         )
       } else {
         const randomItem = filteredMenuItems.dessert[Math.floor(Math.random() * filteredMenuItems.dessert.length)]
@@ -813,7 +761,7 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       }
     }
 
-    // Beverage: Exactly 1 item (always required)
+    // Logic for Beverage
     if (filteredMenuItems.beverage.length > 0) {
       const beverageSelections = validateSelections(
         aiRecommendations.beverage || [],
@@ -824,7 +772,7 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       if (beverageSelections.length > 0) {
         validatedRecommendations.beverage = [beverageSelections[0]]
         console.log(
-          `Beverage: Selected "${beverageSelections[0]}" (AI provided ${beverageSelections.length} items, took first only)`,
+          `Beverage: Selected "${beverageSelections[0]}"`,
         )
       } else {
         const randomItem = filteredMenuItems.beverage[Math.floor(Math.random() * filteredMenuItems.beverage.length)]
@@ -833,7 +781,8 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       }
     }
 
-    // FINAL ENFORCEMENT: Double-check that we never exceed 1 item per category
+
+    // Ensure only one item per category is selected and arrays are sliced to be safe
     validatedRecommendations.beef = validatedRecommendations.beef.slice(0, 1)
     validatedRecommendations.pork = validatedRecommendations.pork.slice(0, 1)
     validatedRecommendations.chicken = validatedRecommendations.chicken.slice(0, 1)
@@ -843,7 +792,6 @@ Remember: Always maintain the fixed structure while respecting user restrictions
     validatedRecommendations.dessert = validatedRecommendations.dessert.slice(0, 1)
     validatedRecommendations.beverage = validatedRecommendations.beverage.slice(0, 1)
 
-    // Final validation with detailed logging
     console.log("FINAL STRICT VALIDATION:", {
       beef: `${validatedRecommendations.beef.length} items: [${validatedRecommendations.beef.join(", ")}]`,
       pork: `${validatedRecommendations.pork.length} items: [${validatedRecommendations.pork.join(", ")}]`,
@@ -855,13 +803,12 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       beverage: `${validatedRecommendations.beverage.length} items: [${validatedRecommendations.beverage.join(", ")}]`,
     })
 
-    // Verify strict compliance
     const totalMainCourses =
-      validatedRecommendations.beef.length +
-      validatedRecommendations.pork.length +
-      validatedRecommendations.chicken.length +
-      validatedRecommendations.seafood.length +
-      validatedRecommendations.vegetables.length
+      (validatedRecommendations.beef.length > 0 ? 1 : 0) +
+      (validatedRecommendations.pork.length > 0 ? 1 : 0) +
+      (validatedRecommendations.chicken.length > 0 ? 1 : 0) +
+      (validatedRecommendations.seafood.length > 0 ? 1 : 0) +
+      (validatedRecommendations.vegetables.length > 0 ? 1 : 0)
     const totalItems =
       totalMainCourses +
       validatedRecommendations.pasta.length +
@@ -870,16 +817,15 @@ Remember: Always maintain the fixed structure while respecting user restrictions
 
     console.log(`COMPLIANCE CHECK: ${totalMainCourses} main courses, ${totalItems} total items`)
 
-    // Ensure we never have more than 1 item in any category
     if (
-      validatedRecommendations.beef.length > 1 ||
-      validatedRecommendations.pork.length > 1 ||
-      validatedRecommendations.chicken.length > 1 ||
-      validatedRecommendations.seafood.length > 1 ||
-      validatedRecommendations.vegetables.length > 1 ||
-      validatedRecommendations.pasta.length > 1 ||
-      validatedRecommendations.dessert.length > 1 ||
-      validatedRecommendations.beverage.length > 1
+      (validatedRecommendations.beef.length > 1) ||
+      (validatedRecommendations.pork.length > 1) ||
+      (validatedRecommendations.chicken.length > 1) ||
+      (validatedRecommendations.seafood.length > 1) ||
+      (validatedRecommendations.vegetables.length > 1) ||
+      (validatedRecommendations.pasta.length > 1) ||
+      (validatedRecommendations.dessert.length > 1) ||
+      (validatedRecommendations.beverage.length > 1)
     ) {
       console.error("CRITICAL ERROR: More than 1 item detected in a category!")
       validatedRecommendations.beef = validatedRecommendations.beef.slice(0, 1)
@@ -892,9 +838,55 @@ Remember: Always maintain the fixed structure while respecting user restrictions
       validatedRecommendations.beverage = validatedRecommendations.beverage.slice(0, 1)
     }
 
+    // Build a summary of what was actually selected for validation
+    const selectedDishes = [
+      ...validatedRecommendations.beef,
+      ...validatedRecommendations.pork,
+      ...validatedRecommendations.chicken,
+      ...validatedRecommendations.seafood,
+      ...validatedRecommendations.vegetables,
+      ...validatedRecommendations.pasta,
+    ].filter(dish => dish); // Filter out empty strings if any category was not selected
+
+    console.log("[v0] Selected dishes for reasoning validation:", selectedDishes)
+    console.log("[v0] AI-generated reasoning:", validatedRecommendations.reasoning)
+
+    // Create an enhanced reasoning that references the actual selections
+    const enhancedReasoning = `I selected ${selectedDishes.join(", ")} ${
+      selectedDishes.length > 0 
+        ? `because ${userPrefs.emphasis.includes('beef') ? 'you expressed a strong preference for beef' : 
+             userPrefs.emphasis.includes('pork') ? 'you expressed a strong preference for pork' :
+             userPrefs.emphasis.includes('chicken') ? 'you expressed a strong preference for chicken' :
+             userPrefs.emphasis.includes('seafood') ? 'you expressed a strong preference for seafood' :
+             userPrefs.emphasis.includes('vegetables') ? 'you expressed a strong preference for vegetables' :
+             'they align with your preferences'}` 
+        : 'based on your preferences'
+    }. ${
+      aiRecommendations.venueRecommendation 
+        ? `I chose ${aiRecommendations.venueRecommendation.venueName} in ${aiRecommendations.venueRecommendation.barangay}${
+            userLocation.barangay && aiRecommendations.venueRecommendation.barangay?.toLowerCase() !== userLocation.barangay.toLowerCase()
+              ? ` (close to ${userLocation.barangay})`
+              : userLocation.barangay 
+                ? ` because you live in ${userLocation.barangay}`
+                : ''
+          }${userLocation.city ? `, ${userLocation.city}` : ''}.`
+        : ''
+    } The ${aiRecommendations.eventTheme || 'elegant'} theme with ${aiRecommendations.colorMotif || 'sophisticated colors'} ${
+      userPrefs.emphasis.some(pref => ['elegant', 'modern', 'rustic'].includes(pref)) ? 
+        `reflects your preference for ${userPrefs.emphasis.find(pref => ['elegant', 'modern', 'rustic'].includes(pref))} style` :
+      'complements your event perfectly'
+    }.`
+
+    validatedRecommendations.reasoning = enhancedReasoning
+
+    console.log("[v0] Enhanced reasoning with actual selections:", enhancedReasoning)
+
     return NextResponse.json({
       success: true,
       recommendations: validatedRecommendations,
+      venueRecommendation: aiRecommendations.venueRecommendation || null,
+      eventTheme: aiRecommendations.eventTheme || "",
+      colorMotif: aiRecommendations.colorMotif || "",
       userPreferences: userPrefs,
       sessionId: sessionId,
       fixedStructure: {

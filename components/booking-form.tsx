@@ -13,8 +13,9 @@ import { useCustomToast } from "@/components/custom-toast"
 import { useSearchParams, useRouter } from "next/navigation"
 import { calculatePackagePricing, formatCurrency, type MenuSelections } from "@/lib/pricing-calculator"
 import { useAuth } from "@/components/user-auth-provider"
+import AIRecommendation from "@/components/ai-recommendation"
 
-type FormStep = 1 | 2 | 3
+type FormStep = 1 | 2 | 3 | 4
 type BudgetTier = "economy" | "standard" | "premium" | "luxury"
 
 interface PersonalInfo {
@@ -847,7 +848,8 @@ function BookingFormContent({
       console.log("Base pricing result:", basePricing)
 
       const isWedding = formData.eventType === "wedding"
-      const backdropPrice = !isWedding && backdropStyle ? getBackdropPrice(backdropStyle) : 0
+      const isDebut = formData.eventType === "debut"
+      const backdropPrice = !isWedding && !isDebut && backdropStyle ? getBackdropPrice(backdropStyle) : 0
       console.log("Backdrop price:", backdropPrice)
 
       const finalPricing = {
@@ -855,7 +857,9 @@ function BookingFormContent({
         totalAmount: basePricing.total + backdropPrice,
         downPayment: Math.round((basePricing.total + backdropPrice) * 0.5),
         isWeddingPackage: isWedding,
+        isDebutPackage: isDebut,
         weddingPackagePrice: isWedding ? basePricing.serviceFee : 0,
+        debutPackagePrice: isDebut ? basePricing.serviceFee : 0,
       }
 
       console.log("Final pricing with backdrop:", finalPricing)
@@ -1044,6 +1048,8 @@ function BookingFormContent({
         setCurrentStep(2)
       } else if (currentStep === 2 && validateStep2()) {
         setCurrentStep(3)
+      } else if (currentStep === 3) {
+        setCurrentStep(4)
       }
     },
     [currentStep, validateStep1, validateStep2],
@@ -2278,6 +2284,19 @@ function BookingFormContent({
     )
   }
 
+  const renderStep4 = () => (
+    <div className="space-y-4">
+      <h3 className="text-lg font-medium">AI Recommendations</h3>
+      <AIRecommendation
+        personalInfo={personalInfo}
+        eventInfo={eventInfo}
+        schedulingInfo={schedulingInfo}
+        backdropStyle={backdropStyle}
+        onChangeEventType={onChangeEventType}
+      />
+    </div>
+  )
+
   if (isBookingComplete) {
     const tastingDate = bookingResponse?.data?.tastingDate
     const tastingTime = bookingResponse?.data?.tastingTime
@@ -2400,6 +2419,7 @@ function BookingFormContent({
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
+        {currentStep === 4 && renderStep4()}
 
         <div className="flex justify-between pt-6">
           {currentStep > 1 ? (
@@ -2421,7 +2441,7 @@ function BookingFormContent({
                 Change Event Type
               </Button>
             )}
-            {currentStep < 3 ? (
+            {currentStep < 4 ? (
               <Button
                 type="button"
                 onClick={handleNext}

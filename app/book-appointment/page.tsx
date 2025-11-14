@@ -380,7 +380,7 @@ export default function BookAppointmentPage() {
                 ? "Please select your event type to continue."
                 : eventType === "birthday" && !backdropSelected
                   ? "Select your backdrop styling option."
-                  : "Choose between our standard booking form or try our AI-Based recommendation system."}
+                  : "Choose between our standard booking form or try our AI-powered recommendation system."}
         </p>
       </div>
 
@@ -808,7 +808,7 @@ export default function BookAppointmentPage() {
           <Tabs defaultValue="standard" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="standard">Book Appointment</TabsTrigger>
-              <TabsTrigger value="ai">AI-Based Recommendation</TabsTrigger>
+              <TabsTrigger value="ai">AI-Powered Recommendation</TabsTrigger>
             </TabsList>
             <TabsContent value="standard">
               <div className="mt-6 rounded-lg border p-6 shadow-sm">
@@ -827,6 +827,7 @@ export default function BookAppointmentPage() {
                   personalInfo={personalInfo}
                   eventInfo={{ eventType, ...celebrantInfo }}
                   schedulingInfo={schedulingInfo}
+                  backdropStyle={backdropStyle}
                   onChangeEventType={handleChangeEventType}
                 />
               </div>
