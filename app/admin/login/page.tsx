@@ -2,12 +2,12 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function AdminLoginPage() {
@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
     // Check if already authenticated
     const isAuthenticated = localStorage.getItem("adminAuthenticated")
     if (isAuthenticated === "true") {
-      router.push("/admin/dashboard")
+      router.push("/admin/test-page")
     }
   }, [router])
 
@@ -47,8 +47,8 @@ export default function AdminLoginPage() {
         localStorage.setItem("adminAuthenticated", "true")
         localStorage.setItem("adminUser", JSON.stringify(data.user))
 
-        // Redirect to dashboard
-        router.push("/admin/dashboard")
+        // Redirect to test-page
+        router.push("/admin/test-page")
       } else {
         setError(data.message || "Invalid username or password")
       }

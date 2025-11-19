@@ -3,12 +3,12 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useAdminAuth } from "@/components/admin/admin-auth-provider"
 
@@ -45,8 +45,7 @@ export default function AdminLogin() {
         setIsAuthenticated(true)
         setUser(data.user)
 
-        // Redirect to admin dashboard
-        router.push("/admin/dashboard")
+        router.push("/admin/test-page")
       } else {
         setError(data.message || "Login failed")
       }
