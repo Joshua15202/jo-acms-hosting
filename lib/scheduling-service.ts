@@ -22,6 +22,7 @@ export interface Appointment {
     | "confirmed"
     | "cancelled"
     | "completed"
+    | "rescheduled" // Added rescheduled status
     | "PENDING_TASTING_CONFIRMATION"
     | "TASTING_CONFIRMED"
     | "TASTING_RESCHEDULE_REQUESTED"
@@ -97,6 +98,9 @@ export class SchedulingService {
         .in("status", [
           "pending",
           "confirmed",
+          "cancelled",
+          "completed",
+          "rescheduled", // Added rescheduled status
           "PENDING_TASTING_CONFIRMATION",
           "TASTING_CONFIRMED",
           "TASTING_RESCHEDULE_REQUESTED",
@@ -131,6 +135,9 @@ export class SchedulingService {
         .in("status", [
           "pending",
           "confirmed",
+          "cancelled",
+          "completed",
+          "rescheduled", // Added rescheduled status
           "PENDING_TASTING_CONFIRMATION",
           "TASTING_CONFIRMED",
           "TASTING_RESCHEDULE_REQUESTED",
@@ -201,6 +208,9 @@ export class SchedulingService {
         .in("status", [
           "pending",
           "confirmed",
+          "cancelled",
+          "completed",
+          "rescheduled", // Added rescheduled status
           "PENDING_TASTING_CONFIRMATION",
           "TASTING_CONFIRMED",
           "TASTING_RESCHEDULE_REQUESTED",
@@ -241,6 +251,9 @@ export class SchedulingService {
         .in("status", [
           "pending",
           "confirmed",
+          "cancelled",
+          "completed",
+          "rescheduled", // Added rescheduled status
           "PENDING_TASTING_CONFIRMATION",
           "TASTING_CONFIRMED",
           "TASTING_RESCHEDULE_REQUESTED",

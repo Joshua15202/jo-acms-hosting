@@ -76,7 +76,7 @@ function parseMainCourses(mainCourses: any): any[] {
 async function fetchDishIngredients(dishName: string, guestCount: number) {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/admin/dish-ingredients-research`,
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://jo-acms.vercel.app"}/api/admin/dish-ingredients-research`,
       {
         method: "POST",
         headers: {

@@ -41,7 +41,7 @@ async function getInventoryMatches(
 ): Promise<InventoryAnalysis | null> {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/admin/equipment-inventory-check`,
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://jo-acms.vercel.app"}/api/admin/equipment-inventory-check`,
       {
         method: "POST",
         headers: {

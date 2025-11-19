@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 import { cookies } from "next/headers"
 import { differenceInHours } from "date-fns"
+import { createAdminNotification } from "@/lib/admin-notifications"
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -128,7 +129,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       .select("id")
       .eq("event_date", new_date)
       .eq("event_time", new_time)
-      .in("status", ["pending", "confirmed", "PENDING_TASTING_CONFIRMATION", "TASTING_CONFIRMED", "TASTING_COMPLETED"])
+      .in("status", ["pending", "confirmed", "rescheduled", "PENDING_TASTING_CONFIRMATION", "TASTING_CONFIRMED", "TASTING_COMPLETED"])
       .neq("id", appointmentId) // CRITICAL: Exclude current appointment
 
     if (conflictError) {
@@ -158,6 +159,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       event_date: new_date,
       event_time: new_time,
       time_slot: new_time,
+      status: "rescheduled",
       updated_at: new Date().toISOString(),
     }
 
@@ -187,6 +189,62 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     console.log("✓ Appointment updated successfully")
+
+    try {
+      const { data: user } = await supabaseAdmin
+        .from("tbl_users")
+        .select("full_name, email, phone")
+        .eq("id", session.user_id)
+        .single()
+
+      const notificationMessage = penaltyApplied
+        ? `Your appointment has been rescheduled to ${new_date} at ${new_time}. A 10% penalty of ₱${penaltyAmount.toLocaleString()} has been applied.`
+        : `Your appointment has been successfully rescheduled to ${new_date} at ${new_time}.`
+
+      await supabaseAdmin.from("tbl_notifications").insert({
+        user_id: session.user_id,
+        appointment_id: appointmentId,
+        title: "Appointment Rescheduled",
+        type: "reschedule",
+        message: notificationMessage,
+        is_read: false,
+        created_at: new Date().toISOString(),
+      })
+
+      const eventDetails = `Event: ${appointment.event_type} for ${appointment.guest_count} guests`
+      const customerInfo = `Customer: ${user?.full_name || "Unknown"} (${user?.email || "No email"}, ${user?.phone || "No phone"})`
+      const dateChange = `Original: ${appointment.event_date} at ${appointment.event_time} → New: ${new_date} at ${new_time}`
+      const penaltyText = penaltyApplied 
+        ? `\nPenalty Applied: ₱${penaltyAmount.toLocaleString()} (10%) | New Total: ₱${updatedTotalAmount.toLocaleString()}` 
+        : ""
+      
+      await createAdminNotification({
+        type: "appointment_reschedule",
+        title: "Appointment Rescheduled by User",
+        message: `${eventDetails}\n${customerInfo}\n${dateChange}${penaltyText}`,
+        metadata: {
+          appointmentId,
+          userId: session.user_id,
+          customerName: user?.full_name,
+          customerEmail: user?.email,
+          customerPhone: user?.phone,
+          eventType: appointment.event_type,
+          oldDate: appointment.event_date,
+          oldTime: appointment.event_time,
+          newDate: new_date,
+          newTime: new_time,
+          guestCount: appointment.guest_count,
+          penaltyApplied,
+          penaltyAmount,
+          newTotal: updatedTotalAmount,
+        },
+      })
+
+      console.log("✓ Notifications created for user and admin")
+    } catch (notifError) {
+      console.error("Error creating notifications:", notifError)
+      // Don't fail the reschedule if notification fails
+    }
 
     // Update related tasting if exists
     const { data: tasting } = await supabaseAdmin

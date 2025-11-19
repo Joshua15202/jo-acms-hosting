@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       .from("tbl_comprehensive_appointments")
       .select("event_time, status")
       .eq("event_date", date)
-      .in("status", ["pending", "confirmed", "PENDING_TASTING_CONFIRMATION", "TASTING_CONFIRMED", "TASTING_COMPLETED"])
+      .in("status", ["pending", "confirmed", "rescheduled", "PENDING_TASTING_CONFIRMATION", "TASTING_CONFIRMED", "TASTING_COMPLETED"])
 
     if (appointmentsError) {
       console.error("Error fetching appointments:", appointmentsError)

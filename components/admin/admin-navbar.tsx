@@ -1,6 +1,6 @@
 "use client"
 
-import { LogOut } from "lucide-react"
+import { LogOut, Bell } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -10,7 +10,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
+import { AdminNotificationsDropdown } from "@/components/admin/admin-notifications-dropdown"
 
 type AdminNavbarProps = {
   user?: { username: string; role: string } | null
@@ -48,6 +49,8 @@ export default function AdminNavbar({ user }: AdminNavbarProps) {
       </div>
 
       <div className="flex items-center space-x-4">
+        {user && <AdminNotificationsDropdown adminUsername={user.username} />}
+        
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

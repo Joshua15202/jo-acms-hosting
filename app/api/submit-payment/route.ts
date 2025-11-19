@@ -3,6 +3,7 @@ import { cookies } from "next/headers"
 import { supabaseAdmin } from "@/lib/supabase"
 import { sendEmail } from "@/lib/email"
 import { put } from "@vercel/blob"
+import { createAdminNotification } from "@/lib/admin-notifications"
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing required payment details" }, { status: 400 })
     }
 
-    // UPDATED: Check appointment eligibility - allow both TASTING_COMPLETED and confirmed status
+    // Check appointment eligibility - allow both TASTING_COMPLETED and confirmed status
     const { data: appointment, error: appointmentError } = await supabaseAdmin
       .from("tbl_comprehensive_appointments")
       .select("*")
@@ -184,6 +185,41 @@ export async function POST(request: NextRequest) {
 
     console.log("Appointment payment status updated to pending_payment with pending_payment_type:", paymentType)
 
+    const eventDateFormatted = appointment.event_date
+      ? new Date(appointment.event_date).toLocaleDateString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })
+      : "Not specified"
+
+    const paymentTypeLabel =
+      paymentType === "down_payment"
+        ? "Down Payment"
+        : paymentType === "remaining_balance"
+          ? "Remaining Balance"
+          : "Full Payment"
+
+    await createAdminNotification({
+      appointmentId: appointmentId,
+      paymentTransactionId: transaction.id,
+      title: `${paymentTypeLabel} Submitted`,
+      message: `Payment proof submitted for ${appointment.event_type} event
+Customer: ${user.full_name}
+Email: ${user.email}
+Amount: ₱${amount.toLocaleString()}
+Payment Type: ${paymentTypeLabel}
+Payment Method: ${paymentMethod}
+Reference: ${reference}
+Event Date: ${eventDateFormatted}
+Transaction ID: ${transaction.id}
+Submitted: ${new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}`,
+      type: "payment_submitted",
+    })
+
+    console.log("✅ Admin notification created for payment submission")
+
     try {
       const paymentTypeLabel =
         paymentType === "down_payment"
@@ -244,45 +280,6 @@ export async function POST(request: NextRequest) {
       console.log("✅ Payment confirmation email sent to:", user.email)
     } catch (emailError) {
       console.error("❌ Error sending payment confirmation email:", emailError)
-    }
-
-    // Send notification email to admin
-    try {
-      const paymentTypeLabel =
-        paymentType === "down_payment"
-          ? "Down Payment"
-          : paymentType === "remaining_balance"
-            ? "Remaining Balance"
-            : "Full Payment"
-
-      const adminEmailContent = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #e11d48;">💳 New ${paymentTypeLabel} Submission for Verification</h2>
-          <p>A customer has submitted a ${paymentTypeLabel.toLowerCase()} that requires verification.</p>
-          <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; margin: 20px 0;">
-            <h4 style="margin-top: 0;">Transaction Details:</h4>
-            <p><strong>Transaction ID:</strong> ${transaction.id}</p>
-            <p><strong>Customer:</strong> ${user.full_name} (${user.email})</p>
-            <p><strong>Appointment ID:</strong> ${appointmentId}</p>
-            <p><strong>Payment Type:</strong> <strong>${paymentTypeLabel}</strong></p>
-            <p><strong>Amount Submitted:</strong> ₱${amount.toLocaleString()}</p>
-            <p><strong>Payment Method:</strong> ${paymentMethod}</p>
-            <p><strong>Reference:</strong> ${reference}</p>
-            <p><strong>Notes:</strong> ${notes || "None"}</p>
-            <p><strong>Proof Image:</strong> <a href="${proofImageUrl}" target="_blank">View Proof</a></p>
-            <p><strong>Appointment Status When Submitted:</strong> ${appointment.payment_status}</p>
-          </div>
-          <p>Please log in to the admin panel to verify this payment.</p>
-        </div>
-      `
-      await sendEmail({
-        to: "admin@jopacheco.com",
-        subject: `${paymentTypeLabel} Verification Required - Transaction ${transaction.id.slice(0, 8)}`,
-        html: adminEmailContent,
-      })
-      console.log("✅ Admin notification email sent")
-    } catch (emailError) {
-      console.error("❌ Error sending admin notification email:", emailError)
     }
 
     console.log("=== API POST /api/submit-payment: SUCCESS ===")

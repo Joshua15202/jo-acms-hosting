@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { supabaseAdmin } from "@/lib/supabase"
 import { sendEmail } from "@/lib/email"
+import { createAdminNotification } from "@/lib/admin-notifications"
 
 interface AppointmentData {
   firstName: string
@@ -361,6 +362,34 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Step 8: Appointment created successfully with ID: ${appointment.id}`)
+
+    const eventDateFormatted = new Date(eventDate).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+
+    await createAdminNotification({
+      appointmentId: appointment.id,
+      title: "New Appointment Booked",
+      message: `New ${eventType} appointment created
+Customer: ${firstName} ${lastName}
+Email: ${email}
+Phone: ${phone}
+Event Date: ${eventDateFormatted}
+Time: ${eventTime}
+Guests: ${guestCount}
+Venue: ${venue}
+${theme ? `Theme: ${theme}` : ""}
+${colorMotif ? `Color Motif: ${colorMotif}` : ""}
+Total Amount: ₱${totalWithBackdrop.toLocaleString()}
+Down Payment: ₱${finalDownPayment.toLocaleString()}
+Created: ${new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}`,
+      type: "new_appointment",
+    })
+
+    console.log("✅ Admin notification created for new appointment")
 
     console.log("Step 9: Creating tasting appointment...")
     // --- Create Tasting Appointment ---

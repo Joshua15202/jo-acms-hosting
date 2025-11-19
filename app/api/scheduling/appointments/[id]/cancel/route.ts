@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 import { cookies } from "next/headers"
+import { createAdminNotification } from "@/lib/admin-notifications"
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -125,6 +126,65 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     console.log("Appointment cancelled successfully")
+
+    const { data: user } = await supabaseAdmin
+      .from("tbl_users")
+      .select("username, email, phone")
+      .eq("id", session.user_id)
+      .single()
+
+    const customerName = user?.username || "Unknown"
+    const customerEmail = user?.email || ""
+    const customerPhone = user?.phone || ""
+
+    // Format event date and time
+    const eventDate = new Date(appointment.event_date).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+    const eventTime = appointment.event_time || "Not specified"
+
+    await supabaseAdmin.from("tbl_notifications").insert({
+      user_id: session.user_id,
+      appointment_id: appointmentId,
+      title: "Appointment Cancelled",
+      message: `Your ${appointment.event_type} appointment on ${eventDate} at ${eventTime} has been cancelled successfully.${reason ? `\n\nReason: ${reason}` : ""}`,
+      type: "cancellation",
+      is_read: false,
+    })
+
+    await createAdminNotification({
+      appointmentId,
+      title: "Appointment Cancelled by User",
+      message: `${customerName} has cancelled their ${appointment.event_type} appointment.
+
+Event Details:
+• Event Type: ${appointment.event_type}
+• Guest Count: ${appointment.guests} guests
+• Event Date: ${eventDate}
+• Event Time: ${eventTime}
+• Venue: ${appointment.venue || "Not specified"}
+
+Customer Information:
+• Name: ${customerName}
+• Email: ${customerEmail}
+• Phone: ${customerPhone}
+
+Cancellation Reason: ${reason || "No reason provided"}`,
+      type: "cancellation",
+      metadata: {
+        event_type: appointment.event_type,
+        event_date: appointment.event_date,
+        event_time: eventTime,
+        guests: appointment.guests,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+        cancellation_reason: reason || "No reason provided",
+      },
+    })
 
     // Update tasting appointment if exists
     console.log("Checking for related tasting...")
