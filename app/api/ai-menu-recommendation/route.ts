@@ -3,6 +3,7 @@ import { generateText } from "ai"
 import { google } from "@ai-sdk/google"
 import { readFileSync } from "fs"
 import { join } from "path"
+import { createClient } from "@supabase/supabase-js"
 
 const METRO_MANILA_VENUES = readFileSync(join(process.cwd(), "data/venues-metro-manila.txt"), "utf-8")
 const BULACAN_VENUES = readFileSync(join(process.cwd(), "data/venues-bulacan.txt"), "utf-8")
@@ -27,11 +28,12 @@ export async function POST(request: Request) {
       })
     }
 
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
     const parseAdvancedUserPreferences = (preferences: string) => {
       const lowerPrefs = preferences.toLowerCase()
       const restrictions: string[] = []
       const emphasis: string[] = []
-      
 
       const restrictionPatterns = {
         beef: [
@@ -266,10 +268,10 @@ export async function POST(request: Request) {
 
       Object.keys(restrictionPatterns).forEach((category) => {
         // if (!onlyRequests.includes(category)) { // Removed this condition
-          const patterns = restrictionPatterns[category as keyof typeof restrictionPatterns]
-          if (patterns.some((pattern) => lowerPrefs.includes(pattern))) {
-            restrictions.push(category)
-          }
+        const patterns = restrictionPatterns[category as keyof typeof restrictionPatterns]
+        if (patterns.some((pattern) => lowerPrefs.includes(pattern))) {
+          restrictions.push(category)
+        }
         // } // Removed this condition
       })
 
@@ -283,17 +285,20 @@ export async function POST(request: Request) {
       })
 
       // Users can still express preferences, but AI must select from ALL categories
-      
+
       if (lowerPrefs.includes("vegetarian") || lowerPrefs.includes("veggie") || lowerPrefs.includes("plant based")) {
         emphasis.push("vegetables")
         // Don't restrict meat - AI will still select from all categories but emphasize vegetables
       }
 
-      if (lowerPrefs.includes("pescatarian") || lowerPrefs.includes("fish lover") || lowerPrefs.includes("seafood lover")) {
+      if (
+        lowerPrefs.includes("pescatarian") ||
+        lowerPrefs.includes("fish lover") ||
+        lowerPrefs.includes("seafood lover")
+      ) {
         emphasis.push("seafood")
         // Don't restrict meat - AI will still select from all categories but emphasize seafood
       }
-
 
       return {
         restrictions: [...new Set(restrictions)],
@@ -312,7 +317,6 @@ export async function POST(request: Request) {
     }
 
     const applyUserConstraints = (items: string[], category: string, userPrefs: any) => {
-
       if (userPrefs.restrictions.includes(category.toLowerCase())) {
         return []
       }
@@ -358,33 +362,87 @@ export async function POST(request: Request) {
 
     const parseUserLocation = (preferences: string) => {
       const lowerPrefs = preferences.toLowerCase()
-      
+
       // Define all service area cities
-      const cities = ['quezon city', 'valenzuela', 'malabon', 'malolos', 'meycauayan', 'pandi', 'marilao']
-      
+      const cities = ["quezon city", "valenzuela", "malabon", "malolos", "meycauayan", "pandi", "marilao"]
+
       // Define common barangays from venue database for better matching
       const knownBarangays = [
         // Metro Manila barangays
-        'cubao', 'bagumbayan', 'kamuning', 'sacred heart', 'ugong norte', 'balingasa', 'bahay toro',
-        'commonwealth', 'fairview', 'talipapa', 'batasan hills', 'novaliches', 'diliman',
-        'gen t de leon', 'karuhatan', 'marulas', 'malinta', 'malanday', 'bagong barrio', 'tugatog',
-        'potrero', 'santolan', 'longos', 'tañong', 'acacia', 'niugan', 'concepcion', 'tonsuya',
-        // Bulacan barangays  
-        'loma de gato', 'atlag', 'mojon', 'san pablo', 'bulihan', 'caingin', 'sta rosa',
-        'calvario', 'canalate', 'catmon', 'dakila', 'ligas', 'longos', 'pamarawan', 'panasahan',
-        'barangca', 'banga', 'bancal', 'hulo', 'lawa', 'paligsahan', 'pulo', 'sta rita',
-        'bagbaguin', 'buhol na mangga', 'camalig', 'cacarong bata', 'cacarong matanda', 'ibayo',
-        'ilang ilang', 'loma de gato', 'namayan', 'patubig', 'prenza', 'tabing ilog'
+        "cubao",
+        "bagumbayan",
+        "kamuning",
+        "sacred heart",
+        "ugong norte",
+        "balingasa",
+        "bahay toro",
+        "commonwealth",
+        "fairview",
+        "talipapa",
+        "batasan hills",
+        "novaliches",
+        "diliman",
+        "gen t de leon",
+        "karuhatan",
+        "marulas",
+        "malinta",
+        "malanday",
+        "bagong barrio",
+        "tugatog",
+        "potrero",
+        "santolan",
+        "longos",
+        "tañong",
+        "acacia",
+        "niugan",
+        "concepcion",
+        "tonsuya",
+        // Bulacan barangays
+        "loma de gato",
+        "atlag",
+        "mojon",
+        "san pablo",
+        "bulihan",
+        "caingin",
+        "sta rosa",
+        "calvario",
+        "canalate",
+        "catmon",
+        "dakila",
+        "ligas",
+        "longos",
+        "pamarawan",
+        "panasahan",
+        "barangca",
+        "banga",
+        "bancal",
+        "hulo",
+        "lawa",
+        "paligsahan",
+        "pulo",
+        "sta rita",
+        "bagbaguin",
+        "buhol na mangga",
+        "camalig",
+        "cacarong bata",
+        "cacarong matanda",
+        "ibayo",
+        "ilang ilang",
+        "loma de gato",
+        "namayan",
+        "patubig",
+        "prenza",
+        "tabing ilog",
       ]
-      
+
       let mentionedCity: string | undefined = undefined
       let mentionedBarangay: string | null = null
-      
+
       // First, try to find city mentions
-      mentionedCity = cities.find(city => lowerPrefs.includes(city))
-      
+      mentionedCity = cities.find((city) => lowerPrefs.includes(city))
+
       // Try multiple strategies to extract barangay
-      
+
       // Strategy 1: Look for known barangays directly in the text
       for (const barangay of knownBarangays) {
         if (lowerPrefs.includes(barangay)) {
@@ -392,18 +450,18 @@ export async function POST(request: Request) {
           break
         }
       }
-      
+
       // Strategy 2: Pattern matching for common phrases
       if (!mentionedBarangay) {
         const barangayPatterns = [
           // "i live in [barangay] [city]" pattern - captures text between "in" and city name
-          new RegExp(`(?:live in|from|at|in)\\s+([a-z\\s]+?)\\s+(${cities.join('|')})`, 'i'),
+          new RegExp(`(?:live in|from|at|in)\\s+([a-z\\s]+?)\\s+(${cities.join("|")})`, "i"),
           // "barangay [name]" or "brgy [name]" pattern
           /(?:barangay|brgy\.?)\s+([a-z\s]+?)(?:\s|,|$)/i,
           // "[barangay], [city]" pattern with comma
-          new RegExp(`([a-z\\s]+?),\\s+(${cities.join('|')})`, 'i'),
+          new RegExp(`([a-z\\s]+?),\\s+(${cities.join("|")})`, "i"),
         ]
-        
+
         for (const pattern of barangayPatterns) {
           const match = preferences.match(pattern)
           if (match && match[1]) {
@@ -416,7 +474,7 @@ export async function POST(request: Request) {
           }
         }
       }
-      
+
       return { city: mentionedCity, barangay: mentionedBarangay }
     }
 
@@ -429,8 +487,8 @@ export async function POST(request: Request) {
    - User mentioned SPECIFIC BARANGAY: "${userLocation.barangay}"
    - FIRST: Search for venues IN THIS EXACT BARANGAY from the database
    - If barangay EXISTS in database: Select that venue and mention "Selected [VENUE] in [BARANGAY] because you live in [BARANGAY]"
-   - If barangay NOT in database: Find closest venue in the same city "${userLocation.city || 'nearby area'}"
-   - IMPORTANT: In your reasoning, EXPLAIN this: "I couldn't find a venue in ${userLocation.barangay}, so I selected [VENUE NAME] in [ACTUAL BARANGAY] which is close to your location in ${userLocation.city || 'your area'}."
+   - If barangay NOT in database: Find closest venue in the same city "${userLocation.city || "nearby area"}"
+   - IMPORTANT: In your reasoning, EXPLAIN this: "I couldn't find a venue in ${userLocation.barangay}, so I selected [VENUE NAME] in [ACTUAL BARANGAY] which is close to your location in ${userLocation.city || "your area"}."
    `
     } else if (userLocation.city) {
       venueSelectionGuidance = `
@@ -570,14 +628,20 @@ Your "reasoning" field MUST include these SPECIFIC elements:
    - Quote or paraphrase what the user actually said in "${aiPreferences || "preferences"}"
 
 3. **VENUE SELECTION** - Explain the venue choice with EXACT location:
-   ${userLocation.barangay ? `
-   - If venue IS in ${userLocation.barangay}: Say "I chose [EXACT VENUE NAME] in ${userLocation.barangay}, ${userLocation.city || ''} because you live in ${userLocation.barangay}"
-   - If venue NOT in ${userLocation.barangay}: Say "I couldn't find a venue in ${userLocation.barangay}, so I selected [EXACT VENUE NAME] in [ACTUAL BARANGAY] which is close to your location in ${userLocation.city || 'your area'}"
-   ` : userLocation.city ? `
+   ${
+     userLocation.barangay
+       ? `
+   - If venue IS in ${userLocation.barangay}: Say "I chose [EXACT VENUE NAME] in ${userLocation.barangay}, ${userLocation.city || ""} because you live in ${userLocation.barangay}"
+   - If venue NOT in ${userLocation.barangay}: Say "I couldn't find a venue in ${userLocation.barangay}, so I selected [EXACT VENUE NAME] in [ACTUAL BARANGAY] which is close to your location in ${userLocation.city || "your area"}"
+   `
+       : userLocation.city
+         ? `
    - Say "I selected [EXACT VENUE NAME] in [BARANGAY], ${userLocation.city} based on your location"
-   ` : `
+   `
+         : `
    - Say "I selected [EXACT VENUE NAME] as a convenient location in our service area"
-   `}
+   `
+   }
 
 4. **THEME & COLORS** - Reference user's aesthetic preferences:
    - Example: "The Elegant Seaside theme with Navy Blue and Silver reflects your preference for elegant style"
@@ -620,7 +684,7 @@ Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 
       beverage: [] as string[],
       reasoning:
         aiRecommendations.reasoning ||
-        `Menu curated with fixed structure: exactly 1 item per main course category (beef, pork, chicken, seafood, vegetables), 1 pasta, 1 dessert, 1 beverage. Your dietary restrictions and preferences: "${aiPreferences}" have been carefully respected.`,
+        `Menu curated with fixed structure: exactly 1 item per main course category (beef, pork, seafood, vegetables), 1 pasta, 1 dessert, 1 beverage. Your dietary restrictions and preferences: "${aiPreferences}" have been carefully respected.`,
       explanation:
         aiRecommendations.explanation ||
         `This menu was carefully selected to follow your dietary preferences and restrictions while maintaining our standard structure of exactly 1 item per main course category, 1 pasta, 1 dessert, and 1 beverage.`,
@@ -630,41 +694,40 @@ Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 
     let menu1Selected = false
     const menu1Available = [...(randomizedMenuItems.beef || []), ...(randomizedMenuItems.pork || [])]
     const menu1Selections = validateSelections(
-        [...(aiRecommendations.beef || []), ...(aiRecommendations.pork || [])],
-        menu1Available,
-        "Menu 1 (Beef/Pork)"
+      [...(aiRecommendations.beef || []), ...(aiRecommendations.pork || [])],
+      menu1Available,
+      "Menu 1 (Beef/Pork)",
     )
 
     if (menu1Selections.length > 0) {
-        // Prioritize beef if available and requested/emphasized, otherwise pork
-        const selectedItem = menu1Selections[0]
-        if (userPrefs.emphasis.includes('beef') && randomizedMenuItems.beef.includes(selectedItem)) {
-            validatedRecommendations.beef = [selectedItem]
-            menu1Selected = true
-        } else if (userPrefs.emphasis.includes('pork') && randomizedMenuItems.pork.includes(selectedItem)) {
-            validatedRecommendations.pork = [selectedItem]
-            menu1Selected = true
-        } else if (randomizedMenuItems.beef.includes(selectedItem)) {
-            validatedRecommendations.beef = [selectedItem]
-            menu1Selected = true
-        } else if (randomizedMenuItems.pork.includes(selectedItem)) {
-            validatedRecommendations.pork = [selectedItem]
-            menu1Selected = true
-        }
+      // Prioritize beef if available and requested/emphasized, otherwise pork
+      const selectedItem = menu1Selections[0]
+      if (userPrefs.emphasis.includes("beef") && randomizedMenuItems.beef.includes(selectedItem)) {
+        validatedRecommendations.beef = [selectedItem]
+        menu1Selected = true
+      } else if (userPrefs.emphasis.includes("pork") && randomizedMenuItems.pork.includes(selectedItem)) {
+        validatedRecommendations.pork = [selectedItem]
+        menu1Selected = true
+      } else if (randomizedMenuItems.beef.includes(selectedItem)) {
+        validatedRecommendations.beef = [selectedItem]
+        menu1Selected = true
+      } else if (randomizedMenuItems.pork.includes(selectedItem)) {
+        validatedRecommendations.pork = [selectedItem]
+        menu1Selected = true
+      }
     }
 
     if (!menu1Selected && menu1Available.length > 0) {
-        // Fallback: randomly pick one if AI didn't provide a valid selection or if no emphasis matched
-        const randomItem = menu1Available[Math.floor(Math.random() * menu1Available.length)]
-        if (randomizedMenuItems.beef.includes(randomItem)) {
-            validatedRecommendations.beef = [randomItem]
-            console.log(`Menu 1: Fallback selected beef "${randomItem}"`)
-        } else {
-            validatedRecommendations.pork = [randomItem]
-            console.log(`Menu 1: Fallback selected pork "${randomItem}"`)
-        }
+      // Fallback: randomly pick one if AI didn't provide a valid selection or if no emphasis matched
+      const randomItem = menu1Available[Math.floor(Math.random() * menu1Available.length)]
+      if (randomizedMenuItems.beef.includes(randomItem)) {
+        validatedRecommendations.beef = [randomItem]
+        console.log(`Menu 1: Fallback selected beef "${randomItem}"`)
+      } else {
+        validatedRecommendations.pork = [randomItem]
+        console.log(`Menu 1: Fallback selected pork "${randomItem}"`)
+      }
     }
-
 
     // Logic to select one item from Menu 2 (Chicken)
     if (filteredMenuItems.chicken.length > 0) {
@@ -676,9 +739,7 @@ Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 
 
       if (chickenSelections.length > 0) {
         validatedRecommendations.chicken = [chickenSelections[0]]
-        console.log(
-          `Chicken: Selected "${chickenSelections[0]}"`,
-        )
+        console.log(`Chicken: Selected "${chickenSelections[0]}"`)
       } else {
         const randomItem = filteredMenuItems.chicken[Math.floor(Math.random() * filteredMenuItems.chicken.length)]
         validatedRecommendations.chicken = [randomItem]
@@ -690,39 +751,39 @@ Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 
     let menu3Selected = false
     const menu3Available = [...(randomizedMenuItems.seafood || []), ...(randomizedMenuItems.vegetables || [])]
     const menu3Selections = validateSelections(
-        [...(aiRecommendations.seafood || []), ...(aiRecommendations.vegetables || [])],
-        menu3Available,
-        "Menu 3 (Seafood/Vegetables)"
+      [...(aiRecommendations.seafood || []), ...(aiRecommendations.vegetables || [])],
+      menu3Available,
+      "Menu 3 (Seafood/Vegetables)",
     )
 
     if (menu3Selections.length > 0) {
-        // Prioritize seafood if emphasized, otherwise vegetables if emphasized, otherwise take the first valid selection
-        const selectedItem = menu3Selections[0]
-        if (userPrefs.emphasis.includes('seafood') && randomizedMenuItems.seafood.includes(selectedItem)) {
-            validatedRecommendations.seafood = [selectedItem]
-            menu3Selected = true
-        } else if (userPrefs.emphasis.includes('vegetables') && randomizedMenuItems.vegetables.includes(selectedItem)) {
-            validatedRecommendations.vegetables = [selectedItem]
-            menu3Selected = true
-        } else if (randomizedMenuItems.seafood.includes(selectedItem)) {
-            validatedRecommendations.seafood = [selectedItem]
-            menu3Selected = true
-        } else if (randomizedMenuItems.vegetables.includes(selectedItem)) {
-            validatedRecommendations.vegetables = [selectedItem]
-            menu3Selected = true
-        }
+      // Prioritize seafood if emphasized, otherwise vegetables if emphasized, otherwise take the first valid selection
+      const selectedItem = menu3Selections[0]
+      if (userPrefs.emphasis.includes("seafood") && randomizedMenuItems.seafood.includes(selectedItem)) {
+        validatedRecommendations.seafood = [selectedItem]
+        menu3Selected = true
+      } else if (userPrefs.emphasis.includes("vegetables") && randomizedMenuItems.vegetables.includes(selectedItem)) {
+        validatedRecommendations.vegetables = [selectedItem]
+        menu3Selected = true
+      } else if (randomizedMenuItems.seafood.includes(selectedItem)) {
+        validatedRecommendations.seafood = [selectedItem]
+        menu3Selected = true
+      } else if (randomizedMenuItems.vegetables.includes(selectedItem)) {
+        validatedRecommendations.vegetables = [selectedItem]
+        menu3Selected = true
+      }
     }
 
     if (!menu3Selected && menu3Available.length > 0) {
-        // Fallback: randomly pick one if AI didn't provide a valid selection or if no emphasis matched
-        const randomItem = menu3Available[Math.floor(Math.random() * menu3Available.length)]
-        if (randomizedMenuItems.seafood.includes(randomItem)) {
-            validatedRecommendations.seafood = [randomItem]
-            console.log(`Menu 3: Fallback selected seafood "${randomItem}"`)
-        } else {
-            validatedRecommendations.vegetables = [randomItem]
-            console.log(`Menu 3: Fallback selected vegetables "${randomItem}"`)
-        }
+      // Fallback: randomly pick one if AI didn't provide a valid selection or if no emphasis matched
+      const randomItem = menu3Available[Math.floor(Math.random() * menu3Available.length)]
+      if (randomizedMenuItems.seafood.includes(randomItem)) {
+        validatedRecommendations.seafood = [randomItem]
+        console.log(`Menu 3: Fallback selected seafood "${randomItem}"`)
+      } else {
+        validatedRecommendations.vegetables = [randomItem]
+        console.log(`Menu 3: Fallback selected vegetables "${randomItem}"`)
+      }
     }
 
     // Logic for Pasta
@@ -731,9 +792,7 @@ Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 
 
       if (pastaSelections.length > 0) {
         validatedRecommendations.pasta = [pastaSelections[0]]
-        console.log(
-          `Pasta: Selected "${pastaSelections[0]}"`,
-        )
+        console.log(`Pasta: Selected "${pastaSelections[0]}"`)
       } else {
         const randomItem = filteredMenuItems.pasta[Math.floor(Math.random() * filteredMenuItems.pasta.length)]
         validatedRecommendations.pasta = [randomItem]
@@ -751,9 +810,7 @@ Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 
 
       if (dessertSelections.length > 0) {
         validatedRecommendations.dessert = [dessertSelections[0]]
-        console.log(
-          `Dessert: Selected "${dessertSelections[0]}"`,
-        )
+        console.log(`Dessert: Selected "${dessertSelections[0]}"`)
       } else {
         const randomItem = filteredMenuItems.dessert[Math.floor(Math.random() * filteredMenuItems.dessert.length)]
         validatedRecommendations.dessert = [randomItem]
@@ -771,16 +828,13 @@ Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 
 
       if (beverageSelections.length > 0) {
         validatedRecommendations.beverage = [beverageSelections[0]]
-        console.log(
-          `Beverage: Selected "${beverageSelections[0]}"`,
-        )
+        console.log(`Beverage: Selected "${beverageSelections[0]}"`)
       } else {
         const randomItem = filteredMenuItems.beverage[Math.floor(Math.random() * filteredMenuItems.beverage.length)]
         validatedRecommendations.beverage = [randomItem]
         console.log(`Beverage: Fallback selected "${randomItem}"`)
       }
     }
-
 
     // Ensure only one item per category is selected and arrays are sliced to be safe
     validatedRecommendations.beef = validatedRecommendations.beef.slice(0, 1)
@@ -803,83 +857,265 @@ Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 
       beverage: `${validatedRecommendations.beverage.length} items: [${validatedRecommendations.beverage.join(", ")}]`,
     })
 
-    const totalMainCourses =
-      (validatedRecommendations.beef.length > 0 ? 1 : 0) +
-      (validatedRecommendations.pork.length > 0 ? 1 : 0) +
-      (validatedRecommendations.chicken.length > 0 ? 1 : 0) +
-      (validatedRecommendations.seafood.length > 0 ? 1 : 0) +
-      (validatedRecommendations.vegetables.length > 0 ? 1 : 0)
-    const totalItems =
-      totalMainCourses +
-      validatedRecommendations.pasta.length +
-      validatedRecommendations.dessert.length +
-      validatedRecommendations.beverage.length
+    console.log("[v0] ===== DATABASE VERIFICATION BEFORE REASONING =====")
 
-    console.log(`COMPLIANCE CHECK: ${totalMainCourses} main courses, ${totalItems} total items`)
+    // Helper function to verify and replace items
+    const verifyAndReplaceItem = async (
+      itemName: string,
+      category: string,
+      fallbackPool: string[],
+    ): Promise<string> => {
+      if (!itemName) return fallbackPool[0] || ""
 
-    if (
-      (validatedRecommendations.beef.length > 1) ||
-      (validatedRecommendations.pork.length > 1) ||
-      (validatedRecommendations.chicken.length > 1) ||
-      (validatedRecommendations.seafood.length > 1) ||
-      (validatedRecommendations.vegetables.length > 1) ||
-      (validatedRecommendations.pasta.length > 1) ||
-      (validatedRecommendations.dessert.length > 1) ||
-      (validatedRecommendations.beverage.length > 1)
-    ) {
-      console.error("CRITICAL ERROR: More than 1 item detected in a category!")
-      validatedRecommendations.beef = validatedRecommendations.beef.slice(0, 1)
-      validatedRecommendations.pork = validatedRecommendations.pork.slice(0, 1)
-      validatedRecommendations.chicken = validatedRecommendations.chicken.slice(0, 1)
-      validatedRecommendations.seafood = validatedRecommendations.seafood.slice(0, 1)
-      validatedRecommendations.vegetables = validatedRecommendations.vegetables.slice(0, 1)
-      validatedRecommendations.pasta = validatedRecommendations.pasta.slice(0, 1)
-      validatedRecommendations.dessert = validatedRecommendations.dessert.slice(0, 1)
-      validatedRecommendations.beverage = validatedRecommendations.beverage.slice(0, 1)
+      console.log(`[v0] Verifying "${itemName}" in category "${category}"`)
+
+      const { data, error } = await supabase
+        .from("tbl_menu_items")
+        .select("name")
+        .ilike("name", itemName)
+        .eq("category", category)
+        .limit(1)
+
+      if (error) {
+        console.error(`[v0] Database error checking "${itemName}":`, error)
+        return itemName // Keep original if database error
+      }
+
+      if (data && data.length > 0) {
+        console.log(`[v0] ✓ "${itemName}" exists in database`)
+        return itemName
+      } else {
+        const fallback = fallbackPool[0] || itemName
+        console.log(`[v0] ✗ "${itemName}" NOT in database, replacing with "${fallback}"`)
+        return fallback
+      }
     }
 
-    // Build a summary of what was actually selected for validation
-    const selectedDishes = [
-      ...validatedRecommendations.beef,
-      ...validatedRecommendations.pork,
-      ...validatedRecommendations.chicken,
-      ...validatedRecommendations.seafood,
-      ...validatedRecommendations.vegetables,
-      ...validatedRecommendations.pasta,
-    ].filter(dish => dish); // Filter out empty strings if any category was not selected
+    // Verify and replace each category
+    if (validatedRecommendations.beef.length > 0) {
+      validatedRecommendations.beef[0] = await verifyAndReplaceItem(
+        validatedRecommendations.beef[0],
+        "Beef",
+        randomizedMenuItems.beef,
+      )
+    }
 
-    console.log("[v0] Selected dishes for reasoning validation:", selectedDishes)
-    console.log("[v0] AI-generated reasoning:", validatedRecommendations.reasoning)
+    if (validatedRecommendations.pork.length > 0) {
+      validatedRecommendations.pork[0] = await verifyAndReplaceItem(
+        validatedRecommendations.pork[0],
+        "Pork",
+        randomizedMenuItems.pork,
+      )
+    }
 
-    // Create an enhanced reasoning that references the actual selections
-    const enhancedReasoning = `I selected ${selectedDishes.join(", ")} ${
-      selectedDishes.length > 0 
-        ? `because ${userPrefs.emphasis.includes('beef') ? 'you expressed a strong preference for beef' : 
-             userPrefs.emphasis.includes('pork') ? 'you expressed a strong preference for pork' :
-             userPrefs.emphasis.includes('chicken') ? 'you expressed a strong preference for chicken' :
-             userPrefs.emphasis.includes('seafood') ? 'you expressed a strong preference for seafood' :
-             userPrefs.emphasis.includes('vegetables') ? 'you expressed a strong preference for vegetables' :
-             'they align with your preferences'}` 
-        : 'based on your preferences'
-    }. ${
-      aiRecommendations.venueRecommendation 
-        ? `I chose ${aiRecommendations.venueRecommendation.venueName} in ${aiRecommendations.venueRecommendation.barangay}${
-            userLocation.barangay && aiRecommendations.venueRecommendation.barangay?.toLowerCase() !== userLocation.barangay.toLowerCase()
-              ? ` (close to ${userLocation.barangay})`
-              : userLocation.barangay 
-                ? ` because you live in ${userLocation.barangay}`
-                : ''
-          }${userLocation.city ? `, ${userLocation.city}` : ''}.`
-        : ''
-    } The ${aiRecommendations.eventTheme || 'elegant'} theme with ${aiRecommendations.colorMotif || 'sophisticated colors'} ${
-      userPrefs.emphasis.some(pref => ['elegant', 'modern', 'rustic'].includes(pref)) ? 
-        `reflects your preference for ${userPrefs.emphasis.find(pref => ['elegant', 'modern', 'rustic'].includes(pref))} style` :
-      'complements your event perfectly'
-    }.`
+    if (validatedRecommendations.chicken.length > 0) {
+      validatedRecommendations.chicken[0] = await verifyAndReplaceItem(
+        validatedRecommendations.chicken[0],
+        "Chicken",
+        randomizedMenuItems.chicken,
+      )
+    }
 
-    validatedRecommendations.reasoning = enhancedReasoning
+    if (validatedRecommendations.seafood.length > 0) {
+      validatedRecommendations.seafood[0] = await verifyAndReplaceItem(
+        validatedRecommendations.seafood[0],
+        "Seafood",
+        randomizedMenuItems.seafood,
+      )
+    }
 
-    console.log("[v0] Enhanced reasoning with actual selections:", enhancedReasoning)
+    if (validatedRecommendations.vegetables.length > 0) {
+      validatedRecommendations.vegetables[0] = await verifyAndReplaceItem(
+        validatedRecommendations.vegetables[0],
+        "Vegetables",
+        randomizedMenuItems.vegetables,
+      )
+    }
+
+    if (validatedRecommendations.pasta.length > 0) {
+      validatedRecommendations.pasta[0] = await verifyAndReplaceItem(
+        validatedRecommendations.pasta[0],
+        "Pasta",
+        randomizedMenuItems.pasta,
+      )
+    }
+
+    if (validatedRecommendations.dessert.length > 0) {
+      validatedRecommendations.dessert[0] = await verifyAndReplaceItem(
+        validatedRecommendations.dessert[0],
+        "Desserts",
+        randomizedMenuItems.dessert,
+      )
+    }
+
+    if (validatedRecommendations.beverage.length > 0) {
+      validatedRecommendations.beverage[0] = await verifyAndReplaceItem(
+        validatedRecommendations.beverage[0],
+        "Beverages",
+        randomizedMenuItems.beverage,
+      )
+    }
+
+    console.log("[v0] ===== ITEMS AFTER DATABASE VERIFICATION =====")
+    console.log("[v0] Final verified items:", {
+      beef: validatedRecommendations.beef,
+      pork: validatedRecommendations.pork,
+      chicken: validatedRecommendations.chicken,
+      seafood: validatedRecommendations.seafood,
+      vegetables: validatedRecommendations.vegetables,
+      pasta: validatedRecommendations.pasta,
+      dessert: validatedRecommendations.dessert,
+      beverage: validatedRecommendations.beverage,
+    })
+
+    // NOW build reasoning from database-verified items
+    const menuExplanation = []
+
+    console.log("[v0] ===== BUILDING REASONING FROM VERIFIED ITEMS =====")
+
+    // Menu 1 explanation (Pork or Beef) - use DATABASE-VERIFIED items
+    if (validatedRecommendations.beef.length > 0) {
+      menuExplanation.push(`From Menu 1 (Pork and Beef), I selected ${validatedRecommendations.beef[0]}`)
+      console.log(`[v0] Menu 1 explanation: Using VERIFIED beef "${validatedRecommendations.beef[0]}"`)
+    } else if (validatedRecommendations.pork.length > 0) {
+      menuExplanation.push(`From Menu 1 (Pork and Beef), I selected ${validatedRecommendations.pork[0]}`)
+      console.log(`[v0] Menu 1 explanation: Using VERIFIED pork "${validatedRecommendations.pork[0]}"`)
+    }
+
+    // Menu 2 explanation (Chicken) - use DATABASE-VERIFIED items
+    if (validatedRecommendations.chicken.length > 0) {
+      menuExplanation.push(`From Menu 2 (Chicken), I selected ${validatedRecommendations.chicken[0]}`)
+      console.log(`[v0] Menu 2 explanation: Using VERIFIED chicken "${validatedRecommendations.chicken[0]}"`)
+    }
+
+    // Menu 3 explanation (Seafood or Vegetables) - use DATABASE-VERIFIED items
+    if (validatedRecommendations.seafood.length > 0) {
+      menuExplanation.push(`From Menu 3 (Seafood and Vegetables), I selected ${validatedRecommendations.seafood[0]}`)
+      console.log(`[v0] Menu 3 explanation: Using VERIFIED seafood "${validatedRecommendations.seafood[0]}"`)
+    } else if (validatedRecommendations.vegetables.length > 0) {
+      menuExplanation.push(`From Menu 3 (Seafood and Vegetables), I selected ${validatedRecommendations.vegetables[0]}`)
+      console.log(`[v0] Menu 3 explanation: Using VERIFIED vegetables "${validatedRecommendations.vegetables[0]}"`)
+    }
+
+    // Extras explanation - use DATABASE-VERIFIED items
+    const extrasExplanation = []
+    if (validatedRecommendations.pasta.length > 0) {
+      extrasExplanation.push(`${validatedRecommendations.pasta[0]} (Pasta)`)
+      console.log(`[v0] Pasta explanation: VERIFIED "${validatedRecommendations.pasta[0]}"`)
+    }
+    if (validatedRecommendations.dessert.length > 0) {
+      extrasExplanation.push(`${validatedRecommendations.dessert[0]} (Dessert)`)
+      console.log(`[v0] Dessert explanation: VERIFIED "${validatedRecommendations.dessert[0]}"`)
+    }
+    if (validatedRecommendations.beverage.length > 0) {
+      extrasExplanation.push(`${validatedRecommendations.beverage[0]} (Beverage)`)
+      console.log(`[v0] Beverage explanation: VERIFIED "${validatedRecommendations.beverage[0]}"`)
+    }
+
+    // Build preference explanation
+    let preferenceExplanation = ""
+    if (aiPreferences && aiPreferences.trim().length > 0) {
+      // Extract key preferences mentioned by user
+      const lowerPrefs = aiPreferences.toLowerCase()
+      const mentionedPrefs = []
+
+      if (lowerPrefs.includes("seafood") || lowerPrefs.includes("fish")) {
+        mentionedPrefs.push("love for seafood")
+      }
+      if (lowerPrefs.includes("spicy")) {
+        mentionedPrefs.push("preference for spicy food")
+      }
+      if (lowerPrefs.includes("elegant") || lowerPrefs.includes("sophisticated")) {
+        mentionedPrefs.push("desire for elegant dishes")
+      }
+      if (lowerPrefs.includes("modern") || lowerPrefs.includes("contemporary")) {
+        mentionedPrefs.push("modern aesthetic")
+      }
+      if (lowerPrefs.includes("traditional") || lowerPrefs.includes("classic")) {
+        mentionedPrefs.push("traditional preferences")
+      }
+      if (lowerPrefs.includes("colorful") || lowerPrefs.includes("vibrant")) {
+        mentionedPrefs.push("vibrant style")
+      }
+      if (lowerPrefs.includes("simple") || lowerPrefs.includes("minimalist")) {
+        mentionedPrefs.push("minimalist approach")
+      }
+
+      if (mentionedPrefs.length > 0) {
+        preferenceExplanation = ` because they align with your ${mentionedPrefs.join(" and ")}`
+      } else {
+        preferenceExplanation = " to match your event preferences"
+      }
+    }
+
+    // Build detailed venue explanation
+    let venueExplanation = ""
+    if (aiRecommendations.venueRecommendation) {
+      const venue = aiRecommendations.venueRecommendation
+      const venueName = venue.venueName || "venue"
+      const venueBarangay = venue.barangay || ""
+      const venueCity = venue.city || ""
+      const venueStreet = venue.streetAddress || ""
+      const fullAddress = [venueStreet, venueBarangay, venueCity].filter(Boolean).join(", ")
+
+      if (userLocation.barangay) {
+        // User specified a barangay
+        const userBarangayLower = userLocation.barangay.toLowerCase().trim()
+        const venueBarangayLower = venueBarangay.toLowerCase().trim()
+
+        if (venueBarangayLower.includes(userBarangayLower) || userBarangayLower.includes(venueBarangayLower)) {
+          // Venue is in the user's barangay
+          venueExplanation = `For the venue, I selected ${venueName} at ${fullAddress} because it's located in your barangay, ${userLocation.barangay}.`
+        } else {
+          // Venue is NOT in the user's barangay - explain why
+          venueExplanation = `For the venue, I couldn't find a suitable location directly in Barangay ${userLocation.barangay}, so I chose ${venueName} at ${fullAddress} as it's the closest available option${userLocation.city ? ` in ${userLocation.city}` : " in your area"}.`
+        }
+      } else if (userLocation.city) {
+        // User specified a city only
+        venueExplanation = `For the venue, I selected ${venueName} at ${fullAddress}, which is a great location in ${userLocation.city} where you mentioned you're based.`
+      } else {
+        // No specific location
+        venueExplanation = `For the venue, I chose ${venueName} at ${fullAddress} as it's a convenient and popular location within our service area.`
+      }
+    }
+
+    // Build theme and color explanation
+    let themeExplanation = ""
+    if (aiRecommendations.eventTheme || aiRecommendations.colorMotif) {
+      const theme = aiRecommendations.eventTheme || "elegant"
+      const colors = aiRecommendations.colorMotif || "sophisticated colors"
+
+      // Check if user mentioned theme preferences
+      const lowerPrefs = (aiPreferences || "").toLowerCase()
+      if (lowerPrefs.includes("elegant") || lowerPrefs.includes("sophisticated")) {
+        themeExplanation = `The ${theme} theme with ${colors} perfectly captures your vision for an elegant and sophisticated celebration.`
+      } else if (lowerPrefs.includes("modern") || lowerPrefs.includes("contemporary")) {
+        themeExplanation = `The ${theme} theme with ${colors} reflects your preference for a modern aesthetic.`
+      } else if (lowerPrefs.includes("traditional") || lowerPrefs.includes("classic")) {
+        themeExplanation = `The ${theme} theme with ${colors} honors your desire for a traditional celebration.`
+      } else if (lowerPrefs.includes("fun") || lowerPrefs.includes("playful") || lowerPrefs.includes("vibrant")) {
+        themeExplanation = `The ${theme} theme with ${colors} creates the fun and vibrant atmosphere you're looking for.`
+      } else {
+        themeExplanation = `The ${theme} theme with ${colors} complements your ${eventType.toLowerCase()} event beautifully.`
+      }
+    }
+
+    // Combine all explanations into comprehensive reasoning
+    const comprehensiveReasoning = [
+      menuExplanation.join(". ") + (preferenceExplanation ? preferenceExplanation + "." : "."),
+      extrasExplanation.length > 0 ? `For extras, I included ${extrasExplanation.join(", ")}.` : "",
+      venueExplanation,
+      themeExplanation,
+    ]
+      .filter((part) => part && part.trim().length > 0)
+      .join(" ")
+
+    // CRITICAL: Always use the comprehensively built reasoning from database-verified items
+    validatedRecommendations.reasoning = comprehensiveReasoning
+
+    console.log("[v0] ===== FINAL COMPREHENSIVE REASONING (FROM VERIFIED ITEMS) =====")
+    console.log(comprehensiveReasoning)
+    console.log("[v0] ===== END REASONING =====")
 
     return NextResponse.json({
       success: true,

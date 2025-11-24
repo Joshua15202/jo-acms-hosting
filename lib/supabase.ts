@@ -1,25 +1,22 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 
-// Define the database types for the auth system
+// Define the database types
 export type User = {
   id: string
   first_name: string
   last_name: string
+  full_name: string
   email: string
-  password: string // Note: In production, this should be password_hash
-  verified: boolean
+  phone?: string
+  password_hash: string
+  role: "user" | "admin" | "assistant"
+  is_verified: boolean
+  verification_code?: string
+  verification_expires?: string
   created_at: string
+  updated_at: string
 }
 
-export type VerificationCode = {
-  id: string
-  email: string
-  code: string
-  expires_at: string
-  created_at: string
-}
-
-// Your existing types for the catering system
 export type Appointment = {
   id: string
   user_id: string
@@ -62,24 +59,15 @@ export type Message = {
 export type Database = {
   public: {
     Tables: {
-      // Auth tables (what we created)
-      users: {
+      tbl_users: {
         Row: User
-        Insert: Omit<User, "id" | "created_at"> & {
+        Insert: Omit<User, "id" | "created_at" | "updated_at"> & {
           id?: string
           created_at?: string
+          updated_at?: string
         }
         Update: Partial<Omit<User, "id">>
       }
-      verification_codes: {
-        Row: VerificationCode
-        Insert: Omit<VerificationCode, "id" | "created_at"> & {
-          id?: string
-          created_at?: string
-        }
-        Update: Partial<Omit<VerificationCode, "id">>
-      }
-      // Your existing catering tables
       tbl_appointments: {
         Row: Appointment
         Insert: Omit<Appointment, "id" | "created_at" | "updated_at"> & {
@@ -120,7 +108,7 @@ if (!supabaseUrl) {
   throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable")
 }
 
-if (!supabaseServiceKey) {
+if (!supabaseServiceKey && typeof window === "undefined") {
   throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY environment variable")
 }
 
@@ -128,20 +116,33 @@ if (!supabaseAnonKey) {
   throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable")
 }
 
-// Admin client for server-side operations
-export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-})
+// Admin client for server-side operations only
+export const supabaseAdmin = supabaseServiceKey
+  ? createClient<Database>(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+  : null
 
 // Client for browser operations
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+)
+
+// Export function to create a browser client instance
+export function createBrowserClient(): SupabaseClient<Database> {
+  return createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+}
 
 // Export a function to get the appropriate client
 export function getSupabaseClient(useServiceRole = false): SupabaseClient<Database> {
-  return useServiceRole ? supabaseAdmin : supabase
+  if (useServiceRole && !supabaseAdmin) {
+    throw new Error("Admin client not available")
+  }
+  return useServiceRole ? supabaseAdmin! : supabase
 }
 
 console.log("Supabase clients initialized successfully")

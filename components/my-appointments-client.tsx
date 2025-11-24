@@ -6,7 +6,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, Users, MapPin, Utensils, Edit, X, CreditCard, RefreshCw, Pencil } from "lucide-react"
+import { Calendar, Clock, Users, MapPin, Utensils, Edit, X, CreditCard, RefreshCw, Pencil, Star } from "lucide-react"
 import { format } from "date-fns"
 import { useAuth } from "@/components/user-auth-provider"
 import {
@@ -400,10 +400,17 @@ export default function MyAppointmentsClient() {
   // Cancel dialog state
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState("")
-  const [cancelAttachment, setCancelAttachment] = useState<File | null>(null) // New state for cancellation attachment
-  const [cancelAttachmentUrl, setCancelAttachmentUrl] = useState("") // New state for cancellation attachment URL
-  const [uploadingAttachment, setUploadingAttachment] = useState(false) // New state for attachment upload progress
+  const [cancelAttachment, setCancelAttachment] = useState<File | null>(null)
+  const [cancelAttachmentUrl, setCancelAttachmentUrl] = useState("")
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const [cancelLoading, setCancelLoading] = useState(false)
+
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false)
+  const [ratingAppointment, setRatingAppointment] = useState<Appointment | null>(null)
+  const [rating, setRating] = useState(0)
+  const [hoverRating, setHoverRating] = useState(0)
+  const [feedback, setFeedback] = useState("")
+  const [submittingRating, setSubmittingRating] = useState(false)
 
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
@@ -824,7 +831,7 @@ export default function MyAppointmentsClient() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({
+          body: JSON.JSON.stringify({
             reason: "User cancelled unpaid appointment",
           }),
         })
@@ -1194,6 +1201,63 @@ export default function MyAppointmentsClient() {
     }
   }
 
+  const handleOpenRatingDialog = (appointment: Appointment) => {
+    setRatingAppointment(appointment)
+    setRatingDialogOpen(true)
+    setRating(0)
+    setHoverRating(0)
+    setFeedback("")
+  }
+
+  const handleSubmitRating = async () => {
+    if (!ratingAppointment || !user) return
+
+    if (rating === 0) {
+      alert("Please select a rating")
+      return
+    }
+
+    if (!feedback.trim()) {
+      alert("Please provide your feedback")
+      return
+    }
+
+    setSubmittingRating(true)
+    try {
+      const response = await fetch("/api/testimonials", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          userId: user.id,
+          appointmentId: ratingAppointment.id,
+          rating,
+          message: feedback,
+          eventType: ratingAppointment.event_type,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        alert("Thank you for your feedback! Your review has been submitted.")
+        setRatingDialogOpen(false)
+        setRating(0)
+        setFeedback("")
+        setRatingAppointment(null)
+      } else {
+        alert(data.error || "Failed to submit rating. Please try again.")
+      }
+    } catch (error) {
+      console.error("Error submitting rating:", error)
+      alert("Failed to submit rating. Please try again.")
+    } finally {
+      setSubmittingRating(false)
+    }
+  }
+
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
 
   if (loading) {
@@ -1522,6 +1586,17 @@ export default function MyAppointmentsClient() {
 
                   {/* Action Buttons */}
                   <div className="mt-8 flex flex-col gap-3 pt-6 border-t md:col-span-2">
+                    {appointment.status === "completed" && (
+                      <Button
+                        variant="outline"
+                        onClick={() => handleOpenRatingDialog(appointment)}
+                        className="w-full border-yellow-300 text-yellow-600 hover:bg-yellow-50"
+                      >
+                        <Star className="h-4 w-4 mr-2" />
+                        Leave a Rating
+                      </Button>
+                    )}
+
                     {appointment.payment_status === "unpaid" &&
                       appointment.status !== "cancelled" &&
                       appointment.status !== "completed" && (
@@ -2224,6 +2299,91 @@ export default function MyAppointmentsClient() {
             </Button>
             <Button onClick={submitEdit} disabled={editLoading}>
               {editLoading ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={ratingDialogOpen} onOpenChange={setRatingDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Leave a Rating</DialogTitle>
+            <DialogDescription>
+              Share your experience with Jo-ACMS Catering. Your feedback helps us improve our service.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Star Rating */}
+            <div className="flex flex-col items-center gap-2">
+              <Label className="text-sm font-medium">Rate your experience</Label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    className="transition-transform hover:scale-110"
+                  >
+                    <Star
+                      className={`h-10 w-10 ${
+                        star <= (hoverRating || rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              {rating > 0 && (
+                <p className="text-sm text-gray-600">
+                  {rating === 1 && "Poor"}
+                  {rating === 2 && "Fair"}
+                  {rating === 3 && "Good"}
+                  {rating === 4 && "Very Good"}
+                  {rating === 5 && "Excellent"}
+                </p>
+              )}
+            </div>
+
+            {/* Feedback Text */}
+            <div className="space-y-2">
+              <Label htmlFor="feedback">Your Feedback</Label>
+              <Textarea
+                id="feedback"
+                placeholder="Tell us about your experience with our catering service..."
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                rows={5}
+                className="resize-none"
+              />
+            </div>
+
+            {/* Event Info */}
+            {ratingAppointment && (
+              <div className="bg-gray-50 p-3 rounded-lg text-sm">
+                <p className="font-medium text-gray-900 capitalize">{ratingAppointment.event_type} Event</p>
+                <p className="text-gray-600">{formatEventDate(ratingAppointment.event_date)}</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRatingDialogOpen(false)}
+              disabled={submittingRating}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmitRating}
+              disabled={submittingRating || rating === 0 || !feedback.trim()}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              {submittingRating ? "Submitting..." : "Submit Rating"}
             </Button>
           </DialogFooter>
         </DialogContent>

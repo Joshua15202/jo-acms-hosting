@@ -808,7 +808,7 @@ export default function BookAppointmentPage() {
           <Tabs defaultValue="standard" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="standard">Book Appointment</TabsTrigger>
-              <TabsTrigger value="ai">AI-Powered Recommendation</TabsTrigger>
+              <TabsTrigger value="ai">AI-Based Recommendation</TabsTrigger>
             </TabsList>
             <TabsContent value="standard">
               <div className="mt-6 rounded-lg border p-6 shadow-sm">

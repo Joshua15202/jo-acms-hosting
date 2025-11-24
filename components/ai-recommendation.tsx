@@ -6,10 +6,22 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
-import { ChevronRight, Loader2, Shuffle, Mail, Home, Sparkles, User, Calendar, Clock, MapPin, Phone } from 'lucide-react'
+import {
+  ChevronRight,
+  Loader2,
+  Shuffle,
+  Mail,
+  Home,
+  Sparkles,
+  User,
+  Calendar,
+  Clock,
+  MapPin,
+  Phone,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Textarea } from "@/components/ui/textarea"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 
 interface PersonalInfo {
   firstName: string
@@ -1162,8 +1174,180 @@ export default function AIRecommendation({
   }
 
   // Enhanced function to enforce exactly 1 main course from each menu category
-  const enforceFixedStructure = (aiRecommendations: any, userPrefs: any, filteredMenuItems: any) => {
-    console.log("Enforcing fixed structure - Input:", aiRecommendations)
+  // </OLD_ENFORCE_STRUCTURE>
+  // const enforceFixedStructure = (aiRecommendations: any, userPrefs: any, filteredMenuItems: any) => {
+  //   console.log("Enforcing fixed structure - Input:", aiRecommendations)
+
+  //   const finalMenu = {
+  //     menu1: [] as string[],
+  //     menu2: [] as string[],
+  //     menu3: [] as string[],
+  //     pasta: aiRecommendations.pasta?.slice(0, 1) || [],
+  //     dessert: aiRecommendations.dessert?.slice(0, 1) || [],
+  //     beverage: aiRecommendations.beverage?.slice(0, 1) || [],
+  //   }
+
+  //   console.log("User preferences:", userPrefs)
+
+  //   // Handle "only" requests
+  //   if (userPrefs.onlyRequests.length > 0) {
+  //     console.log("Processing 'only' requests:", userPrefs.onlyRequests)
+
+  //     if (userPrefs.onlyRequests.includes("beef") && filteredMenuItems.beef.length > 0) {
+  //       finalMenu.menu1 = [
+  //         shuffleArray([...filteredMenuItems.beef])[0].name || shuffleArray([...filteredMenuItems.beef])[0],
+  //       ]
+  //     } else if (userPrefs.onlyRequests.includes("pork") && filteredMenuItems.pork.length > 0) {
+  //       finalMenu.menu1 = [
+  //         shuffleArray([...filteredMenuItems.pork])[0].name || shuffleArray([...filteredMenuItems.pork])[0],
+  //       ]
+  //     }
+
+  //     if (userPrefs.onlyRequests.includes("chicken") && filteredMenuItems.chicken.length > 0) {
+  //       finalMenu.menu2 = [
+  //         shuffleArray([...filteredMenuItems.chicken])[0].name || shuffleArray([...filteredMenuItems.chicken])[0],
+  //       ]
+  //     }
+
+  //     if (userPrefs.onlyRequests.includes("seafood") && filteredMenuItems.seafood.length > 0) {
+  //       finalMenu.menu3 = [
+  //         shuffleArray([...filteredMenuItems.seafood])[0].name || shuffleArray([...filteredMenuItems.seafood])[0],
+  //       ]
+  //     } else if (userPrefs.onlyRequests.includes("vegetables") && filteredMenuItems.vegetables.length > 0) {
+  //       finalMenu.menu3 = [
+  //         shuffleArray([...filteredMenuItems.vegetables])[0].name || shuffleArray([...filteredMenuItems.vegetables])[0],
+  //       ]
+  //     }
+  //   } else {
+  //     console.log("Processing normal distribution - 1 from each menu, respecting restrictions")
+
+  //     if (!userPrefs.restrictions.includes("beef") || !userPrefs.restrictions.includes("pork")) {
+  //       let menu1Items = []
+
+  //       if (!userPrefs.restrictions.includes("beef") && filteredMenuItems.beef.length > 0) {
+  //         menu1Items.push(...filteredMenuItems.beef)
+  //       }
+
+  //       if (!userPrefs.restrictions.includes("pork") && filteredMenuItems.pork.length > 0) {
+  //         menu1Items.push(...filteredMenuItems.pork)
+  //       }
+
+  //       if (menu1Items.length > 0) {
+  //         if (userPrefs.emphasis.includes("beef") || userPrefs.emphasis.includes("pork")) {
+  //           const emphasizedItems = menu1Items.filter((item) => {
+  //             const itemName = (item.name || item).toLowerCase()
+  //             return (
+  //               (userPrefs.emphasis.includes("beef") && itemName.includes("beef")) ||
+  //               (userPrefs.emphasis.includes("pork") && itemName.includes("pork"))
+  //             )
+  //           })
+
+  //           if (emphasizedItems.length > 0) {
+  //             menu1Items = emphasizedItems
+  //           }
+  //         }
+
+  //         const selectedItem = shuffleArray(menu1Items)[0]
+  //         finalMenu.menu1 = [selectedItem.name || selectedItem]
+  //       }
+  //     }
+
+  //     if (!userPrefs.restrictions.includes("chicken") && filteredMenuItems.chicken.length > 0) {
+  //       let chickenItems = [...filteredMenuItems.chicken]
+
+  //       if (userPrefs.emphasis.includes("chicken")) {
+  //         chickenItems = shuffleArray(chickenItems)
+  //       }
+
+  //       const selectedItem = shuffleArray(chickenItems)[0]
+  //       finalMenu.menu2 = [selectedItem.name || selectedItem]
+  //     }
+
+  //     if (!userPrefs.restrictions.includes("seafood") || !userPrefs.restrictions.includes("vegetables")) {
+  //       let menu3Items = []
+
+  //       if (!userPrefs.restrictions.includes("seafood") && filteredMenuItems.seafood.length > 0) {
+  //         menu3Items.push(...filteredMenuItems.seafood)
+  //       }
+
+  //       if (!userPrefs.restrictions.includes("vegetables") && filteredMenuItems.vegetables.length > 0) {
+  //         menu3Items.push(...filteredMenuItems.vegetables)
+  //       }
+
+  //       if (menu3Items.length > 0) {
+  //         if (userPrefs.emphasis.includes("seafood") || userPrefs.emphasis.includes("vegetables")) {
+  //           const emphasizedItems = menu3Items.filter((item) => {
+  //             const itemName = (item.name || item).toLowerCase()
+  //             return (
+  //               (userPrefs.emphasis.includes("seafood") &&
+  //                 (itemName.includes("fish") || itemName.includes("seafood") || itemName.includes("camaron"))) ||
+  //               (userPrefs.emphasis.includes("vegetables") &&
+  //                 (itemName.includes("vegetable") || itemName.includes("chopsuey") || itemName.includes("lumpiang")))
+  //             )
+  //           })
+
+  //           if (emphasizedItems.length > 0) {
+  //             menu3Items = emphasizedItems
+  //           }
+  //         }
+
+  //         const selectedItem = shuffleArray(menu3Items)[0]
+  //         finalMenu.menu3 = [selectedItem.name || selectedItem]
+  //       }
+  //     }
+  //   }
+
+  //   if (
+  //     finalMenu.pasta.length === 0 &&
+  //     !userPrefs.restrictions.includes("pasta") &&
+  //     filteredMenuItems.pasta.length > 0
+  //   ) {
+  //     finalMenu.pasta = [
+  //       shuffleArray([...filteredMenuItems.pasta])[0].name || shuffleArray([...filteredMenuItems.pasta])[0],
+  //     ]
+  //   }
+  //   if (finalMenu.dessert.length === 0 && filteredMenuItems.dessert.length > 0) {
+  //     finalMenu.dessert = [
+  //       shuffleArray([...filteredMenuItems.dessert])[0].name || shuffleArray([...filteredMenuItems.dessert])[0],
+  //     ]
+  //   }
+  //   if (finalMenu.beverage.length === 0 && filteredMenuItems.beverage.length > 0) {
+  //     finalMenu.beverage = [
+  //       shuffleArray([...filteredMenuItems.beverage])[0].name || shuffleArray([...filteredMenuItems.beverage])[0],
+  //     ]
+  //   }
+
+  //   const totalMainCourses = finalMenu.menu1.length + finalMenu.menu2.length + finalMenu.menu3.length
+  //   console.log("Final menu structure:", {
+  //     menu1: finalMenu.menu1.length,
+  //     menu2: finalMenu.menu2.length,
+  //     menu3: finalMenu.menu3.length,
+  //     pasta: finalMenu.pasta.length,
+  //     dessert: finalMenu.dessert.length,
+  //     beverage: finalMenu.beverage.length,
+  //     totalMainCourses,
+  //   })
+
+  //   return finalMenu
+  // }
+
+  // </OLD_ENFORCE_STRUCTURE>
+
+  // <NEW_ENFORCE_STRUCTURE>
+  const enforceFixedStructure = (
+    aiRecommendations: any,
+    filteredMenuItems: any,
+    preferences: string,
+    eventType: string,
+    guestCount: number,
+  ) => {
+    console.log("[v0] Enforcing fixed structure - Input:", {
+      beef: aiRecommendations.beef,
+      pork: aiRecommendations.pork,
+      chicken: aiRecommendations.chicken,
+      seafood: aiRecommendations.seafood,
+      vegetables: aiRecommendations.vegetables,
+    })
 
     const finalMenu = {
       menu1: [] as string[],
@@ -1174,149 +1358,40 @@ export default function AIRecommendation({
       beverage: aiRecommendations.beverage?.slice(0, 1) || [],
     }
 
-    console.log("User preferences:", userPrefs)
-
-    // Handle "only" requests
-    if (userPrefs.onlyRequests.length > 0) {
-      console.log("Processing 'only' requests:", userPrefs.onlyRequests)
-
-      if (userPrefs.onlyRequests.includes("beef") && filteredMenuItems.beef.length > 0) {
-        finalMenu.menu1 = [
-          shuffleArray([...filteredMenuItems.beef])[0].name || shuffleArray([...filteredMenuItems.beef])[0],
-        ]
-      } else if (userPrefs.onlyRequests.includes("pork") && filteredMenuItems.pork.length > 0) {
-        finalMenu.menu1 = [
-          shuffleArray([...filteredMenuItems.pork])[0].name || shuffleArray([...filteredMenuItems.pork])[0],
-        ]
-      }
-
-      if (userPrefs.onlyRequests.includes("chicken") && filteredMenuItems.chicken.length > 0) {
-        finalMenu.menu2 = [
-          shuffleArray([...filteredMenuItems.chicken])[0].name || shuffleArray([...filteredMenuItems.chicken])[0],
-        ]
-      }
-
-      if (userPrefs.onlyRequests.includes("seafood") && filteredMenuItems.seafood.length > 0) {
-        finalMenu.menu3 = [
-          shuffleArray([...filteredMenuItems.seafood])[0].name || shuffleArray([...filteredMenuItems.seafood])[0],
-        ]
-      } else if (userPrefs.onlyRequests.includes("vegetables") && filteredMenuItems.vegetables.length > 0) {
-        finalMenu.menu3 = [
-          shuffleArray([...filteredMenuItems.vegetables])[0].name || shuffleArray([...filteredMenuItems.vegetables])[0],
-        ]
-      }
-    } else {
-      console.log("Processing normal distribution - 1 from each menu, respecting restrictions")
-
-      if (!userPrefs.restrictions.includes("beef") || !userPrefs.restrictions.includes("pork")) {
-        let menu1Items = []
-
-        if (!userPrefs.restrictions.includes("beef") && filteredMenuItems.beef.length > 0) {
-          menu1Items.push(...filteredMenuItems.beef)
-        }
-
-        if (!userPrefs.restrictions.includes("pork") && filteredMenuItems.pork.length > 0) {
-          menu1Items.push(...filteredMenuItems.pork)
-        }
-
-        if (menu1Items.length > 0) {
-          if (userPrefs.emphasis.includes("beef") || userPrefs.emphasis.includes("pork")) {
-            const emphasizedItems = menu1Items.filter((item) => {
-              const itemName = (item.name || item).toLowerCase()
-              return (
-                (userPrefs.emphasis.includes("beef") && itemName.includes("beef")) ||
-                (userPrefs.emphasis.includes("pork") && itemName.includes("pork"))
-              )
-            })
-
-            if (emphasizedItems.length > 0) {
-              menu1Items = emphasizedItems
-            }
-          }
-
-          const selectedItem = shuffleArray(menu1Items)[0]
-          finalMenu.menu1 = [selectedItem.name || selectedItem]
-        }
-      }
-
-      if (!userPrefs.restrictions.includes("chicken") && filteredMenuItems.chicken.length > 0) {
-        let chickenItems = [...filteredMenuItems.chicken]
-
-        if (userPrefs.emphasis.includes("chicken")) {
-          chickenItems = shuffleArray(chickenItems)
-        }
-
-        const selectedItem = shuffleArray(chickenItems)[0]
-        finalMenu.menu2 = [selectedItem.name || selectedItem]
-      }
-
-      if (!userPrefs.restrictions.includes("seafood") || !userPrefs.restrictions.includes("vegetables")) {
-        let menu3Items = []
-
-        if (!userPrefs.restrictions.includes("seafood") && filteredMenuItems.seafood.length > 0) {
-          menu3Items.push(...filteredMenuItems.seafood)
-        }
-
-        if (!userPrefs.restrictions.includes("vegetables") && filteredMenuItems.vegetables.length > 0) {
-          menu3Items.push(...filteredMenuItems.vegetables)
-        }
-
-        if (menu3Items.length > 0) {
-          if (userPrefs.emphasis.includes("seafood") || userPrefs.emphasis.includes("vegetables")) {
-            const emphasizedItems = menu3Items.filter((item) => {
-              const itemName = (item.name || item).toLowerCase()
-              return (
-                (userPrefs.emphasis.includes("seafood") &&
-                  (itemName.includes("fish") || itemName.includes("seafood") || itemName.includes("camaron"))) ||
-                (userPrefs.emphasis.includes("vegetables") &&
-                  (itemName.includes("vegetable") || itemName.includes("chopsuey") || itemName.includes("lumpiang")))
-              )
-            })
-
-            if (emphasizedItems.length > 0) {
-              menu3Items = emphasizedItems
-            }
-          }
-
-          const selectedItem = shuffleArray(menu3Items)[0]
-          finalMenu.menu3 = [selectedItem.name || selectedItem]
-        }
-      }
+    // Menu 1 (Pork and Beef)
+    if (aiRecommendations.beef?.length > 0) {
+      finalMenu.menu1 = [aiRecommendations.beef[0]]
+    } else if (aiRecommendations.pork?.length > 0) {
+      finalMenu.menu1 = [aiRecommendations.pork[0]]
     }
 
-    if (
-      finalMenu.pasta.length === 0 &&
-      !userPrefs.restrictions.includes("pasta") &&
-      filteredMenuItems.pasta.length > 0
-    ) {
-      finalMenu.pasta = [
-        shuffleArray([...filteredMenuItems.pasta])[0].name || shuffleArray([...filteredMenuItems.pasta])[0],
-      ]
-    }
-    if (finalMenu.dessert.length === 0 && filteredMenuItems.dessert.length > 0) {
-      finalMenu.dessert = [
-        shuffleArray([...filteredMenuItems.dessert])[0].name || shuffleArray([...filteredMenuItems.dessert])[0],
-      ]
-    }
-    if (finalMenu.beverage.length === 0 && filteredMenuItems.beverage.length > 0) {
-      finalMenu.beverage = [
-        shuffleArray([...filteredMenuItems.beverage])[0].name || shuffleArray([...filteredMenuItems.beverage])[0],
-      ]
+    // Menu 2 (Chicken)
+    if (aiRecommendations.chicken?.length > 0) {
+      finalMenu.menu2 = [aiRecommendations.chicken[0]]
     }
 
-    const totalMainCourses = finalMenu.menu1.length + finalMenu.menu2.length + finalMenu.menu3.length
-    console.log("Final menu structure:", {
-      menu1: finalMenu.menu1.length,
-      menu2: finalMenu.menu2.length,
-      menu3: finalMenu.menu3.length,
-      pasta: finalMenu.pasta.length,
-      dessert: finalMenu.dessert.length,
-      beverage: finalMenu.beverage.length,
-      totalMainCourses,
-    })
+    // Menu 3 (Seafood and Vegetables)
+    if (aiRecommendations.seafood?.length > 0) {
+      finalMenu.menu3 = [aiRecommendations.seafood[0]]
+    } else if (aiRecommendations.vegetables?.length > 0) {
+      finalMenu.menu3 = [aiRecommendations.vegetables[0]]
+    }
 
-    return finalMenu
+    console.log("[v0] Final menu structure from AI:", finalMenu)
+
+    return {
+      menuSelections: {
+        menu1: finalMenu.menu1,
+        menu2: finalMenu.menu2,
+        menu3: finalMenu.menu3,
+        pasta: finalMenu.pasta,
+        dessert: finalMenu.dessert,
+        beverage: finalMenu.beverage,
+      },
+    }
   }
+
+  // </NEW_ENFORCE_STRUCTURE>
 
   const generateAIRecommendations = async () => {
     if (!menuItems) {
@@ -1414,7 +1489,14 @@ export default function AIRecommendation({
           beverage: shuffleArray(menuItems.beverage),
         }
 
-        const finalMenu = enforceFixedStructure(result.recommendations, userPrefs, filteredMenuItems)
+        // Pass necessary arguments to the updated enforceFixedStructure
+        const { menuSelections: finalMenu } = enforceFixedStructure(
+          result.recommendations,
+          filteredMenuItems,
+          formData.aiPreferences || "",
+          eventInfo.eventType,
+          Number.parseInt(formData.guestCount) || 50,
+        )
 
         setSelectedMenuItems({
           menu1: finalMenu.menu1,
@@ -1684,7 +1766,14 @@ export default function AIRecommendation({
       beverage: [],
     }
 
-    const finalMenu = enforceFixedStructure(fallbackRecommendations, userPrefs, filteredMenuItems)
+    // Pass necessary arguments to the updated enforceFixedStructure
+    const { menuSelections: finalMenu } = enforceFixedStructure(
+      fallbackRecommendations,
+      filteredMenuItems,
+      formData.aiPreferences || "",
+      eventInfo.eventType,
+      Number.parseInt(formData.guestCount) || 50,
+    )
 
     setSelectedMenuItems({
       menu1: [...finalMenu.menu1],
@@ -2026,7 +2115,10 @@ export default function AIRecommendation({
                         <div className="ml-4 mt-1 space-y-0.5">
                           <div>• To exclude: "no pork", "no seafood", "halal" (excludes pork)</div>
                           <div>• To emphasize: "more beef", "lots of chicken", "I love seafood"</div>
-                          <div>• Note: AI will select from all menu categories (pork/beef, chicken, seafood/vegetables) but prioritize your preferences</div>
+                          <div>
+                            • Note: AI will select from all menu categories (pork/beef, chicken, seafood/vegetables) but
+                            prioritize your preferences
+                          </div>
                         </div>
                       </li>
                       <li>
@@ -2147,14 +2239,16 @@ export default function AIRecommendation({
                     </span>
                   </div>
 
-                  {eventInfo.eventType === "birthday" && eventInfo.celebrantName && (
+                  {eventInfo.eventType === "birthday" && (
                     <>
-                      <div>
-                        <span className="text-gray-600 dark:text-gray-400">Celebrant's Name:</span>
-                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                          {eventInfo.celebrantName}
-                        </span>
-                      </div>
+                      {eventInfo.celebrantName && (
+                        <div>
+                          <span className="text-gray-600 dark:text-gray-400">Celebrant's Name:</span>
+                          <span className="ml-2 font-medium text-gray-900 dark:text-gray-100 capitalize">
+                            {eventInfo.celebrantName}
+                          </span>
+                        </div>
+                      )}
                       {eventInfo.celebrantAge && (
                         <div>
                           <span className="text-gray-600 dark:text-gray-400">Celebrant's Age:</span>
@@ -2167,7 +2261,9 @@ export default function AIRecommendation({
                         <div>
                           <span className="text-gray-600 dark:text-gray-400">Celebrant's Gender:</span>
                           <span className="ml-2 font-medium text-gray-900 dark:text-gray-100 capitalize">
-                            {eventInfo.celebrantGender}
+                            {eventInfo.celebrantGender.toLowerCase() === "other"
+                              ? "Rather not say"
+                              : eventInfo.celebrantGender}
                           </span>
                         </div>
                       )}
@@ -2195,7 +2291,7 @@ export default function AIRecommendation({
                     </>
                   )}
 
-                  {eventInfo.eventType?.toLowerCase() === 'debut' && (
+                  {eventInfo.eventType?.toLowerCase() === "debut" && (
                     <>
                       <div>
                         <span className="text-gray-600 dark:text-gray-400">Debutante's Name:</span>
@@ -2207,8 +2303,8 @@ export default function AIRecommendation({
                         <div>
                           <span className="text-gray-600 dark:text-gray-400">Debutante's Gender:</span>
                           <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
-                            {eventInfo.debutanteGender === 'other' || eventInfo.debutanteGender === 'Other'
-                              ? 'Rather not say'
+                            {eventInfo.debutanteGender === "other" || eventInfo.debutanteGender === "Other"
+                              ? "Rather not say"
                               : eventInfo.debutanteGender}
                           </span>
                         </div>

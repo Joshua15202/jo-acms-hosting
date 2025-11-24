@@ -5,7 +5,7 @@ interface CreateAdminNotificationParams {
   paymentTransactionId?: string
   title: string
   message: string
-  type: "new_appointment" | "payment_submitted" | "alert"
+  type: "new_appointment" | "payment_submitted" | "alert" | "feedback" // alert type now includes feedback notifications
 }
 
 export async function createAdminNotification(params: CreateAdminNotificationParams) {

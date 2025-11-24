@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { Bell, X, Calendar, DollarSign } from 'lucide-react'
+import { Bell, X, Calendar, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,

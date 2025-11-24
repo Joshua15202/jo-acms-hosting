@@ -241,66 +241,66 @@ export default function EquipmentNeedsForecast() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Equipment Needs Forecast</h2>
-          <p className="text-gray-600 mt-1">AI-powered equipment predictions for upcoming events</p>
+          <h2 className="text-xl font-bold text-gray-900">Equipment Needs Forecast</h2>
+          <p className="text-sm text-gray-600">AI-powered equipment predictions</p>
         </div>
-        <Button onClick={fetchEquipmentForecast} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
+        <Button onClick={fetchEquipmentForecast} variant="outline" size="sm">
+          <RefreshCw className="h-3 w-3 mr-1" />
           Refresh
         </Button>
       </div>
 
       {/* Summary Cards */}
       {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Events</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-blue-600" />
-                <span className="text-2xl font-bold">{summary.total_events}</span>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card className="border-gray-200">
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-gray-600">Total Events</p>
+                  <p className="text-xl font-bold mt-0.5">{summary.total_events}</p>
+                </div>
+                <Calendar className="h-4 w-4 text-blue-600" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Guests</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-green-600" />
-                <span className="text-2xl font-bold">{summary.total_guests}</span>
+          <Card className="border-gray-200">
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-gray-600">Total Guests</p>
+                  <p className="text-xl font-bold mt-0.5">{summary.total_guests}</p>
+                </div>
+                <Users className="h-4 w-4 text-green-600" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Critical Events</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-                <span className="text-2xl font-bold">{summary.critical_events}</span>
+          <Card className="border-gray-200">
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-gray-600">Critical</p>
+                  <p className="text-xl font-bold mt-0.5">{summary.critical_events}</p>
+                </div>
+                <AlertTriangle className="h-4 w-4 text-red-600" />
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">High Priority</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-orange-600" />
-                <span className="text-2xl font-bold">{summary.high_priority_events}</span>
+          <Card className="border-gray-200">
+            <CardContent className="pt-3 pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-gray-600">High Priority</p>
+                  <p className="text-xl font-bold mt-0.5">{summary.high_priority_events}</p>
+                </div>
+                <Wrench className="h-4 w-4 text-orange-600" />
               </div>
             </CardContent>
           </Card>
@@ -310,21 +310,19 @@ export default function EquipmentNeedsForecast() {
       {/* Equipment Category Breakdown */}
       {Object.keys(equipmentBreakdown).length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Package className="h-4 w-4" />
               Equipment Category Breakdown
             </CardTitle>
-            <CardDescription>Total equipment needed across all upcoming events</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
               {Object.entries(equipmentBreakdown).map(([category, quantity]) => (
-                <div key={category} className="text-center p-3 bg-gray-50 rounded-lg">
-                  <div className="text-2xl mb-1">{getCategoryIcon(category)}</div>
-                  <div className="font-semibold capitalize text-sm">{category}</div>
-                  <div className="text-lg font-bold text-blue-600">{quantity}</div>
-                  <div className="text-xs text-gray-600">items needed</div>
+                <div key={category} className="text-center p-2 bg-gray-50 rounded border border-gray-200">
+                  <div className="text-lg mb-0.5">{getCategoryIcon(category)}</div>
+                  <div className="font-semibold capitalize text-xs truncate">{category}</div>
+                  <div className="text-sm font-bold text-blue-600">{quantity}</div>
                 </div>
               ))}
             </div>
@@ -335,27 +333,27 @@ export default function EquipmentNeedsForecast() {
       {/* Events List */}
       {events.length === 0 ? (
         <Card>
-          <CardContent className="text-center py-12">
-            <Table className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No upcoming events</h3>
-            <p className="text-gray-600">There are no confirmed upcoming events requiring equipment forecasting.</p>
+          <CardContent className="text-center py-8">
+            <Table className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+            <h3 className="text-base font-medium text-gray-900 mb-1">No upcoming events</h3>
+            <p className="text-sm text-gray-600">No confirmed events requiring equipment forecasting.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-6">
+        <div className="space-y-3">
           {events.map((event) => (
-            <Card key={event.id} className="relative">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{event.customer_name}</CardTitle>
-                    <CardDescription>
+            <Card key={event.id} className="border-gray-200">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-base truncate">{event.customer_name}</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
                       {event.event_type} • {new Date(event.event_date).toLocaleDateString()} • {event.guest_count}{" "}
                       guests
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className={getUrgencyColor(event.urgency_level)}>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge className={`${getUrgencyColor(event.urgency_level)} text-xs px-2 py-0`}>
                       {event.days_until_event === 0
                         ? "Today"
                         : event.days_until_event === 1
@@ -367,50 +365,57 @@ export default function EquipmentNeedsForecast() {
                       size="sm"
                       onClick={() => downloadEquipmentPDF(event.appointment_id, event.customer_name)}
                       disabled={downloadingId === event.appointment_id}
+                      className="h-7 w-7 p-0"
                     >
                       {downloadingId === event.appointment_id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
-                        <Download className="h-4 w-4" />
+                        <Download className="h-3 w-3" />
                       )}
                     </Button>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="pt-0 pb-3">
+                <div className="space-y-3">
                   {/* AI-Predicted Equipment Needs */}
                   <div>
-                    <h4 className="font-medium text-sm text-gray-700 mb-3 flex items-center gap-2">
-                      <Wrench className="h-4 w-4 text-blue-600" />
+                    <h4 className="font-medium text-xs text-gray-700 mb-2 flex items-center gap-1.5">
+                      <Wrench className="h-3 w-3 text-blue-600" />
                       AI-Predicted Equipment Needs:
+                      <span className="text-xs text-blue-600 font-normal">(Click for inventory check)</span>
                     </h4>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {event.equipment_predictions.map((prediction, index) => (
                         <button
                           key={index}
                           onClick={() =>
                             checkInventoryAvailability(prediction.item, prediction.quantity, prediction.category)
                           }
-                          className="w-full p-3 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-colors cursor-pointer text-left"
+                          className="w-full flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-blue-50 cursor-pointer transition-all duration-200 group border border-transparent hover:border-blue-300 hover:shadow-sm"
+                          title={`Click to check inventory for ${prediction.item}`}
                         >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3 flex-1">
-                              <span className="text-xl">{getCategoryIcon(prediction.category)}</span>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-semibold text-gray-900">{prediction.item}</span>
-                                  <Badge variant="outline" className="bg-white">
-                                    {prediction.category}
-                                  </Badge>
-                                </div>
-                                <p className="text-xs text-gray-600">{prediction.reason}</p>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="text-base flex-shrink-0">{getCategoryIcon(prediction.category)}</span>
+                            <div className="flex flex-col items-start min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm text-gray-900 group-hover:text-blue-600 transition-colors">
+                                  {prediction.item}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className="bg-white text-xs px-1.5 py-0 flex-shrink-0 border-gray-300"
+                                >
+                                  {prediction.category}
+                                </Badge>
                               </div>
+                              <span className="text-xs text-gray-500 group-hover:text-blue-500 transition-colors">
+                                {prediction.reason}
+                              </span>
                             </div>
-                            <div className="text-right ml-4">
-                              <div className="text-2xl font-bold text-blue-600">{prediction.quantity}</div>
-                              <div className="text-xs text-gray-600">needed</div>
-                            </div>
+                          </div>
+                          <div className="text-sm font-medium text-gray-700 group-hover:text-blue-600 flex-shrink-0 ml-2">
+                            {prediction.quantity} needed
                           </div>
                         </button>
                       ))}
@@ -419,11 +424,11 @@ export default function EquipmentNeedsForecast() {
 
                   {/* Menu Items */}
                   {event.main_courses.length > 0 && (
-                    <div className="pt-2 border-t">
-                      <h4 className="font-medium text-sm text-gray-700 mb-2">Menu Items:</h4>
-                      <div className="flex flex-wrap gap-2">
+                    <div className="pt-2 border-t border-gray-200">
+                      <h4 className="font-medium text-xs text-gray-700 mb-1.5">Menu Items:</h4>
+                      <div className="flex flex-wrap gap-1.5">
                         {event.main_courses.map((course, index) => (
-                          <Badge key={index} variant="outline" className="bg-gray-50">
+                          <Badge key={index} variant="outline" className="bg-gray-50 text-xs px-2 py-0">
                             {course}
                           </Badge>
                         ))}
