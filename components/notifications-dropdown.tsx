@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { Bell, X } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -24,6 +25,8 @@ interface Notification {
   type: string
   is_read: boolean
   created_at: string
+  appointment_id?: string
+  payment_transaction_id?: string
 }
 
 interface NotificationsDropdownProps {
@@ -34,6 +37,7 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
 
   const fetchNotifications = async () => {
     try {
@@ -56,7 +60,6 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
   useEffect(() => {
     if (userId) {
       fetchNotifications()
-      // Poll for new notifications every 30 seconds
       const interval = setInterval(fetchNotifications, 30000)
       return () => clearInterval(interval)
     }
@@ -73,7 +76,6 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
         body: JSON.stringify({ notificationId }),
       })
 
-      // Refresh notifications
       fetchNotifications()
     } catch (error) {
       console.error("Error marking notification as read:", error)
@@ -81,7 +83,7 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
   }
 
   const deleteNotification = async (notificationId: string, e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent dropdown item click
+    e.stopPropagation()
     try {
       const response = await fetch("/api/notifications/delete", {
         method: "DELETE",
@@ -120,9 +122,69 @@ export function NotificationsDropdown({ userId }: NotificationsDropdownProps) {
   }
 
   const handleNotificationClick = (notification: Notification) => {
+    console.log("[v0] Notification clicked:", {
+      type: notification.type,
+      title: notification.title,
+      fullNotification: notification,
+    })
+
+    // Mark as read if unread
     if (!notification.is_read) {
       markAsRead(notification.id)
     }
+
+    // Navigate based on notification type or title
+    const type = notification.type?.toLowerCase() || ""
+    const title = notification.title?.toLowerCase() || ""
+
+    // Payment-related notifications
+    if (
+      type.includes("payment") ||
+      title.includes("payment verified") ||
+      title.includes("payment confirmed") ||
+      title.includes("payment submitted")
+    ) {
+      console.log("[v0] Navigating to /payment")
+      setIsOpen(false)
+      router.push("/payment")
+      return
+    }
+
+    // Appointment-related notifications
+    if (
+      type.includes("appointment") ||
+      type.includes("status") ||
+      type.includes("confirmed") ||
+      type.includes("completed") ||
+      type.includes("cancelled") ||
+      type.includes("reschedule") ||
+      title.includes("appointment") ||
+      title.includes("confirmed") ||
+      title.includes("completed")
+    ) {
+      console.log("[v0] Navigating to /my-appointments")
+      setIsOpen(false)
+      router.push("/my-appointments")
+      return
+    }
+
+    // Feedback-related notifications
+    if (type.includes("feedback") || type.includes("reply") || title.includes("feedback")) {
+      console.log("[v0] Navigating to /my-appointments")
+      setIsOpen(false)
+      router.push("/my-appointments")
+      return
+    }
+
+    // Cancellation-related notifications
+    if (type.includes("cancellation") || title.includes("cancellation")) {
+      console.log("[v0] Navigating to /my-appointments")
+      setIsOpen(false)
+      router.push("/my-appointments")
+      return
+    }
+
+    console.log("[v0] No navigation match found for notification")
   }
 
   const markAllAsRead = () => {

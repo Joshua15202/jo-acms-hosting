@@ -1048,9 +1048,8 @@ function BookingFormContent({
         setCurrentStep(2)
       } else if (currentStep === 2 && validateStep2()) {
         setCurrentStep(3)
-      } else if (currentStep === 3) {
-        setCurrentStep(4)
       }
+      // </CHANGE> Removed progression to step 4, step 3 is now the final step before booking
     },
     [currentStep, validateStep1, validateStep2],
   )
@@ -2441,7 +2440,7 @@ function BookingFormContent({
                 Change Event Type
               </Button>
             )}
-            {currentStep < 4 ? (
+            {currentStep < 3 ? (
               <Button
                 type="button"
                 onClick={handleNext}

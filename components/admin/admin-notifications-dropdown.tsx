@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { Bell, X, Calendar, DollarSign } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -21,7 +22,7 @@ interface AdminNotification {
   id: string
   title: string
   message: string
-  type: "new_appointment" | "payment_submitted" | "alert"
+  type: "new_appointment" | "payment_submitted" | "alert" | "feedback"
   is_read: boolean
   created_at: string
   appointment_id?: string
@@ -36,6 +37,7 @@ export function AdminNotificationsDropdown({ adminUsername }: AdminNotifications
   const [notifications, setNotifications] = useState<AdminNotification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
 
   const fetchNotifications = async () => {
     try {
@@ -122,8 +124,30 @@ export function AdminNotificationsDropdown({ adminUsername }: AdminNotifications
   }
 
   const handleNotificationClick = (notification: AdminNotification) => {
+    // Mark as read
     if (!notification.is_read) {
       markAsRead(notification.id)
+    }
+
+    // Navigate based on notification type
+    if (notification.type === "new_appointment") {
+      // Navigate to Appointments page
+      router.push("/admin/appointments")
+      setIsOpen(false)
+    } else if (notification.type === "payment_submitted") {
+      // Navigate to Payments page
+      router.push("/admin/payments")
+      setIsOpen(false)
+    } else if (notification.type === "feedback") {
+      // Navigate to Feedbacks page
+      router.push("/admin/feedbacks")
+      setIsOpen(false)
+    } else if (notification.type === "alert") {
+      // For cancellation requests, navigate to Cancellation Requests page
+      if (notification.message.toLowerCase().includes("cancellation")) {
+        router.push("/admin/cancellation-requests")
+        setIsOpen(false)
+      }
     }
   }
 
@@ -137,6 +161,8 @@ export function AdminNotificationsDropdown({ adminUsername }: AdminNotifications
         return <Calendar className="h-4 w-4 text-blue-600" />
       case "payment_submitted":
         return <DollarSign className="h-4 w-4 text-green-600" />
+      case "feedback":
+        return <Bell className="h-4 w-4 text-yellow-600" />
       default:
         return <Bell className="h-4 w-4 text-gray-600" />
     }
@@ -148,6 +174,8 @@ export function AdminNotificationsDropdown({ adminUsername }: AdminNotifications
         return "bg-blue-50"
       case "payment_submitted":
         return "bg-green-50"
+      case "feedback":
+        return "bg-yellow-50"
       default:
         return "bg-gray-50"
     }
