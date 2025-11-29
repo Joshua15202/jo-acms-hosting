@@ -407,3 +407,5 @@ export default function SmartCalendar({ onDateTimeSelect, selectedDate, selected
     </div>
   )
 }
+
+export { SmartCalendar }

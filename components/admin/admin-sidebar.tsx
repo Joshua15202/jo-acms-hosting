@@ -14,6 +14,7 @@ import {
   CalendarX,
   XCircle,
   MessageSquare,
+  UserPlus,
 } from "lucide-react"
 
 const sidebarItems = [
@@ -26,6 +27,11 @@ const sidebarItems = [
     title: "Appointments",
     href: "/admin/appointments",
     icon: Calendar,
+  },
+  {
+    title: "Add Walk-Ins",
+    href: "/admin/add-walk-ins",
+    icon: UserPlus,
   },
   {
     title: "Cancellation Requests",
