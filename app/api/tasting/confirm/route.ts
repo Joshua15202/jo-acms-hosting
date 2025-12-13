@@ -55,6 +55,39 @@ export async function GET(request: Request) {
       if (tasting.status === "confirmed") {
         console.log("ℹ️ Tasting already confirmed")
 
+        if (tasting.appointment_id) {
+          const { data: appointment } = await supabaseAdmin
+            .from("tbl_comprehensive_appointments")
+            .select("status")
+            .eq("id", tasting.appointment_id)
+            .single()
+
+          console.log("[v0] Current appointment status:", appointment?.status)
+
+          // If appointment is still PENDING_TASTING_CONFIRMATION, update it
+          if (appointment?.status === "PENDING_TASTING_CONFIRMATION") {
+            console.log("[v0] Appointment status needs updating, attempting update...")
+            const now = new Date().toISOString()
+
+            const { error: appointmentUpdateError } = await supabaseAdmin
+              .from("tbl_comprehensive_appointments")
+              .update({
+                status: "TASTING_CONFIRMED",
+                updated_at: now,
+              })
+              .eq("id", tasting.appointment_id)
+
+            if (appointmentUpdateError) {
+              console.error("[v0] ❌ Failed to update appointment status:", appointmentUpdateError)
+              console.error("[v0] Error code:", appointmentUpdateError.code)
+              console.error("[v0] Error message:", appointmentUpdateError.message)
+              console.error("[v0] Error details:", appointmentUpdateError.details)
+            } else {
+              console.log("[v0] ✅ Appointment status updated to TASTING_CONFIRMED")
+            }
+          }
+        }
+
         // If no action specified, redirect to success page
         if (!action) {
           return NextResponse.redirect(new URL("/tasting-confirmed?already=true", request.url))
@@ -63,7 +96,7 @@ export async function GET(request: Request) {
         return NextResponse.json({
           success: true,
           alreadyConfirmed: true,
-          message: "This tasting appointment has already been confirmed.",
+          message: "This tasting appointment has been confirmed successfully.",
           appointment: tasting,
         })
       }
@@ -103,30 +136,17 @@ export async function GET(request: Request) {
         const { error: appointmentUpdateError } = await supabaseAdmin
           .from("tbl_comprehensive_appointments")
           .update({
-            status: "TASTING_CONFIRMED", // Using "TASTING_CONFIRMED" instead of "confirmed"
+            status: "TASTING_CONFIRMED",
             updated_at: now,
           })
           .eq("id", tasting.appointment_id)
 
         if (appointmentUpdateError) {
-          console.error("❌ Failed to update appointment status:", appointmentUpdateError)
-          console.error("Error details:", appointmentUpdateError)
-
-          // If TASTING_CONFIRMED fails due to constraint, try "confirmed" as fallback
-          console.log("🔄 Trying fallback status 'confirmed'...")
-          const { error: fallbackError } = await supabaseAdmin
-            .from("tbl_comprehensive_appointments")
-            .update({
-              status: "confirmed",
-              updated_at: now,
-            })
-            .eq("id", tasting.appointment_id)
-
-          if (fallbackError) {
-            console.error("❌ Fallback also failed:", fallbackError)
-          } else {
-            console.log("✅ Appointment status updated to confirmed (fallback)")
-          }
+          console.error("[v0] ❌ Failed to update appointment status to TASTING_CONFIRMED")
+          console.error("[v0] Error code:", appointmentUpdateError.code)
+          console.error("[v0] Error message:", appointmentUpdateError.message)
+          console.error("[v0] Error details:", appointmentUpdateError.details)
+          console.error("[v0] Error hint:", appointmentUpdateError.hint)
         } else {
           console.log("✅ Appointment status updated to TASTING_CONFIRMED")
         }

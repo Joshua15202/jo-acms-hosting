@@ -47,7 +47,15 @@ export async function GET(request: Request) {
           payment_status,
           selected_menu,
           theme,
-          remaining_balance
+          remaining_balance,
+          contact_first_name,
+          contact_last_name,
+          contact_email,
+          contact_phone,
+          main_courses,
+          pasta_selection,
+          dessert_selection,
+          beverage_selection
         )
       `)
       .order("created_at", { ascending: false })
@@ -77,7 +85,111 @@ export async function GET(request: Request) {
         console.log(`\n--- Transaction ${index + 1}/${transactions.length} ---`)
         console.log(`Transaction ID: ${transaction.id}`)
 
-        const selectedMenu = transaction.tbl_comprehensive_appointments?.selected_menu
+        const appointment = transaction.tbl_comprehensive_appointments
+        const selectedMenu = appointment?.selected_menu
+
+        const isWalkIn = !transaction.user_id && appointment?.contact_first_name
+        console.log("Is walk-in customer?", isWalkIn)
+
+        // If walk-in, process the walk-in menu fields
+        if (isWalkIn && appointment) {
+          console.log("✅ Processing walk-in customer menu...")
+          console.log("[v0] Walk-in menu fields:")
+          console.log("[v0] - main_courses:", appointment.main_courses)
+          console.log("[v0] - pasta_selection:", appointment.pasta_selection)
+          console.log("[v0] - dessert_selection:", appointment.dessert_selection)
+          console.log("[v0] - beverage_selection:", appointment.beverage_selection)
+
+          const mainCourses = []
+          const extras = []
+
+          // Helper function to fetch menu items by ID
+          async function fetchMenuItemsByIds(ids: number[], category: string) {
+            if (!ids || ids.length === 0) return []
+
+            console.log(`  Looking up ${category} IDs:`, ids)
+            const { data: items, error: itemError } = await supabaseAdmin
+              .from("tbl_menu_items")
+              .select("id, name, category, description, price")
+              .in("id", ids)
+
+            if (itemError) {
+              console.error(`  ❌ Error fetching ${category}:`, itemError.message)
+              return []
+            }
+
+            console.log(`  ✅ Found ${items?.length || 0} ${category} items`)
+            return items || []
+          }
+
+          if (appointment.main_courses) {
+            console.log("[v0] Processing main courses, type:", typeof appointment.main_courses)
+            console.log("[v0] main_courses value:", JSON.stringify(appointment.main_courses))
+
+            // Check if it's an array of objects with 'name' property
+            if (
+              Array.isArray(appointment.main_courses) &&
+              appointment.main_courses.length > 0 &&
+              typeof appointment.main_courses[0] === "object" &&
+              appointment.main_courses[0].name
+            ) {
+              console.log("[v0] ✅ main_courses already contains objects, using directly")
+
+              // Fetch full menu item details by name to get prices and descriptions
+              for (const course of appointment.main_courses) {
+                const { data: items, error: itemError } = await supabaseAdmin
+                  .from("tbl_menu_items")
+                  .select("id, name, category, description, price")
+                  .eq("name", course.name)
+                  .limit(1)
+
+                if (items && items.length > 0) {
+                  mainCourses.push(items[0])
+                  console.log(`[v0] Found full details for: ${course.name}`)
+                } else {
+                  // If not found in DB, use the object as-is
+                  mainCourses.push(course)
+                  console.log(`[v0] Using stored data for: ${course.name}`)
+                }
+              }
+            } else {
+              // It's an array of IDs, fetch from database
+              console.log("[v0] main_courses contains IDs, fetching from database")
+              const mainCourseItems = await fetchMenuItemsByIds(appointment.main_courses, "main courses")
+              mainCourses.push(...mainCourseItems)
+            }
+            console.log("[v0] Final main courses count:", mainCourses.length)
+          }
+
+          // Process walk-in pasta
+          if (appointment.pasta_selection) {
+            const pastaItems = await fetchMenuItemsByIds([appointment.pasta_selection], "pasta")
+            extras.push(...pastaItems)
+          }
+
+          // Process walk-in dessert
+          if (appointment.dessert_selection) {
+            const dessertItems = await fetchMenuItemsByIds([appointment.dessert_selection], "dessert")
+            extras.push(...dessertItems)
+          }
+
+          // Process walk-in beverage
+          if (appointment.beverage_selection) {
+            const beverageItems = await fetchMenuItemsByIds([appointment.beverage_selection], "beverage")
+            extras.push(...beverageItems)
+          }
+
+          console.log(`✅ Walk-in menu processed: ${mainCourses.length} main courses, ${extras.length} extras`)
+
+          return {
+            ...transaction,
+            menu_items: {
+              main_courses: mainCourses,
+              extras: extras,
+            },
+          }
+        }
+
         console.log("Has selected_menu?", !!selectedMenu)
         console.log("Selected menu type:", typeof selectedMenu)
 

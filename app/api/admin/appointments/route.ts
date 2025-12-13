@@ -33,6 +33,14 @@ export async function GET() {
         updated_at,
         celebrant_gender,
         selected_menu,
+        contact_first_name,
+        contact_last_name,
+        contact_email,
+        contact_phone,
+        main_courses,
+        pasta_selection,
+        dessert_selection,
+        beverage_selection,
         tbl_users (
           id,
           full_name,
@@ -59,6 +67,97 @@ export async function GET() {
     // Process appointments to fetch menu items
     const processedAppointments = await Promise.all(
       appointments.map(async (appointment) => {
+        const isWalkIn =
+          appointment.main_courses ||
+          appointment.pasta_selection ||
+          appointment.dessert_selection ||
+          appointment.beverage_selection
+
+        if (isWalkIn) {
+          console.log(`Processing walk-in appointment ${appointment.id} menu`)
+
+          const mainCourses = []
+          const extras = []
+
+          // Process main_courses array from walk-in
+          if (Array.isArray(appointment.main_courses)) {
+            for (const course of appointment.main_courses) {
+              if (typeof course === "object" && course.name) {
+                // Try to fetch full menu item details
+                const { data: items, error: itemError } = await supabaseAdmin
+                  .from("tbl_menu_items")
+                  .select("id, name, category, description, price")
+                  .eq("id", course.name)
+                  .limit(1)
+
+                if (!itemError && items && items.length > 0) {
+                  mainCourses.push(items[0])
+                } else {
+                  // If not found by ID, create a minimal item object
+                  mainCourses.push({
+                    id: course.name,
+                    name: course.name,
+                    category: course.category || "main_course",
+                    description: null,
+                    price: null,
+                  })
+                }
+              }
+            }
+          }
+
+          // Process pasta_selection
+          if (appointment.pasta_selection) {
+            const { data: items, error: itemError } = await supabaseAdmin
+              .from("tbl_menu_items")
+              .select("id, name, category, description, price")
+              .eq("id", appointment.pasta_selection)
+              .limit(1)
+
+            if (!itemError && items && items.length > 0) {
+              extras.push(items[0])
+            }
+          }
+
+          // Process dessert_selection
+          if (appointment.dessert_selection) {
+            const { data: items, error: itemError } = await supabaseAdmin
+              .from("tbl_menu_items")
+              .select("id, name, category, description, price")
+              .eq("id", appointment.dessert_selection)
+              .limit(1)
+
+            if (!itemError && items && items.length > 0) {
+              extras.push(items[0])
+            }
+          }
+
+          // Process beverage_selection
+          if (appointment.beverage_selection) {
+            const { data: items, error: itemError } = await supabaseAdmin
+              .from("tbl_menu_items")
+              .select("id, name, category, description, price")
+              .eq("id", appointment.beverage_selection)
+              .limit(1)
+
+            if (!itemError && items && items.length > 0) {
+              extras.push(items[0])
+            }
+          }
+
+          console.log(
+            `Walk-in appointment ${appointment.id}: ${mainCourses.length} main courses, ${extras.length} extras`,
+          )
+
+          return {
+            ...appointment,
+            menu_items: {
+              main_courses: mainCourses,
+              extras: extras,
+            },
+          }
+        }
+
         const selectedMenu = appointment.selected_menu
 
         if (!selectedMenu || typeof selectedMenu !== "object") {

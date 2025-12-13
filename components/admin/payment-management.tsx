@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   CheckCircle,
   XCircle,
@@ -26,6 +29,7 @@ import {
   Utensils,
   ChefHat,
   Cake,
+  Download,
 } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
@@ -33,16 +37,15 @@ import { useToast } from "@/hooks/use-toast"
 type PaymentTransaction = {
   id: string
   appointment_id: string
-  user_id: string
+  user_id: string | null
   amount: number
-  payment_type: "down_payment" | "full_payment" | "remaining_balance"
+  payment_type: "down_payment" | "full_payment" | "remaining_balance" | "cash"
   payment_method: string
   reference_number: string
-  notes?: string
-  proof_image_url: string
-  status: "pending_verification" | "verified" | "rejected"
-  appointment_payment_status?: string
-  admin_notes?: string
+  proof_image_url: string | null
+  notes: string
+  status: "pending" | "verified" | "rejected"
+  admin_notes: string
   created_at: string
   updated_at: string
   tbl_users: {
@@ -51,7 +54,7 @@ type PaymentTransaction = {
     first_name: string
     email: string
     phone?: string
-  }
+  } | null // Allow tbl_users to be null for walk-in
   tbl_comprehensive_appointments: {
     id: string
     event_type: string
@@ -71,6 +74,10 @@ type PaymentTransaction = {
     color_motif?: string
     total_amount?: number
     remaining_balance?: number
+    contact_first_name?: string
+    contact_last_name?: string
+    contact_email?: string
+    contact_phone?: string
   }
   menu_items?: {
     main_courses: Array<{
@@ -98,10 +105,29 @@ export default function PaymentManagement() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
   const [adminNotes, setAdminNotes] = useState("")
   const [processing, setProcessing] = useState(false)
+  const [walkInAppointments, setWalkInAppointments] = useState<any[]>([])
+  const [walkInLoading, setWalkInLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<"user-payments" | "walk-in-payments">("user-payments")
+  const [downloadingReceipt, setDownloadingReceipt] = useState(false)
   const { toast } = useToast()
+
+  const [walkInPaymentDialogOpen, setWalkInPaymentDialogOpen] = useState(false)
+  const [selectedWalkInAppointment, setSelectedWalkInAppointment] = useState<any | null>(null)
+  const [walkInPaymentData, setWalkInPaymentData] = useState({
+    appointmentId: "",
+    amount: 0,
+    paymentType: "down_payment" as "down_payment" | "full_payment" | "cash",
+    paymentMethod: "cash",
+    reference: "",
+    notes: "",
+  })
+  const [submittingWalkInPayment, setSubmittingWalkInPayment] = useState(false)
+  const [showQRCode, setShowQRCode] = useState(true)
+  // </CHANGE>
 
   useEffect(() => {
     fetchPaymentTransactions()
+    fetchWalkInPayments()
   }, [])
 
   const fetchPaymentTransactions = async () => {
@@ -127,6 +153,24 @@ export default function PaymentManagement() {
       toast({ title: "Error", description: "Could not load payment transactions.", variant: "destructive" })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchWalkInPayments = async () => {
+    try {
+      setWalkInLoading(true)
+      const response = await fetch("/api/admin/walk-in-payments")
+      if (response.ok) {
+        const data = await response.json()
+        setWalkInAppointments(data.appointments || [])
+      } else {
+        toast({ title: "Error", description: "Failed to fetch walk-in payments.", variant: "destructive" })
+      }
+    } catch (error) {
+      console.error("Error fetching walk-in payments:", error)
+      toast({ title: "Error", description: "Could not load walk-in payments.", variant: "destructive" })
+    } finally {
+      setWalkInLoading(false)
     }
   }
 
@@ -240,6 +284,8 @@ export default function PaymentManagement() {
       color = "bg-green-100 text-green-800 border-green-200"
     } else if (type === "remaining_balance") {
       color = "bg-orange-100 text-orange-800 border-orange-200"
+    } else if (type === "cash") {
+      color = "bg-purple-100 text-purple-800 border-purple-200"
     }
 
     return (
@@ -303,6 +349,314 @@ export default function PaymentManagement() {
     return hasMain || hasExtras
   }
 
+  const handleDownloadReceipt = async (transaction: PaymentTransaction) => {
+    if (downloadingReceipt) {
+      toast({
+        title: "Download in Progress",
+        description: "Please wait for the current download to complete.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setDownloadingReceipt(true)
+
+      toast({
+        title: "Generating Receipt",
+        description: "Please wait while we generate your receipt...",
+      })
+
+      const appointment = transaction.tbl_comprehensive_appointments
+
+      // Get customer name from walk-in contact fields or user fields
+      const customerName =
+        appointment.contact_first_name && appointment.contact_last_name
+          ? `${appointment.contact_first_name} ${appointment.contact_last_name}`.trim()
+          : transaction.tbl_users?.full_name || "Walk-In Customer"
+
+      const customerEmail = appointment.contact_email || transaction.tbl_users?.email || "N/A"
+
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d", { alpha: false })
+      if (!ctx) throw new Error("Could not get canvas context")
+
+      canvas.width = 800
+      canvas.height = 1400
+
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      const logo = new Image()
+      logo.crossOrigin = "anonymous"
+
+      await new Promise((resolve) => {
+        logo.onload = resolve
+        logo.onerror = () => {
+          console.warn("Logo failed to load")
+          resolve(null)
+        }
+        logo.src = "/images/New Logo.png"
+        setTimeout(() => resolve(null), 2000)
+      })
+
+      let currentY = 30
+
+      if (logo.complete && logo.naturalWidth > 0) {
+        const logoWidth = 80
+        const logoHeight = 80
+        ctx.drawImage(logo, 30, currentY, logoWidth, logoHeight)
+        currentY += logoHeight + 20
+      } else {
+        currentY += 20
+      }
+
+      ctx.fillStyle = "#1f2937"
+      ctx.font = "bold 28px Arial"
+      ctx.textAlign = "center"
+      ctx.fillText("Jo Pacheco Catering Services", canvas.width / 2, currentY)
+      currentY += 35
+
+      ctx.font = "20px Arial"
+      ctx.fillStyle = "#6b7280"
+      ctx.fillText("Payment Receipt", canvas.width / 2, currentY)
+      currentY += 25
+
+      ctx.font = "12px Arial"
+      ctx.fillStyle = "#9ca3af"
+      ctx.fillText(`Receipt ID: ${transaction.id.slice(0, 16)}`, canvas.width / 2, currentY)
+      currentY += 18
+      ctx.fillText(
+        `Date: ${format(new Date(transaction.created_at), "MMM d, yyyy 'at' h:mm a")}`,
+        canvas.width / 2,
+        currentY,
+      )
+      currentY += 35
+
+      ctx.strokeStyle = "#e5e7eb"
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(40, currentY)
+      ctx.lineTo(canvas.width - 40, currentY)
+      ctx.stroke()
+      currentY += 35
+
+      ctx.textAlign = "left"
+      ctx.font = "bold 16px Arial"
+      ctx.fillStyle = "#374151"
+      ctx.fillText("Customer Information", 50, currentY)
+      currentY += 25
+
+      ctx.font = "14px Arial"
+      ctx.fillStyle = "#4b5563"
+      ctx.fillText(`Name: ${customerName}`, 50, currentY)
+      currentY += 20
+      ctx.fillText(`Email: ${customerEmail}`, 50, currentY)
+      currentY += 20
+      if (appointment.contact_phone) {
+        ctx.fillText(`Phone: ${appointment.contact_phone}`, 50, currentY)
+        currentY += 20
+      }
+      currentY += 15
+
+      ctx.font = "bold 16px Arial"
+      ctx.fillStyle = "#374151"
+      ctx.fillText("Event Details", 50, currentY)
+      currentY += 25
+
+      ctx.font = "14px Arial"
+      ctx.fillStyle = "#4b5563"
+      ctx.fillText(
+        `Event Type: ${appointment.event_type.charAt(0).toUpperCase() + appointment.event_type.slice(1)}`,
+        50,
+        currentY,
+      )
+      currentY += 20
+      ctx.fillText(`Date: ${format(new Date(appointment.event_date), "MMM d, yyyy")}`, 50, currentY)
+      currentY += 20
+      ctx.fillText(`Guest Count: ${appointment.guest_count}`, 50, currentY)
+      currentY += 35
+
+      ctx.font = "bold 16px Arial"
+      ctx.fillStyle = "#374151"
+      ctx.fillText("Payment Details", 50, currentY)
+      currentY += 25
+
+      ctx.font = "14px Arial"
+      ctx.fillStyle = "#4b5563"
+      const paymentType =
+        transaction.payment_type === "down_payment"
+          ? "Down Payment"
+          : transaction.payment_type === "full_payment"
+            ? "Full Payment"
+            : transaction.payment_type === "cash"
+              ? "Cash Payment"
+              : "Remaining Balance"
+      ctx.fillText(`Payment Type: ${paymentType}`, 50, currentY)
+      currentY += 20
+      ctx.font = "bold 16px Arial"
+      ctx.fillStyle = "#16a34a"
+      ctx.fillText(`Amount Paid: ${formatCurrency(transaction.amount)}`, 50, currentY)
+      currentY += 20
+      ctx.font = "14px Arial"
+      ctx.fillStyle = "#4b5563"
+      ctx.fillText(`Payment Method: ${transaction.payment_method.toUpperCase()}`, 50, currentY)
+      currentY += 20
+      ctx.fillText(`Reference: ${transaction.reference_number}`, 50, currentY)
+      currentY += 35
+
+      ctx.font = "bold 16px Arial"
+      ctx.fillStyle = "#374151"
+      ctx.fillText("Package Summary", 50, currentY)
+      currentY += 25
+
+      ctx.font = "14px Arial"
+      ctx.fillStyle = "#4b5563"
+      if (appointment.total_package_amount) {
+        ctx.fillText(`Total Package: ${formatCurrency(appointment.total_package_amount)}`, 50, currentY)
+        currentY += 20
+      }
+      if (appointment.down_payment_amount) {
+        ctx.fillText(`Down Payment: ${formatCurrency(appointment.down_payment_amount)}`, 50, currentY)
+        currentY += 20
+      }
+      if (appointment.remaining_balance) {
+        ctx.fillText(`Remaining Balance: ${formatCurrency(appointment.remaining_balance)}`, 50, currentY)
+        currentY += 20
+      }
+      currentY += 35
+
+      ctx.strokeStyle = "#e5e7eb"
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(40, currentY)
+      ctx.lineTo(canvas.width - 40, currentY)
+      ctx.stroke()
+      currentY += 25
+
+      ctx.font = "12px Arial"
+      ctx.fillStyle = "#9ca3af"
+      ctx.textAlign = "center"
+      ctx.fillText("Thank you for choosing Jo Pacheco Catering Services!", canvas.width / 2, currentY)
+      currentY += 18
+      ctx.fillText(`Generated on: ${format(new Date(), "MMM d, yyyy 'at' h:mm a")}`, canvas.width / 2, currentY)
+
+      const link = document.createElement("a")
+      link.download = `Receipt-${appointment.event_type}-${transaction.id.slice(0, 8)}.png`
+      link.href = canvas.toDataURL("image/png")
+      link.click()
+
+      toast({
+        title: "Receipt Downloaded",
+        description: "Your payment receipt has been downloaded successfully.",
+      })
+    } catch (error) {
+      console.error("[v0] Error generating receipt:", error)
+      toast({
+        title: "Download Failed",
+        description: "Failed to generate receipt. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setDownloadingReceipt(false)
+    }
+  }
+
+  const handleMakeWalkInPayment = (appointment: any) => {
+    setSelectedWalkInAppointment(appointment)
+    setWalkInPaymentData({
+      appointmentId: appointment.id,
+      amount: appointment.down_payment_amount || 0,
+      paymentType: "down_payment",
+      paymentMethod: "cash",
+      reference: "",
+      notes: "",
+    })
+    setWalkInPaymentDialogOpen(true)
+  }
+
+  const handleWalkInPaymentTypeChange = (type: "down_payment" | "full_payment" | "cash") => {
+    if (!selectedWalkInAppointment) return
+
+    let amount = 0
+    if (type === "down_payment") {
+      amount = selectedWalkInAppointment.down_payment_amount
+    } else if (type === "full_payment") {
+      amount = selectedWalkInAppointment.total_package_amount
+    } else if (type === "cash") {
+      // For cash, amount is typically custom, so we can set it to 0 or the down payment as a default
+      // and let the user input the exact amount if needed, or keep it open.
+      // For now, let's set it to 0 and rely on other fields if cash is chosen.
+      amount = 0
+    }
+
+    setWalkInPaymentData((prev) => ({
+      ...prev,
+      paymentType: type,
+      amount: amount || 0, // Ensure amount is always a number
+    }))
+  }
+
+  const submitWalkInPayment = async () => {
+    if (!walkInPaymentData.paymentMethod) {
+      toast({ title: "Missing Payment Method", description: "Please select a payment method.", variant: "destructive" })
+      return
+    }
+    if (walkInPaymentData.paymentType !== "cash" && !walkInPaymentData.reference.trim()) {
+      toast({
+        title: "Missing Reference ID",
+        description: "Please enter the payment reference/transaction ID.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (walkInPaymentData.paymentType === "cash" && walkInPaymentData.amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid amount for cash payments.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setSubmittingWalkInPayment(true)
+    try {
+      const response = await fetch("/api/admin/walk-in-payments/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(walkInPaymentData),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: "Payment Recorded!",
+          description: "Walk-in payment has been successfully recorded and sent to User Payments for verification.",
+        })
+        setWalkInPaymentDialogOpen(false)
+        fetchWalkInPayments()
+        fetchPaymentTransactions()
+        // </CHANGE>
+      } else {
+        throw new Error(result.message || "Failed to record payment")
+      }
+    } catch (error: any) {
+      console.error("Error submitting walk-in payment:", error)
+      toast({
+        title: "Error",
+        description: `Failed to submit payment: ${error.message}`,
+        variant: "destructive",
+      })
+    } finally {
+      setSubmittingWalkInPayment(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
@@ -316,216 +670,392 @@ export default function PaymentManagement() {
   const processedTransactions = transactions.filter((t) => t.status !== "pending_verification")
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-4 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Payment Management</h2>
           <p className="text-muted-foreground">Review and verify customer payment submissions</p>
         </div>
-        <Button onClick={fetchPaymentTransactions} variant="outline">
+        <Button
+          onClick={() => {
+            fetchPaymentTransactions()
+            fetchWalkInPayments()
+          }}
+          variant="outline"
+        >
           Refresh
         </Button>
       </div>
 
-      {/* Pending Payments Section */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-orange-600">Pending Verification ({pendingTransactions.length})</h3>
-        {pendingTransactions.length > 0 ? (
-          <div className="grid gap-4">
-            {pendingTransactions.map((transaction) => (
-              <Card key={transaction.id} className="border-orange-200">
-                <CardHeader className="bg-orange-50">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" />
-                      {transaction.tbl_users.full_name}
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(transaction.status)}
-                      {getPaymentTypeBadge(transaction.payment_type, transaction.appointment_payment_status)}
-                    </div>
-                  </div>
-                  <CardDescription>
-                    Transaction ID: {transaction.id.slice(0, 8)}... • {formatCurrency(transaction.amount)} •{" "}
-                    {transaction.payment_method}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="grid gap-6 lg:grid-cols-2">
-                    {/* Customer & Payment Info */}
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-rose-600 border-b pb-2">Payment Details</h4>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="font-medium">Customer</p>
-                          <p className="text-sm text-gray-600">
-                            {transaction.tbl_users.full_name} ({transaction.tbl_users.email})
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-medium">Amount</p>
-                          <p className="text-lg font-bold text-green-600">{formatCurrency(transaction.amount)}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium">Reference Number</p>
-                          <p className="text-sm text-gray-600">{transaction.reference_number}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium">Appointment Status When Submitted</p>
-                          <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-200">
-                            {transaction.appointment_payment_status || "Unknown"}
-                          </Badge>
-                        </div>
-                        {transaction.notes && (
-                          <div>
-                            <p className="font-medium">Customer Notes</p>
-                            <p className="text-sm text-gray-600">{transaction.notes}</p>
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-medium">Submitted</p>
-                          <p className="text-sm text-gray-600">
-                            {format(new Date(transaction.created_at), "PPP 'at' p")}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Event Information */}
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-rose-600 border-b pb-2">Event Details</h4>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <Calendar className="h-4 w-4 text-gray-500" />
-                          <div>
-                            <p className="font-medium">{transaction.tbl_comprehensive_appointments.event_type}</p>
-                            <p className="text-sm text-gray-600">
-                              {formatEventDate(transaction.tbl_comprehensive_appointments.event_date)} at{" "}
-                              {transaction.tbl_comprehensive_appointments.event_time}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Users className="h-4 w-4 text-gray-500" />
-                          <div>
-                            <p className="font-medium">Guest Count</p>
-                            <p className="text-sm text-gray-600">
-                              {transaction.tbl_comprehensive_appointments.guest_count} guests
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                          <MapPin className="h-4 w-4 text-gray-500 mt-1" />
-                          <div>
-                            <p className="font-medium">Venue</p>
-                            <p className="text-sm text-gray-600">
-                              {getVenueDisplay(transaction.tbl_comprehensive_appointments)}
-                            </p>
-                          </div>
-                        </div>
-                        <div>
-                          <p className="font-medium">Current Payment Status</p>
-                          <Badge variant="outline" className="bg-blue-100 text-blue-600 border-blue-200">
-                            {transaction.tbl_comprehensive_appointments.payment_status}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center mt-6 pt-4 border-t">
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => window.open(transaction.proof_image_url, "_blank")}
-                        className="flex items-center gap-2"
-                      >
-                        <Eye className="h-4 w-4" />
-                        View Proof
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => handleViewDetails(transaction)}
-                        className="flex items-center gap-2"
-                      >
-                        <Calendar className="h-4 w-4" />
-                        View Event Details
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => handleVerifyPayment(transaction, "rejected")}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Reject
-                      </Button>
-                      <Button
-                        onClick={() => handleVerifyPayment(transaction, "verified")}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Verify
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="text-center py-8">
-              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">All Caught Up!</h3>
-              <p className="text-gray-500">No pending payment verifications at this time.</p>
-            </CardContent>
-          </Card>
-        )}
+      <div className="flex gap-2 border-b">
+        <button
+          onClick={() => setActiveTab("user-payments")}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === "user-payments"
+              ? "border-b-2 border-rose-600 text-rose-600"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          User Payments
+        </button>
+        <button
+          onClick={() => setActiveTab("walk-in-payments")}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeTab === "walk-in-payments"
+              ? "border-b-2 border-rose-600 text-rose-600"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          Walk-In Payments
+          {walkInAppointments.length > 0 && <Badge className="ml-2 bg-rose-600">{walkInAppointments.length}</Badge>}
+        </button>
       </div>
 
-      {/* Processed Payments Section */}
-      {processedTransactions.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-600">
-            Recent Processed Payments ({processedTransactions.length})
-          </h3>
-          <div className="grid gap-4">
-            {processedTransactions.slice(0, 5).map((transaction) => (
-              <Card key={transaction.id} className="border-gray-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <p className="font-medium">{transaction.tbl_users.full_name}</p>
-                        <p className="text-sm text-gray-500">
-                          {formatCurrency(transaction.amount)} • {transaction.payment_method} •{" "}
-                          {format(new Date(transaction.updated_at), "MMM d, yyyy")}
-                        </p>
+      {activeTab === "user-payments" ? (
+        <>
+          {/* Pending Payments Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-orange-600">
+              Pending Verification ({pendingTransactions.length})
+            </h3>
+            {pendingTransactions.length > 0 ? (
+              <div className="grid gap-4">
+                {pendingTransactions.map((transaction) => (
+                  <Card key={transaction.id} className="border-orange-200">
+                    <CardHeader className="bg-orange-50">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <CreditCard className="h-5 w-5" />
+                          {transaction.tbl_users?.full_name || "Walk-In Customer"}
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          {getStatusBadge(transaction.status)}
+                          {getPaymentTypeBadge(transaction.payment_type, transaction.appointment_payment_status)}
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDetails(transaction)}
-                        className="flex items-center gap-2"
-                      >
-                        <Eye className="h-4 w-4" />
-                        View Details
-                      </Button>
-                      <div className="flex items-center gap-2">
-                        {getStatusBadge(transaction.status)}
-                        {getPaymentTypeBadge(transaction.payment_type, transaction.appointment_payment_status)}
+                      <CardDescription>
+                        Transaction ID: {transaction.id.slice(0, 8)}... • {formatCurrency(transaction.amount)} •{" "}
+                        {transaction.payment_method}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="grid gap-6 lg:grid-cols-2">
+                        {/* Customer & Payment Info */}
+                        <div className="space-y-4">
+                          <h4 className="font-semibold text-rose-600 border-b pb-2">Payment Details</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="font-medium">Customer</p>
+                              <p className="text-sm text-gray-600">
+                                {transaction.tbl_users?.full_name || "Walk-In Customer"} (
+                                {transaction.tbl_users?.email || "N/A"})
+                              </p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Amount</p>
+                              <p className="text-lg font-bold text-green-600">{formatCurrency(transaction.amount)}</p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Reference Number</p>
+                              <p className="text-sm text-gray-600">{transaction.reference_number}</p>
+                            </div>
+                            <div>
+                              <p className="font-medium">Appointment Status When Submitted</p>
+                              <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-200">
+                                {transaction.appointment_payment_status || "Unknown"}
+                              </Badge>
+                            </div>
+                            {transaction.notes && (
+                              <div>
+                                <p className="font-medium">Customer Notes</p>
+                                <p className="text-sm text-gray-600">{transaction.notes}</p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-medium">Submitted</p>
+                              <p className="text-sm text-gray-600">
+                                {format(new Date(transaction.created_at), "PPP 'at' p")}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Event Information */}
+                        <div className="space-y-4">
+                          <h4 className="font-semibold text-rose-600 border-b pb-2">Event Details</h4>
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                              <Calendar className="h-4 w-4 text-gray-500" />
+                              <div>
+                                <p className="font-medium">{transaction.tbl_comprehensive_appointments.event_type}</p>
+                                <p className="text-sm text-gray-600">
+                                  {formatEventDate(transaction.tbl_comprehensive_appointments.event_date)} at{" "}
+                                  {transaction.tbl_comprehensive_appointments.event_time}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Users className="h-4 w-4 text-gray-500" />
+                              <div>
+                                <p className="font-medium">Guest Count</p>
+                                <p className="text-sm text-gray-600">
+                                  {transaction.tbl_comprehensive_appointments.guest_count} guests
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                              <MapPin className="h-4 w-4 text-gray-500 mt-1" />
+                              <div>
+                                <p className="font-medium">Venue</p>
+                                <p className="text-sm text-gray-600">
+                                  {getVenueDisplay(transaction.tbl_comprehensive_appointments)}
+                                </p>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="font-medium">Current Payment Status</p>
+                              <Badge variant="outline" className="bg-blue-100 text-blue-600 border-blue-200">
+                                {transaction.tbl_comprehensive_appointments.payment_status}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+
+                      <div className="flex justify-between items-center mt-6 pt-4 border-t">
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => window.open(transaction.proof_image_url, "_blank")}
+                            className="flex items-center gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
+                            View Proof
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => handleViewDetails(transaction)}
+                            className="flex items-center gap-2"
+                          >
+                            <Calendar className="h-4 w-4" />
+                            View Event Details
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => handleVerifyPayment(transaction, "rejected")}
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Reject
+                          </Button>
+                          <Button
+                            onClick={() => handleVerifyPayment(transaction, "verified")}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Verify
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">All Caught Up!</h3>
+                  <p className="text-gray-500">No pending payment verifications at this time.</p>
                 </CardContent>
               </Card>
-            ))}
+            )}
           </div>
-        </div>
+
+          {/* Processed Payments Section */}
+          {processedTransactions.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-600">
+                Recent Processed Payments ({processedTransactions.length})
+              </h3>
+              <div className="grid gap-4">
+                {processedTransactions.slice(0, 5).map((transaction) => (
+                  <Card key={transaction.id} className="border-gray-200">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="font-medium">{transaction.tbl_users?.full_name || "Walk-In Customer"}</p>
+                            <p className="text-sm text-gray-500">
+                              {formatCurrency(transaction.amount)} • {transaction.payment_method} •{" "}
+                              {format(new Date(transaction.updated_at), "MMM d, yyyy")}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewDetails(transaction)}
+                            className="flex items-center gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
+                            View Details
+                          </Button>
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(transaction.status)}
+                            {getPaymentTypeBadge(transaction.payment_type, transaction.appointment_payment_status)}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Walk-In Payments Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-rose-600">
+              Walk-In Customers Ready for Payment ({walkInAppointments.length})
+            </h3>
+            <p className="text-sm text-gray-600">
+              Walk-in customers who have confirmed their food tasting appointment and are ready to make payment.
+            </p>
+
+            {walkInLoading ? (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-500">Loading walk-in payments...</p>
+                </CardContent>
+              </Card>
+            ) : walkInAppointments.length > 0 ? (
+              <div className="grid gap-4">
+                {walkInAppointments.map((appointment) => (
+                  <Card key={appointment.id} className="border-rose-200">
+                    <CardHeader className="bg-rose-50">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-2">{appointment.event_type}</CardTitle>
+                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                          Payment Required
+                        </Badge>
+                      </div>
+                      <CardDescription>
+                        Booking ID: {appointment.id.slice(0, 8)}... • Contact: {appointment.contact_first_name}{" "}
+                        {appointment.contact_last_name} • Updated: {new Date(appointment.updated_at).toLocaleString()}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="grid gap-6 lg:grid-cols-2">
+                        {/* Event Details */}
+                        <div className="space-y-4">
+                          <h4 className="font-semibold text-rose-600 border-b pb-2">Event Details</h4>
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                              <Calendar className="h-4 w-4 text-gray-500" />
+                              <div>
+                                <p className="font-medium">Event Date</p>
+                                <p className="text-sm text-gray-600">{formatEventDate(appointment.event_date)}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Clock className="h-4 w-4 text-gray-500" />
+                              <div>
+                                <p className="font-medium">Time Slot</p>
+                                <p className="text-sm text-gray-600">{appointment.event_time}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Users className="h-4 w-4 text-gray-500" />
+                              <div>
+                                <p className="font-medium">Guest Count</p>
+                                <p className="text-sm text-gray-600">{appointment.guest_count} guests</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                              <MapPin className="h-4 w-4 text-gray-500 mt-1" />
+                              <div>
+                                <p className="font-medium">Venue</p>
+                                <p className="text-sm text-gray-600">
+                                  {appointment.venue}, {appointment.venue_address}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Payment Breakdown */}
+                        <div className="space-y-4">
+                          <h4 className="font-semibold text-rose-600 border-b pb-2">Payment Breakdown</h4>
+                          <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium text-gray-700">Total Package Amount:</span>
+                              <span className="text-xl font-bold text-gray-900">
+                                {formatCurrency(appointment.total_package_amount || 0)}
+                              </span>
+                            </div>
+                            <div className="border-t pt-3 space-y-2">
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-green-700">Down Payment (50%):</span>
+                                <span className="text-lg font-semibold text-green-600">
+                                  {formatCurrency(appointment.down_payment_amount || 0)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="font-medium text-orange-700">Remaining Balance:</span>
+                                <span className="text-xl font-bold text-orange-600">
+                                  {formatCurrency(appointment.remaining_balance || 0)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div className="bg-blue-50 p-3 rounded-lg">
+                              <p className="text-sm text-blue-800">
+                                <strong>Contact:</strong> {appointment.contact_first_name}{" "}
+                                {appointment.contact_last_name}
+                                <br />
+                                <strong>Email:</strong> {appointment.contact_email}
+                                <br />
+                                <strong>Phone:</strong> {appointment.contact_phone}
+                              </p>
+                            </div>
+
+                            <Button
+                              className="w-full bg-rose-600 hover:bg-rose-700 text-white"
+                              size="lg"
+                              onClick={() => handleMakeWalkInPayment(appointment)}
+                            >
+                              <CreditCard className="h-4 w-4 mr-2" />
+                              Make Payment
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Walk-In Payments Pending</h3>
+                  <p className="text-gray-500">
+                    Walk-in customers will appear here once they confirm their food tasting appointment.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </>
       )}
 
       {/* Verification Dialog */}
@@ -536,7 +1066,7 @@ export default function PaymentManagement() {
             <DialogDescription>
               {selectedTransaction && (
                 <>
-                  Verify {selectedTransaction.tbl_users.full_name}'s{" "}
+                  Verify {selectedTransaction.tbl_users?.full_name || "Walk-In Customer"}'s{" "}
                   {selectedTransaction.payment_type === "down_payment"
                     ? "down payment"
                     : selectedTransaction.payment_type === "remaining_balance"
@@ -596,7 +1126,7 @@ export default function PaymentManagement() {
             <DialogDescription>
               {selectedTransaction && (
                 <>
-                  Full details for {selectedTransaction.tbl_users.full_name}'s{" "}
+                  Full details for {selectedTransaction.tbl_users?.full_name || "Walk-In Customer"}'s{" "}
                   {selectedTransaction.payment_type === "down_payment"
                     ? "down payment"
                     : selectedTransaction.payment_type === "remaining_balance"
@@ -668,16 +1198,29 @@ export default function PaymentManagement() {
                   <CardContent className="space-y-3">
                     <div>
                       <span className="font-medium">Name:</span>
-                      <p className="text-sm">{selectedTransaction.tbl_users.full_name}</p>
+                      <p className="text-sm">
+                        {selectedTransaction.tbl_comprehensive_appointments.contact_first_name &&
+                        selectedTransaction.tbl_comprehensive_appointments.contact_last_name
+                          ? `${selectedTransaction.tbl_comprehensive_appointments.contact_first_name} ${selectedTransaction.tbl_comprehensive_appointments.contact_last_name}`.trim()
+                          : selectedTransaction.tbl_users?.full_name || "Walk-In Customer"}
+                      </p>
                     </div>
                     <div>
                       <span className="font-medium">Email:</span>
-                      <p className="text-sm">{selectedTransaction.tbl_users.email}</p>
+                      <p className="text-sm">
+                        {selectedTransaction.tbl_comprehensive_appointments.contact_email ||
+                          selectedTransaction.tbl_users?.email ||
+                          "N/A"}
+                      </p>
                     </div>
-                    {selectedTransaction.tbl_users.phone && (
+                    {(selectedTransaction.tbl_comprehensive_appointments.contact_phone ||
+                      selectedTransaction.tbl_users?.phone) && (
                       <div>
                         <span className="font-medium">Phone:</span>
-                        <p className="text-sm">{selectedTransaction.tbl_users.phone}</p>
+                        <p className="text-sm">
+                          {selectedTransaction.tbl_comprehensive_appointments.contact_phone ||
+                            selectedTransaction.tbl_users?.phone}
+                        </p>
                       </div>
                     )}
                     {selectedTransaction.notes && (
@@ -844,14 +1387,15 @@ export default function PaymentManagement() {
             </div>
           )}
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="flex justify-between items-center">
             <Button
               variant="outline"
-              onClick={() => selectedTransaction && window.open(selectedTransaction.proof_image_url, "_blank")}
-              className="flex items-center gap-2"
+              onClick={() => selectedTransaction && handleDownloadReceipt(selectedTransaction)}
+              disabled={downloadingReceipt}
+              className="gap-2"
             >
-              <Eye className="h-4 w-4" />
-              View Payment Proof
+              <Download className="h-4 w-4" />
+              {downloadingReceipt ? "Generating..." : "Download Receipt"}
             </Button>
             <Button variant="outline" onClick={() => setDetailsDialogOpen(false)}>
               Close
@@ -859,6 +1403,197 @@ export default function PaymentManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={walkInPaymentDialogOpen} onOpenChange={setWalkInPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Submit Payment for {selectedWalkInAppointment?.event_type} Event
+            </DialogTitle>
+            <DialogDescription>
+              Record the walk-in customer's payment. This payment will be sent to User Payments for verification.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 py-4">
+            {/* Payment Type Selection */}
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Payment Type</Label>
+              <RadioGroup
+                value={walkInPaymentData.paymentType}
+                onValueChange={(value: "down_payment" | "full_payment") => handleWalkInPaymentTypeChange(value)}
+              >
+                <div className="flex items-center justify-between space-x-2 border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="down_payment" id="down" />
+                    <Label htmlFor="down" className="cursor-pointer font-medium">
+                      Down Payment (50%)
+                    </Label>
+                  </div>
+                  <span className="text-lg font-bold text-green-600">
+                    {formatCurrency(selectedWalkInAppointment?.down_payment_amount || 0)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between space-x-2 border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="full_payment" id="full" />
+                    <Label htmlFor="full" className="cursor-pointer font-medium">
+                      Full Payment (100%)
+                    </Label>
+                  </div>
+                  <span className="text-lg font-bold text-rose-600">
+                    {formatCurrency(selectedWalkInAppointment?.total_package_amount || 0)}
+                  </span>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Payment Method Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="paymentMethod" className="text-base font-semibold">
+                Payment Method <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={walkInPaymentData.paymentMethod}
+                onValueChange={(value) => {
+                  setWalkInPaymentData((prev) => ({ ...prev, paymentMethod: value }))
+                  setShowQRCode(true)
+                }}
+              >
+                <SelectTrigger id="paymentMethod" className="h-12">
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">💵 Cash</SelectItem>
+                  <SelectItem value=" GCash">📱 GCash</SelectItem>
+                  <SelectItem value="bank_transfer">🏦 Bank Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Dynamic Payment Details based on selected method */}
+            {walkInPaymentData.paymentType === "cash" && (
+              <div className="space-y-2">
+                <Label htmlFor="amount" className="text-base font-semibold">
+                  Amount to Pay <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  placeholder="Enter amount"
+                  value={walkInPaymentData.amount}
+                  onChange={(e) =>
+                    setWalkInPaymentData((prev) => ({
+                      ...prev,
+                      amount: Number.parseFloat(e.target.value) || 0,
+                    }))
+                  }
+                  className="h-12"
+                />
+              </div>
+            )}
+
+            {walkInPaymentData.paymentMethod === " GCash" && (
+              <div className="border rounded-lg p-4 bg-blue-50 border-blue-200 space-y-3">
+                <h4 className="font-semibold text-blue-900">Payment Details for GCash</h4>
+                <div className="space-y-1">
+                  <p className="text-sm">
+                    <strong>Account Name:</strong> Jonel Ray Pacheco
+                  </p>
+                  <p className="text-sm">
+                    <strong>GCash Number:</strong> 0921-218-3558
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowQRCode(!showQRCode)}
+                  className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                >
+                  {showQRCode ? "Hide" : "Show"} QR Code
+                </Button>
+                {showQRCode && (
+                  <div className="text-center space-y-2">
+                    <img
+                      src="/qrcodeko.jpg"
+                      alt="GCash QR Code"
+                      className="mx-auto w-48 h-48 border-2 border-blue-300 rounded-lg"
+                    />
+                    <p className="text-xs text-blue-700 italic">
+                      (This is a placeholder QR code. In a real app, a dynamic QR code would be generated.)
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {walkInPaymentData.paymentMethod === "bank_transfer" && (
+              <div className="border rounded-lg p-4 bg-green-50 border-green-200 space-y-2">
+                <h4 className="font-semibold text-green-900">Payment Details for Bank Transfer</h4>
+                <div className="space-y-1">
+                  <p className="text-sm">
+                    <strong>Account Name:</strong> Jonel Ray Pacheco
+                  </p>
+                  <p className="text-sm">
+                    <strong>Bank Account Number:</strong> 987-654-3210 (Dummy)
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Reference/Transaction ID */}
+            {walkInPaymentData.paymentType !== "cash" && (
+              <div className="space-y-2">
+                <Label htmlFor="reference" className="text-base font-semibold">
+                  Reference/Transaction ID <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="reference"
+                  placeholder="Enter transaction ID or reference number"
+                  value={walkInPaymentData.reference}
+                  onChange={(e) => setWalkInPaymentData((prev) => ({ ...prev, reference: e.target.value }))}
+                  className="h-12"
+                />
+              </div>
+            )}
+
+            {/* Additional Notes */}
+            <div className="space-y-2">
+              <Label htmlFor="notes" className="text-base font-semibold">
+                Additional Notes (Optional)
+              </Label>
+              <Textarea
+                id="notes"
+                placeholder="Any additional information about this payment..."
+                value={walkInPaymentData.notes}
+                onChange={(e) => setWalkInPaymentData((prev) => ({ ...prev, notes: e.target.value }))}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setWalkInPaymentDialogOpen(false)}
+              disabled={submittingWalkInPayment}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitWalkInPayment}
+              disabled={submittingWalkInPayment}
+              className="bg-rose-600 hover:bg-rose-700"
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              {submittingWalkInPayment ? "Submitting..." : "Submit Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* </CHANGE> */}
     </div>
   )
 }

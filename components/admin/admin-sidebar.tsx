@@ -15,6 +15,7 @@ import {
   XCircle,
   MessageSquare,
   UserPlus,
+  Database,
 } from "lucide-react"
 
 const sidebarItems = [
@@ -59,7 +60,7 @@ const sidebarItems = [
     icon: ChefHat,
   },
   {
-    title: "Inventory",
+    title: "Menu Management",
     href: "/admin/inventory",
     icon: Package,
   },
@@ -77,6 +78,11 @@ const sidebarItems = [
     title: "Feedbacks",
     href: "/admin/feedbacks",
     icon: MessageSquare,
+  },
+  {
+    title: "Backup & Restore",
+    href: "/admin/backup-restore",
+    icon: Database,
   },
 ]
 

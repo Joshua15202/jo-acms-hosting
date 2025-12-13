@@ -70,6 +70,11 @@ type Appointment = {
   celebrant_gender?: string
   selected_menu?: any
   menu_items?: MenuItems
+  full_name?: string
+  email?: string
+  contact_first_name?: string
+  contact_last_name?: string
+  contact_email?: string
 }
 
 export default function AppointmentsList() {
@@ -228,10 +233,12 @@ export default function AppointmentsList() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       return (
-        appointment.tbl_users.full_name.toLowerCase().includes(query) ||
+        appointment.tbl_users?.full_name?.toLowerCase()?.includes(query) ||
+        appointment.full_name?.toLowerCase()?.includes(query) ||
         appointment.id.toLowerCase().includes(query) ||
         appointment.event_type.toLowerCase().includes(query) ||
-        appointment.tbl_users.email.toLowerCase().includes(query)
+        appointment.tbl_users?.email?.toLowerCase()?.includes(query) ||
+        appointment.email?.toLowerCase()?.includes(query)
       )
     }
 
@@ -428,8 +435,15 @@ export default function AppointmentsList() {
               filteredAppointments.map((appointment) => (
                 <TableRow key={appointment.id}>
                   <TableCell className="font-medium">{appointment.id.slice(0, 8)}...</TableCell>
-                  <TableCell>{appointment.tbl_users.full_name}</TableCell>
-                  <TableCell>{appointment.tbl_users.email}</TableCell>
+                  <TableCell>
+                    {appointment.tbl_users?.full_name ||
+                      (appointment.contact_first_name && appointment.contact_last_name
+                        ? `${appointment.contact_first_name} ${appointment.contact_last_name}`
+                        : appointment.full_name || "N/A")}
+                  </TableCell>
+                  <TableCell>
+                    {appointment.tbl_users?.email || appointment.contact_email || appointment.email || "N/A"}
+                  </TableCell>
                   <TableCell>{appointment.event_type}</TableCell>
                   <TableCell>{formatDate(appointment.event_date)}</TableCell>
                   <TableCell>{getTimeRange(appointment.event_time)}</TableCell>
@@ -480,17 +494,27 @@ export default function AppointmentsList() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Client Name</p>
-                  <p className="font-medium">{selectedAppointment.tbl_users.full_name}</p>
+                  <p className="font-medium">
+                    {selectedAppointment.tbl_users?.full_name ||
+                      (selectedAppointment.contact_first_name && selectedAppointment.contact_last_name
+                        ? `${selectedAppointment.contact_first_name} ${selectedAppointment.contact_last_name}`
+                        : selectedAppointment.full_name || "N/A")}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Email</p>
-                  <p className="font-medium">{selectedAppointment.tbl_users.email}</p>
+                  <p className="font-medium">
+                    {selectedAppointment.tbl_users?.email ||
+                      selectedAppointment.contact_email ||
+                      selectedAppointment.email ||
+                      "N/A"}
+                  </p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-500">Phone</p>
-                  <p className="font-medium">{selectedAppointment.tbl_users.phone || "Not provided"}</p>
+                  <p className="font-medium">{selectedAppointment.tbl_users?.phone || "Not provided"}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Event Type</p>

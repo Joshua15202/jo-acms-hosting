@@ -382,6 +382,7 @@ export default function AddWalkInsPage() {
     debutanteGender: "", // Added debutanteGender for debut events
     // Other
     eventDetails: "",
+    eventName: "", // Added for Corporate Event type
   })
 
   // Step 4: Event Details
@@ -500,6 +501,11 @@ export default function AddWalkInsPage() {
           setError("Please fill in all debutante information")
           return false
         }
+      } else if (eventType === "corporate") {
+        if (!eventSpecificData.eventName) {
+          setError("Please enter the event name for corporate events.")
+          return false
+        }
       } else if (eventType === "other" && !eventSpecificData.eventDetails) {
         setError("Please provide event details")
         return false
@@ -548,7 +554,7 @@ export default function AddWalkInsPage() {
     return true
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (includeTasting = false) => {
     setIsSubmitting(true)
     setError("")
 
@@ -564,6 +570,7 @@ export default function AddWalkInsPage() {
           ...eventDetails,
           selectedMenus,
           additionalRequests: walkInData.additionalRequests, // Use the new state for additionalRequests
+          includeTasting, // Pass the flag to the backend
           // Include pricing details in submission
           pricingData: {
             ...pricingData,
@@ -898,9 +905,9 @@ export default function AddWalkInsPage() {
                           <SelectValue placeholder="Select gender" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Male">Male</SelectItem>
-                          <SelectItem value="Female">Female</SelectItem>
-                          <SelectItem value="Rather not say">Rather not say</SelectItem>
+                          <SelectItem value="male">Male</SelectItem>
+                          <SelectItem value="female">Female</SelectItem>
+                          <SelectItem value="other">Rather not say</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1061,7 +1068,23 @@ export default function AddWalkInsPage() {
                 </div>
               )}
 
-              {/* Corporate Fields - REMOVED per update */}
+              {/* Corporate Event Fields */}
+              {eventType === "corporate" && (
+                <div>
+                  <Label htmlFor="eventName">Event Name *</Label>
+                  <Input
+                    id="eventName"
+                    value={eventSpecificData.eventName || ""}
+                    onChange={(e) =>
+                      setEventSpecificData({
+                        ...eventSpecificData,
+                        eventName: e.target.value,
+                      })
+                    }
+                    placeholder="Enter the name of the corporate event"
+                  />
+                </div>
+              )}
 
               {/* Other Event */}
               {eventType === "other" && (
@@ -2097,20 +2120,41 @@ export default function AddWalkInsPage() {
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex justify-between mt-6">
-        <Button variant="outline" onClick={handleBack} disabled={currentStep === 1}>
-          Back
-        </Button>
-        {currentStep < 6 ? (
+      {currentStep < 6 ? (
+        <div className="flex justify-between mt-6">
+          <Button variant="outline" onClick={handleBack} disabled={currentStep === 1}>
+            Back
+          </Button>
           <Button onClick={handleNext} className="bg-rose-600 hover:bg-rose-700">
             Next
           </Button>
-        ) : (
-          <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-rose-600 hover:bg-rose-700">
-            {isSubmitting ? "Adding..." : "Add Walk-In Appointment"}
+        </div>
+      ) : (
+        <div className="flex justify-between mt-6">
+          <Button onClick={handleBack} variant="outline" type="button" disabled={isSubmitting}>
+            Back
           </Button>
-        )}
-      </div>
+          <Button
+            onClick={() => {
+              handleSubmit(true) // Include tasting
+            }}
+            disabled={isSubmitting}
+            variant="outline"
+            className="border-rose-600 text-rose-600 hover:bg-rose-50"
+          >
+            {isSubmitting ? "Adding..." : "Food Tasting"}
+          </Button>
+          <Button
+            onClick={() => {
+              handleSubmit(false) // Skip tasting, go directly to payment
+            }}
+            disabled={isSubmitting}
+            className="bg-rose-600 hover:bg-rose-700"
+          >
+            {isSubmitting ? "Adding..." : "Skip To Payment"}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

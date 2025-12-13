@@ -111,7 +111,7 @@ export function generateVerificationEmailHTML(firstName: string, verificationCod
           <!-- Instructions -->
           <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <p style="color: #92400e; margin: 0; font-size: 14px;">
-              <strong>Important:</strong> This code will expire in 5 minutes for security reasons.
+              <strong>Important:</strong> This code will expire in 30 minutes for security reasons.
             </p>
           </div>
           
@@ -215,8 +215,7 @@ export function generateTastingConfirmationEmailHTML(
   proposedTastingTime: string,
   tastingToken: string,
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "jo-acms.vercel.app"
-
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   const confirmUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=confirm`
   const rescheduleUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=reschedule`
 
@@ -504,6 +503,153 @@ export function generateAdminNotificationEmailHTML(
           <div style="text-align: center;">
             <p style="color: #9ca3af; font-size: 12px; margin: 0;">
               © 2024 Jo Pacheco Wedding & Event - Admin System
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+export function generateAdminWalkInTastingEmailHTML(
+  firstName: string,
+  eventType: string,
+  eventDate: string,
+  proposedTastingDate: string,
+  proposedTastingTime: string,
+  tastingToken: string,
+  guestCount: number,
+  venue: string,
+  totalAmount: number,
+  downPayment: number,
+): string {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+  const confirmUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=confirm`
+  const rescheduleUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=reschedule`
+
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+      <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #e11d48 0%, #be185d 100%); padding: 30px; text-align: center;">
+          <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold;">🎉 Appointment Confirmed!</h1>
+          <p style="color: rgba(255, 255, 255, 0.9); margin: 5px 0 0 0; font-size: 16px;">Jo Pacheco Wedding & Events</p>
+        </div>
+        
+        <!-- Content -->
+        <div style="padding: 40px 30px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <p style="color: #6b7280; margin: 0; font-size: 16px; line-height: 1.5;">
+              Dear ${firstName},
+            </p>
+            <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 16px; line-height: 1.5;">
+              Thank you for booking with <strong>Jo Pacheco Wedding & Events</strong>!
+            </p>
+          </div>
+          
+          <!-- Tasting Schedule -->
+          <div style="background: #fef2f2; border: 2px solid #fca5a5; border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0;">
+            <h3 style="color: #dc2626; margin: 0 0 15px 0; font-size: 20px;">🍽️ Food Tasting Appointment</h3>
+            <div style="background: white; border-radius: 8px; padding: 20px; display: inline-block; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-bottom: 20px;">
+              <div style="color: #dc2626; font-size: 14px; font-weight: bold; margin-bottom: 10px;">Date:</div>
+              <div style="color: #1f2937; font-size: 18px; font-weight: bold; margin-bottom: 15px;">
+                ${new Date(proposedTastingDate).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </div>
+              <div style="color: #dc2626; font-size: 14px; font-weight: bold; margin-bottom: 10px;">Time:</div>
+              <div style="color: #1f2937; font-size: 18px; font-weight: bold; margin-bottom: 15px;">
+                ${proposedTastingTime}
+              </div>
+              <div style="color: #dc2626; font-size: 14px; font-weight: bold; margin-bottom: 10px;">Location:</div>
+              <div style="color: #1f2937; font-size: 16px;">
+                Jo Pacheco Wedding & Events Office
+              </div>
+            </div>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div style="text-align: center; margin: 30px 0;">
+            <div style="margin-bottom: 15px;">
+              <a href="${confirmUrl}" 
+                 style="display: inline-block; background: #e11d48; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                ✅ Confirm This Date
+              </a>
+            </div>
+            
+            <div>
+              <a href="${rescheduleUrl}" 
+                 style="display: inline-block; background: #6b7280; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: normal; font-size: 14px;">
+                📅 Request a Different Date
+              </a>
+            </div>
+          </div>
+          
+          <!-- Event Details -->
+          <div style="background: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <h4 style="color: #1f2937; margin: 0 0 15px 0; font-size: 16px; font-weight: bold;">Event Details:</h4>
+            <table style="width: 100%; font-size: 14px; line-height: 1.8;">
+              <tr>
+                <td style="color: #6b7280; padding: 4px 0;"><strong>Event Type:</strong></td>
+                <td style="color: #1f2937; text-align: right; padding: 4px 0;">${eventType}</td>
+              </tr>
+              <tr>
+                <td style="color: #6b7280; padding: 4px 0;"><strong>Guest Count:</strong></td>
+                <td style="color: #1f2937; text-align: right; padding: 4px 0;">${guestCount}</td>
+              </tr>
+              <tr>
+                <td style="color: #6b7280; padding: 4px 0;"><strong>Event Date:</strong></td>
+                <td style="color: #1f2937; text-align: right; padding: 4px 0;">${new Date(eventDate).toLocaleDateString(
+                  "en-US",
+                  {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  },
+                )}</td>
+              </tr>
+              <tr>
+                <td style="color: #6b7280; padding: 4px 0;"><strong>Venue:</strong></td>
+                <td style="color: #1f2937; text-align: right; padding: 4px 0;">${venue}</td>
+              </tr>
+              <tr>
+                <td style="color: #6b7280; padding: 8px 0 4px 0; border-top: 1px solid #e5e7eb;"><strong>Total Package Amount:</strong></td>
+                <td style="color: #e11d48; text-align: right; font-weight: bold; padding: 8px 0 4px 0; border-top: 1px solid #e5e7eb;">₱${totalAmount.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td style="color: #6b7280; padding: 4px 0;"><strong>Down Payment (50%):</strong></td>
+                <td style="color: #10b981; text-align: right; font-weight: bold; padding: 4px 0;">₱${downPayment.toLocaleString()}</td>
+              </tr>
+            </table>
+          </div>
+          
+          <p style="color: #dc2626; font-size: 14px; line-height: 1.6; text-align: center; margin: 20px 0; font-weight: bold;">
+            <strong>Important:</strong> Please click the "Confirm This Date" button above to secure your tasting appointment slot, or click "Request a Different Date" if this time doesn't work for you.
+          </p>
+          
+          <p style="color: #6b7280; font-size: 14px; line-height: 1.6; text-align: center; margin: 20px 0;">
+            If you have any questions, feel free to contact us.
+          </p>
+        </div>
+        
+        <!-- Footer -->
+        <div style="background: #f9fafb; padding: 25px 30px; border-top: 1px solid #e5e7eb;">
+          <div style="text-align: center;">
+            <h3 style="color: #e11d48; margin: 0 0 10px 0; font-size: 18px;">Contact Us</h3>
+            <p style="color: #6b7280; margin: 0; font-size: 14px; line-height: 1.6;">
+              📍 Sullera St. Pandayan, Bulacan<br>
+              📞 Phone: (044) 308 3396<br>
+              📱 Mobile: 0917-8543221<br>
+              ✉️ Email: ${process.env.SMTP_FROM}
+            </p>
+          </div>
+          
+          <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+            <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+              © 2025 Jo Pacheco Wedding & Events. All rights reserved.
             </p>
           </div>
         </div>
