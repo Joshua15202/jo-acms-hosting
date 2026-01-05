@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     try {
       console.log("Triggering appointment recalculation...")
       const recalcResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/admin/recalculate-appointments`,
+        `${process.env.NEXT_PUBLIC_APP_URL || "http://jo-acms.vercel.app"}/api/admin/recalculate-appointments`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

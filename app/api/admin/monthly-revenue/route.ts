@@ -10,11 +10,21 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const period = searchParams.get("period") || "monthly"
+    const requestedMonth = searchParams.get("month")
+    const requestedYear = searchParams.get("year")
 
     console.log("=== REVENUE API CALLED ===")
     console.log("Period:", period)
+    console.log("Requested Month:", requestedMonth)
+    console.log("Requested Year:", requestedYear)
 
-    const now = new Date()
+    const targetDate = new Date()
+    if (requestedYear) {
+      targetDate.setFullYear(Number.parseInt(requestedYear))
+    }
+    if (requestedMonth) {
+      targetDate.setMonth(Number.parseInt(requestedMonth) - 1)
+    }
 
     let startDate: Date
     let endDate: Date
@@ -23,16 +33,16 @@ export async function GET(request: NextRequest) {
     let periodLabel: string
 
     if (period === "yearly") {
-      startDate = new Date(now.getFullYear(), 0, 1)
-      endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
-      prevStartDate = new Date(now.getFullYear() - 1, 0, 1)
-      prevEndDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59, 999)
-      periodLabel = now.getFullYear().toString()
+      startDate = new Date(targetDate.getFullYear(), 0, 1)
+      endDate = new Date(targetDate.getFullYear(), 11, 31, 23, 59, 59, 999)
+      prevStartDate = new Date(targetDate.getFullYear() - 1, 0, 1)
+      prevEndDate = new Date(targetDate.getFullYear() - 1, 11, 31, 23, 59, 59, 999)
+      periodLabel = targetDate.getFullYear().toString()
     } else {
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
-      prevStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      prevEndDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+      startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1)
+      endDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999)
+      prevStartDate = new Date(targetDate.getFullYear(), targetDate.getMonth() - 1, 1)
+      prevEndDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 0, 23, 59, 59, 999)
       const monthNames = [
         "January",
         "February",
@@ -47,7 +57,7 @@ export async function GET(request: NextRequest) {
         "November",
         "December",
       ]
-      periodLabel = monthNames[now.getMonth()]
+      periodLabel = monthNames[targetDate.getMonth()]
     }
 
     console.log("Date ranges:", {
@@ -146,8 +156,8 @@ export async function GET(request: NextRequest) {
         percentageChange: Math.round(percentageChange * 100) / 100,
         completedEvents: currentEvents?.length || 0,
         revenueBreakdown,
-        month: now.getMonth() + 1,
-        year: now.getFullYear(),
+        month: targetDate.getMonth() + 1,
+        year: targetDate.getFullYear(),
         monthName: periodLabel,
         period,
       },

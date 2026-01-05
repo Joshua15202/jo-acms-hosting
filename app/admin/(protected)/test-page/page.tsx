@@ -53,12 +53,15 @@ interface UpcomingEvent {
   guest_count: number
   venue_address?: string
   status: string
-  tbl_users: {
+  tbl_users?: {
     id: string
     full_name: string
     email: string
     phone?: string
   }
+  contact_first_name?: string
+  contact_last_name?: string
+  contact_email?: string
 }
 
 interface RevenueData {
@@ -125,6 +128,8 @@ export default function AdminDashboard() {
   const [downloadFormat, setDownloadFormat] = useState<"monthly" | "yearly">("monthly")
   const [isDownloading, setIsDownloading] = useState(false)
   const [viewPeriod, setViewPeriod] = useState<"monthly" | "yearly">("monthly")
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 
   useEffect(() => {
     fetchCustomersCount()
@@ -197,14 +202,17 @@ export default function AdminDashboard() {
       console.log("View Period:", viewPeriod)
       const timestamp = new Date().getTime()
       const randomParam = Math.random().toString(36).substring(7)
-      const response = await fetch(`/api/admin/monthly-revenue?period=${viewPeriod}&_=${timestamp}&r=${randomParam}`, {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
+      const response = await fetch(
+        `/api/admin/monthly-revenue?period=${viewPeriod}&month=${selectedMonth}&year=${selectedYear}&_=${timestamp}&r=${randomParam}`,
+        {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
         },
-      })
+      )
       const data = await response.json()
 
       console.log("=== REVENUE RESPONSE ===")
@@ -444,12 +452,12 @@ export default function AdminDashboard() {
     if (showRevenue) {
       fetchRevenueDetails()
     }
-  }, [viewPeriod])
+  }, [viewPeriod, selectedMonth, selectedYear]) // Added selectedMonth and selectedYear to trigger refetch when changed
 
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
-      <p className="text-gray-600 mb-6">Welcome to the Jo-ACMS Admin Dashboard.</p>
+      <p className="text-gray-600 mb-6">Welcome to the Jo-ACMS admin dashboard.</p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Clickable Registered Customers Card */}
@@ -656,7 +664,11 @@ export default function AdminDashboard() {
                               {getStatusBadge(event.status)}
                             </div>
                             <p className="text-sm text-gray-600">
-                              Client: {event.tbl_users.full_name} ({event.tbl_users.email})
+                              Client:{" "}
+                              {event.tbl_users?.full_name ||
+                                `${event.contact_first_name || ""} ${event.contact_last_name || ""}`.trim() ||
+                                "Walk-In Customer"}{" "}
+                              ({event.tbl_users?.email || event.contact_email || "N/A"})
                             </p>
                           </div>
                           <div className="text-right">
@@ -719,6 +731,64 @@ export default function AdminDashboard() {
                 Revenue Analytics & Reports
               </DialogTitle>
               <div className="flex items-center gap-2">
+                {viewPeriod === "monthly" && (
+                  <>
+                    <Select
+                      value={selectedMonth.toString()}
+                      onValueChange={(value) => setSelectedMonth(Number.parseInt(value))}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">January</SelectItem>
+                        <SelectItem value="2">February</SelectItem>
+                        <SelectItem value="3">March</SelectItem>
+                        <SelectItem value="4">April</SelectItem>
+                        <SelectItem value="5">May</SelectItem>
+                        <SelectItem value="6">June</SelectItem>
+                        <SelectItem value="7">July</SelectItem>
+                        <SelectItem value="8">August</SelectItem>
+                        <SelectItem value="9">September</SelectItem>
+                        <SelectItem value="10">October</SelectItem>
+                        <SelectItem value="11">November</SelectItem>
+                        <SelectItem value="12">December</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={selectedYear.toString()}
+                      onValueChange={(value) => setSelectedYear(Number.parseInt(value))}
+                    >
+                      <SelectTrigger className="w-28">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
+                {viewPeriod === "yearly" && (
+                  <Select
+                    value={selectedYear.toString()}
+                    onValueChange={(value) => setSelectedYear(Number.parseInt(value))}
+                  >
+                    <SelectTrigger className="w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
                 <Select value={viewPeriod} onValueChange={(value: "monthly" | "yearly") => setViewPeriod(value)}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
@@ -777,163 +847,70 @@ export default function AdminDashboard() {
                       ) : (
                         <TrendingDown className="h-6 w-6 text-red-600" />
                       )}
-                      <p
-                        className={`text-3xl font-bold ${revenueData && revenueData.percentageChange >= 0 ? "text-green-900" : "text-red-900"}`}
+                    </div>
+                    <p className="text-xs text-purple-600 mt-1">
+                      {revenueData
+                        ? `${revenueData.percentageChange >= 0 ? "+" : ""}${revenueData.percentageChange}%`
+                        : "0%"}
+                    </p>
+                  </div>
+                </div>
+                {/* Additional Analytics Sections */}
+                {/* Bar Chart for Monthly Revenue */}
+                <div className="bg-white p-6 rounded-lg shadow border">
+                  <h2 className="text-xl font-bold mb-4">Monthly Revenue Overview</h2>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="revenue" fill="#8884d8" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Pie Chart for Event Types */}
+                <div className="bg-white p-6 rounded-lg shadow border">
+                  <h2 className="text-xl font-bold mb-4">Event Type Distribution</h2>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={eventTypeData}
+                        cx={150}
+                        cy={150}
+                        labelLine={false}
+                        label={({ name, percentage }) => `${name} (${percentage.toFixed(1)}%)`}
+                        outerRadius={80}
+                        fill="#8884d8"
                       >
-                        {revenueData?.percentageChange >= 0 ? "+" : ""}
-                        {revenueData?.percentageChange || 0}%
-                      </p>
-                    </div>
-                    <p className="text-xs text-purple-600 mt-2">vs last {viewPeriod === "yearly" ? "year" : "month"}</p>
-                  </div>
-                </div>
-
-                {/* Monthly Revenue Trend */}
-                {monthlyData.length > 0 && (
-                  <div className="bg-white p-6 rounded-lg border">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-green-600" />
-                      12-Month Revenue Trend
-                    </h3>
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={monthlyData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip
-                          formatter={(value: number, name: string) => {
-                            if (name === "revenue") return [formatCurrency(value), "Revenue"]
-                            return [value, "Events"]
-                          }}
-                        />
-                        <Legend />
-                        <Bar dataKey="revenue" fill="#22c55e" name="Revenue" radius={[8, 8, 0, 0]} />
-                        <Bar dataKey="events" fill="#3b82f6" name="Events" radius={[8, 8, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-
-                {/* Event Type Distribution & Peak Months */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {eventTypeData.length > 0 && (
-                    <div className="bg-white p-6 rounded-lg border">
-                      <h3 className="text-lg font-semibold mb-4">Event Type Distribution</h3>
-                      <ResponsiveContainer width="100%" height={250}>
-                        <PieChart>
-                          <Pie
-                            data={eventTypeData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={(entry) => `${entry.name}: ${entry.percentage}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="count"
-                          >
-                            {eventTypeData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {peakMonths.length > 0 && (
-                    <div className="bg-white p-6 rounded-lg border">
-                      <h3 className="text-lg font-semibold mb-4">Peak Months Analysis</h3>
-                      <div className="space-y-3">
-                        {peakMonths.slice(0, 3).map((peak, index) => (
-                          <div
-                            key={peak.month}
-                            className="p-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-lg border border-orange-200"
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <Badge className="bg-orange-600 text-white">#{index + 1} Peak Month</Badge>
-                              <span className="text-sm font-medium text-gray-600">{peak.events} events</span>
-                            </div>
-                            <h4 className="text-xl font-bold text-gray-900">{peak.month}</h4>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Revenue:{" "}
-                              <span className="font-semibold text-green-600">{formatCurrency(peak.revenue)}</span>
-                            </p>
-                            <p className="text-sm text-gray-700">
-                              Top Event: <span className="font-semibold text-blue-600">{peak.topEventType}</span>
-                            </p>
-                          </div>
+                        {eventTypeData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
-                      </div>
-                    </div>
-                  )}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
 
-                {/* Event Type Breakdown Table */}
-                {eventTypeData.length > 0 && (
-                  <div className="bg-white p-6 rounded-lg border">
-                    <h3 className="text-lg font-semibold mb-4">Event Type Breakdown</h3>
-                    <div className="space-y-2">
-                      {eventTypeData.map((type, index) => (
-                        <div key={type.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-4 h-4 rounded-full"
-                              style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                            />
-                            <span className="font-medium">{type.name}</span>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-semibold">{type.count} events</p>
-                            <p className="text-sm text-gray-500">{type.percentage}% of total</p>
-                          </div>
+                {/* Peak Months Section */}
+                <div className="bg-white p-6 rounded-lg shadow border">
+                  <h2 className="text-xl font-bold mb-4">Peak Months</h2>
+                  <div className="space-y-4">
+                    {peakMonths.map((month) => (
+                      <div key={month.month} className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-600">Month: {month.month}</p>
+                          <p className="text-sm font-medium text-gray-600">Events: {month.events}</p>
+                          <p className="text-sm font-medium text-gray-600">Revenue: {formatCurrency(month.revenue)}</p>
+                          <p className="text-sm font-medium text-gray-600">Top Event Type: {month.topEventType}</p>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-
-                {/* Insights Section */}
-                {peakMonths.length > 0 && eventTypeData.length > 0 && (
-                  <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-                    <h3 className="text-lg font-semibold mb-3 text-blue-900">Key Insights</h3>
-                    <ul className="space-y-2 text-sm text-blue-800">
-                      <li className="flex items-start gap-2">
-                        <span className="font-bold mt-0.5">•</span>
-                        <span>
-                          Your busiest months are{" "}
-                          {peakMonths
-                            .slice(0, 3)
-                            .map((p) => p.month)
-                            .join(", ")}
-                          . Consider increasing inventory and staff during these periods.
-                        </span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="font-bold mt-0.5">•</span>
-                        <span>
-                          The most popular event type is <strong>{eventTypeData[0]?.name}</strong> with{" "}
-                          {eventTypeData[0]?.count} bookings ({eventTypeData[0]?.percentage}% of total).
-                        </span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="font-bold mt-0.5">•</span>
-                        <span>
-                          Peak season revenue reaches {formatCurrency(peakMonths[0]?.revenue || 0)} in{" "}
-                          {peakMonths[0]?.month}.
-                        </span>
-                      </li>
-                    </ul>
-                  </div>
-                )}
+                </div>
               </>
             )}
-          </div>
-
-          <div className="flex justify-end pt-4 border-t">
-            <Button variant="outline" onClick={() => setShowRevenue(false)}>
-              Close
-            </Button>
           </div>
         </DialogContent>
       </Dialog>

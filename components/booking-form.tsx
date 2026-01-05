@@ -849,6 +849,9 @@ function BookingFormContent({
 
       const isWedding = formData.eventType === "wedding"
       const isDebut = formData.eventType === "debut"
+      const formattedBackdropStyle = backdropStyle
+        ? backdropStyle.replace("_PANEL_BACKDROP", "").toLowerCase()
+        : undefined
       const backdropPrice = !isWedding && !isDebut && backdropStyle ? getBackdropPrice(backdropStyle) : 0
       console.log("Backdrop price:", backdropPrice)
 
@@ -860,6 +863,8 @@ function BookingFormContent({
         isDebutPackage: isDebut,
         weddingPackagePrice: isWedding ? basePricing.serviceFee : 0,
         debutPackagePrice: isDebut ? basePricing.serviceFee : 0,
+        backdropStyle: formattedBackdropStyle, // Add the formatted backdrop style here
+        backdropPrice: backdropPrice, // Use the calculated backdropPrice
       }
 
       console.log("Final pricing with backdrop:", finalPricing)
@@ -1133,7 +1138,7 @@ function BookingFormContent({
           beverage: formData.beverage,
           additionalEventInfo: formData.additionalEventInfo || "",
           additionalRequests: formData.additionalRequests || "",
-          backdropStyle: backdropStyle || undefined,
+          backdropStyle: backdropStyle ? backdropStyle.replace("_PANEL_BACKDROP", "").toLowerCase() : undefined,
           backdropPrice: backdropStyle ? getBackdropPrice(backdropStyle) : undefined,
         }
 
