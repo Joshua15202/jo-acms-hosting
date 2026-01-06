@@ -42,7 +42,7 @@ export function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
           <Image
-            src="/images/jo-pacheco-logo.png"
+            src="/New Logo.png"
             alt="Jo Pacheco Wedding and Events"
             width={50}
             height={50}

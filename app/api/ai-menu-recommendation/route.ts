@@ -518,7 +518,7 @@ You MUST ALWAYS select from ALL available categories following this EXACT struct
 - Exactly 1 Dessert
 - Exactly 1 Beverage
 
-**IMPORTANT:** 
+**IMPORTANT:**
 - You CANNOT skip any category even if the user says "vegetarian only", "no meat", or "seafood only"
 - You CANNOT provide only 1 total item from all categories
 - You MUST maintain the 3 main course structure (1 from each menu) + 1 pasta + 1 dessert + 1 beverage
@@ -583,7 +583,7 @@ Respond with a JSON object containing:
 {
   "beef": ["selected beef item if chosen from Menu 1, otherwise EMPTY array []"],
   "pork": ["selected pork item if chosen from Menu 1, otherwise EMPTY array []"],
-  "chicken": ["exactly 1 chicken item from Menu 2"], 
+  "chicken": ["exactly 1 chicken item from Menu 2"],
   "seafood": ["selected seafood item if chosen from Menu 3, otherwise EMPTY array []"],
   "vegetables": ["selected vegetable item if chosen from Menu 3, otherwise EMPTY array []"],
   "pasta": ["exactly 1 pasta item"],
@@ -649,17 +649,28 @@ Your "reasoning" field MUST include these SPECIFIC elements:
 Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 from Menu 3, plus pasta/dessert/beverage). User preferences guide your choices WITHIN each required category. Maximum variety for generation #${generationCount}.`
 
     const response = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: google("gemini-2.5-flash-lite"),
       prompt: prompt,
       temperature: 0.8,
-      maxTokens: 2000,
+      maxTokens: 4000, // Increased from 2000 to prevent truncation
     })
 
     let aiRecommendations
     try {
       const jsonMatch = response.text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
-        aiRecommendations = JSON.parse(jsonMatch[0])
+        const jsonString = jsonMatch[0]
+        // Check if JSON is complete by counting braces
+        const openBraces = (jsonString.match(/\{/g) || []).length
+        const closeBraces = (jsonString.match(/\}/g) || []).length
+
+        if (openBraces !== closeBraces) {
+          console.error("Incomplete JSON detected - mismatched braces")
+          console.log("Raw AI response:", response.text)
+          throw new Error("Incomplete JSON response")
+        }
+
+        aiRecommendations = JSON.parse(jsonString)
       } else {
         throw new Error("No JSON found in response")
       }
@@ -668,7 +679,7 @@ Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 
       console.log("Raw AI response:", response.text)
       return NextResponse.json({
         success: false,
-        message: "Failed to parse AI response",
+        message: "Failed to generate menu recommendations. Please try again.",
         fallback: true,
       })
     }
