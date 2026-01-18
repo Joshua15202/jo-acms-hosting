@@ -3,39 +3,80 @@ import { supabaseAdmin } from "@/lib/supabase"
 
 export async function GET(request: NextRequest) {
   try {
-    // Fetch all cancellation requests with appointment and user details
-    const { data: requests, error } = await supabaseAdmin
-      .from("tbl_cancellation_requests")
+    // Fetch cancelled appointments with user details
+    const { data: cancelledAppointments, error } = await supabaseAdmin
+      .from("tbl_comprehensive_appointments")
       .select(`
-        *,
-        appointment:tbl_comprehensive_appointments(
-          id,
-          event_type,
-          event_date,
-          total_package_amount,
-          payment_status,
-          status
-        )
+        id,
+        user_id,
+        event_type,
+        event_date,
+        event_time,
+        total_package_amount,
+        payment_status,
+        status,
+        admin_notes,
+        created_at,
+        updated_at,
+        guests,
+        venue,
+        contact_first_name,
+        contact_last_name,
+        contact_email,
+        contact_phone
       `)
-      .order("created_at", { ascending: false })
+      .eq("status", "cancelled")
+      .order("updated_at", { ascending: false })
 
     if (error) {
-      console.error("Error fetching cancellation requests:", error)
-      return NextResponse.json({ success: false, error: "Failed to fetch cancellation requests" }, { status: 500 })
+      console.error("Error fetching cancelled appointments:", error)
+      return NextResponse.json({ success: false, error: "Failed to fetch cancelled appointments" }, { status: 500 })
     }
 
-    // Get user details for each request
+    // Get user details for each cancelled appointment (skip walk-ins which don't have user_id)
     const requestsWithUsers = await Promise.all(
-      requests.map(async (request) => {
-        const { data: user } = await supabaseAdmin
-          .from("tbl_users")
-          .select("first_name, last_name, email, phone")
-          .eq("id", request.user_id)
-          .single()
+      cancelledAppointments.map(async (appointment) => {
+        let user = null
+        
+        // If appointment has user_id, fetch user details
+        if (appointment.user_id) {
+          const { data: userData } = await supabaseAdmin
+            .from("tbl_users")
+            .select("first_name, last_name, email, phone, username")
+            .eq("id", appointment.user_id)
+            .single()
+          user = userData
+        }
+
+        // Extract cancellation reason from admin_notes
+        const reasonMatch = appointment.admin_notes?.match(/Reason: (.+?)(?:\n|$)/)
+        const reason = reasonMatch ? reasonMatch[1] : "No reason provided"
 
         return {
-          ...request,
-          user,
+          id: appointment.id,
+          appointment_id: appointment.id,
+          user_id: appointment.user_id,
+          reason,
+          status: "cancelled",
+          created_at: appointment.created_at,
+          updated_at: appointment.updated_at,
+          appointment: {
+            id: appointment.id,
+            event_type: appointment.event_type,
+            event_date: appointment.event_date,
+            event_time: appointment.event_time,
+            total_package_amount: appointment.total_package_amount,
+            payment_status: appointment.payment_status,
+            status: appointment.status,
+            guests: appointment.guests,
+            venue: appointment.venue,
+          },
+          user: user || {
+            first_name: appointment.contact_first_name || "Walk-In",
+            last_name: appointment.contact_last_name || "Customer",
+            email: appointment.contact_email || "N/A",
+            phone: appointment.contact_phone || "N/A",
+          },
         }
       }),
     )

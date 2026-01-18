@@ -831,8 +831,8 @@ export default function MyAppointmentsClient() {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.JSON.stringify({
-            reason: "User cancelled unpaid appointment",
+          body: JSON.stringify({
+            reason: cancelReason || "User cancelled appointment",
           }),
         })
 
