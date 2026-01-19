@@ -628,6 +628,7 @@ export default function PaymentManagement() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify(walkInPaymentData),
       })
 
