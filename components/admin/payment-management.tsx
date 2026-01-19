@@ -159,7 +159,10 @@ export default function PaymentManagement() {
   const fetchWalkInPayments = async () => {
     try {
       setWalkInLoading(true)
-      const response = await fetch("/api/admin/walk-in-payments")
+      const response = await fetch("/api/admin/walk-in-payments", {
+        cache: "no-store",
+        credentials: "include",
+      })
       if (response.ok) {
         const data = await response.json()
         setWalkInAppointments(data.appointments || [])

@@ -20,10 +20,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, message: "Failed to fetch walk-in payments", error }, { status: 500 })
     }
 
-    return NextResponse.json({
-      success: true,
-      appointments: appointments || [],
-    })
+    return NextResponse.json(
+      {
+        success: true,
+        appointments: appointments || [],
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
+    )
   } catch (error: any) {
     console.error("Error in walk-in payments API:", error)
     return NextResponse.json(
