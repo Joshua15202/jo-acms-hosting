@@ -45,7 +45,7 @@ function generateAdminWalkInTastingEmailHTML(
   totalPackageAmount: number,
   downPayment: number,
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://jo-acms.vercel.app"
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   const confirmUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=confirm`
 
   return `
@@ -250,6 +250,14 @@ export async function POST(request: Request) {
 
     const appointmentStatus = includeTasting ? "PENDING_TASTING_CONFIRMATION" : "pending"
 
+    console.log("[v0] Creating walk-in appointment with:", {
+      status: appointmentStatus,
+      payment_status: "unpaid",
+      booking_source: "admin",
+      includeTasting,
+      totalAmount: totalPackageAmount,
+    })
+
     const { data, error } = await supabaseAdmin
       .from("tbl_comprehensive_appointments")
       .insert({
@@ -300,11 +308,17 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error("Error creating walk-in appointment:", error)
+      console.error("[v0] Error creating walk-in appointment:", error)
       return NextResponse.json({ error: "Failed to create walk-in appointment" }, { status: 500 })
     }
 
-    console.log("[v0] Walk-in appointment created:", data.id)
+    console.log("[v0] Walk-in appointment created successfully:", {
+      id: data.id,
+      status: data.status,
+      payment_status: data.payment_status,
+      booking_source: data.booking_source,
+      contact_name: `${data.contact_first_name} ${data.contact_last_name}`,
+    })
 
     await createAdminNotification({
       appointmentId: data.id,

@@ -3,6 +3,12 @@ import { supabaseAdmin } from "@/lib/supabase"
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("[v0] Walk-in payments GET - Fetching appointments with filters:", {
+      booking_source: "admin",
+      status: ["TASTING_CONFIRMED", "PENDING_TASTING_CONFIRMATION", "pending"],
+      payment_status: ["unpaid", "partially_paid"],
+    })
+
     if (!supabaseAdmin) {
       return NextResponse.json({ success: false, message: "Admin client not available" }, { status: 500 })
     }
@@ -16,9 +22,20 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (error) {
-      console.error("Error fetching walk-in payments:", error)
+      console.error("[v0] Walk-in payments GET - Error fetching:", error)
       return NextResponse.json({ success: false, message: "Failed to fetch walk-in payments", error }, { status: 500 })
     }
+
+    console.log("[v0] Walk-in payments GET - Found appointments:", {
+      count: appointments?.length || 0,
+      appointments: appointments?.map((a) => ({
+        id: a.id,
+        status: a.status,
+        payment_status: a.payment_status,
+        booking_source: a.booking_source,
+        name: `${a.contact_first_name} ${a.contact_last_name}`,
+      })),
+    })
 
     return NextResponse.json(
       {
