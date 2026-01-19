@@ -66,7 +66,7 @@ Return ONLY a valid JSON object with this structure:
 }`
 
     const { text } = await generateText({
-      model: google("gemini-2.5-flash-lite"),
+      model: google("gemini-2.5-flash"),
       prompt,
       temperature: 0.2,
     })

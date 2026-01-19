@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       })
 
       const result = await generateText({
-        model: google("gemini-2.5-flash-lite"),
+        model: google("gemini-2.0-flash-lite"),
         messages,
         system: `You are the official AI chatbot for Jo Pacheco Wedding & Event, powered by the Jo-ACMS (AI-based Catering Management System). You are an intelligent virtual assistant designed to guide customers through event planning in an interactive and personalized manner.
 
