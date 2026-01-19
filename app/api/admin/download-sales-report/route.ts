@@ -7,24 +7,29 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const format = searchParams.get("format") || "monthly"
+    const period = searchParams.get("period") || "monthly"
+    const selectedMonth = Number.parseInt(searchParams.get("month") || "0", 10)
+    const selectedYear = Number.parseInt(searchParams.get("year") || new Date().getFullYear().toString(), 10)
 
-    const now = new Date()
-    const currentYear = now.getFullYear()
-    const currentMonth = now.getMonth()
+    console.log("[v0] Download PDF - Received params:", { format, period, selectedMonth, selectedYear })
 
     let startDate: Date
     let endDate: Date
     let title: string
 
-    if (format === "monthly") {
-      startDate = new Date(currentYear, currentMonth, 1)
-      endDate = new Date(currentYear, currentMonth + 1, 0)
+    if (period === "monthly") {
+      // Use selected month and year (month is 1-12, convert to 0-11 for Date)
+      startDate = new Date(selectedYear, selectedMonth - 1, 1)
+      endDate = new Date(selectedYear, selectedMonth, 0) // Last day of selected month
       title = `Monthly Sales Report - ${startDate.toLocaleString("en-US", { month: "long", year: "numeric" })}`
     } else {
-      startDate = new Date(currentYear, 0, 1)
-      endDate = new Date(currentYear, 11, 31)
-      title = `Yearly Sales Report - ${currentYear}`
+      // Yearly report for selected year
+      startDate = new Date(selectedYear, 0, 1)
+      endDate = new Date(selectedYear, 11, 31)
+      title = `Yearly Sales Report - ${selectedYear}`
     }
+
+    console.log("[v0] Download PDF - Date range:", { startDate: startDate.toISOString(), endDate: endDate.toISOString() })
 
     // Fetch completed events
     const { data: events, error } = await supabase

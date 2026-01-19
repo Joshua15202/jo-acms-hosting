@@ -255,7 +255,15 @@ export default function AdminDashboard() {
   const handleDownloadPDF = async () => {
     setIsDownloading(true)
     try {
-      const response = await fetch(`/api/admin/download-sales-report?format=${downloadFormat}`)
+      // Pass the selected month, year, and view period to the API
+      const params = new URLSearchParams({
+        format: downloadFormat,
+        period: viewPeriod,
+        month: selectedMonth.toString(),
+        year: selectedYear.toString(),
+      })
+      
+      const response = await fetch(`/api/admin/download-sales-report?${params}`)
 
       if (!response.ok) {
         throw new Error("Failed to generate report")
@@ -265,7 +273,13 @@ export default function AdminDashboard() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `sales-report-${downloadFormat}-${new Date().toISOString().split("T")[0]}.pdf`
+      
+      // Generate filename based on selected period
+      const filename = viewPeriod === "yearly" 
+        ? `sales-report-${selectedYear}.pdf`
+        : `sales-report-${selectedYear}-${selectedMonth.toString().padStart(2, '0')}.pdf`
+      
+      a.download = filename
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
