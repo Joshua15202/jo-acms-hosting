@@ -10,8 +10,21 @@ export async function GET(request: NextRequest) {
     })
 
     if (!supabaseAdmin) {
+      console.error("[v0] Walk-in payments GET - Admin client not available")
       return NextResponse.json({ success: false, message: "Admin client not available" }, { status: 500 })
     }
+
+    // First, get ALL walk-in appointments to see what we have
+    const { data: allWalkIns, error: allError } = await supabaseAdmin
+      .from("tbl_comprehensive_appointments")
+      .select("id, booking_source, status, payment_status, contact_first_name, contact_last_name")
+      .eq("booking_source", "admin")
+      .limit(50)
+
+    console.log("[v0] Walk-in payments GET - ALL walk-in appointments:", {
+      count: allWalkIns?.length || 0,
+      data: allWalkIns?.map(a => ({ id: a.id, status: a.status, payment_status: a.payment_status, name: `${a.contact_first_name} ${a.contact_last_name}` })),
+    })
 
     const { data: appointments, error } = await supabaseAdmin
       .from("tbl_comprehensive_appointments")
@@ -26,7 +39,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, message: "Failed to fetch walk-in payments", error }, { status: 500 })
     }
 
-    console.log("[v0] Walk-in payments GET - Found appointments:", {
+    console.log("[v0] Walk-in payments GET - Filtered appointments:", {
       count: appointments?.length || 0,
       appointments: appointments?.map((a) => ({
         id: a.id,
@@ -41,6 +54,15 @@ export async function GET(request: NextRequest) {
       {
         success: true,
         appointments: appointments || [],
+        _debug: {
+          allWalkIns: allWalkIns?.map(a => ({ id: a.id, status: a.status, payment_status: a.payment_status, name: `${a.contact_first_name} ${a.contact_last_name}` })) || [],
+          filteredCount: appointments?.length || 0,
+          filterCriteria: {
+            booking_source: "admin",
+            status: ["TASTING_CONFIRMED", "PENDING_TASTING_CONFIRMATION", "pending"],
+            payment_status: ["unpaid", "partially_paid"],
+          },
+        },
       },
       {
         headers: {
