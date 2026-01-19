@@ -159,7 +159,9 @@ export default function PaymentManagement() {
   const fetchWalkInPayments = async () => {
     try {
       setWalkInLoading(true)
-      const response = await fetch("/api/admin/walk-in-payments", {
+      // Add timestamp to force cache busting in production
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/walk-in-payments?t=${timestamp}`, {
         cache: "no-store",
         credentials: "include",
       })
@@ -645,8 +647,8 @@ export default function PaymentManagement() {
         })
         setWalkInPaymentDialogOpen(false)
         
-        // Add a small delay to ensure database updates are complete before refetching
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        // Add delay to ensure database updates are complete before refetching
+        await new Promise((resolve) => setTimeout(resolve, 1500))
         
         await fetchWalkInPayments()
         await fetchPaymentTransactions()
