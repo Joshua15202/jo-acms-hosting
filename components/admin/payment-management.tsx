@@ -638,13 +638,19 @@ export default function PaymentManagement() {
       const result = await response.json()
 
       if (result.success) {
+        console.log("[v0] Walk-in payment submitted successfully, refreshing lists...")
         toast({
           title: "Payment Recorded!",
           description: "Walk-in payment has been successfully recorded and sent to User Payments for verification.",
         })
         setWalkInPaymentDialogOpen(false)
-        fetchWalkInPayments()
-        fetchPaymentTransactions()
+        
+        // Add a small delay to ensure database updates are complete before refetching
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        
+        await fetchWalkInPayments()
+        await fetchPaymentTransactions()
+        console.log("[v0] Walk-in payment lists refreshed")
         // </CHANGE>
       } else {
         throw new Error(result.message || "Failed to record payment")
