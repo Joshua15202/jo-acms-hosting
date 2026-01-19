@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
         admin_notes,
         created_at,
         updated_at,
-        guests,
-        venue,
+        guest_count,
+        venue_address,
         contact_first_name,
         contact_last_name,
         contact_email,
@@ -52,12 +52,18 @@ export async function GET(request: NextRequest) {
         const reasonMatch = appointment.admin_notes?.match(/Reason: (.+?)(?:\n|$)/)
         const reason = reasonMatch ? reasonMatch[1] : "No reason provided"
 
+        // Check if cancellation has been reviewed by checking for admin feedback in admin_notes
+        const hasAdminReview = appointment.admin_notes?.includes("Admin feedback:") || appointment.admin_notes?.includes("approved") || appointment.admin_notes?.includes("rejected")
+        const requestStatus = hasAdminReview ? "approved" : "pending"
+
         return {
           id: appointment.id,
           appointment_id: appointment.id,
           user_id: appointment.user_id,
           reason,
-          status: "cancelled",
+          status: requestStatus,
+          attachment_url: null,
+          admin_feedback: null,
           created_at: appointment.created_at,
           updated_at: appointment.updated_at,
           appointment: {
@@ -68,7 +74,7 @@ export async function GET(request: NextRequest) {
             total_package_amount: appointment.total_package_amount,
             payment_status: appointment.payment_status,
             status: appointment.status,
-            guests: appointment.guests,
+            guests: appointment.guest_count,
             venue: appointment.venue,
           },
           user: user || {

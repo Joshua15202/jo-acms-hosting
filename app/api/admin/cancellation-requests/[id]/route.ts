@@ -8,29 +8,35 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json()
     const { action, adminFeedback } = body // action: "approve" or "reject"
 
-    // Get the cancellation request
+    // Get the cancelled appointment
     const { data: cancellationRequest, error: fetchError } = await supabaseAdmin
-      .from("tbl_cancellation_requests")
+      .from("tbl_comprehensive_appointments")
       .select("*")
       .eq("id", id)
+      .eq("status", "cancelled")
       .single()
 
     if (fetchError || !cancellationRequest) {
       return NextResponse.json({ success: false, error: "Cancellation request not found" }, { status: 404 })
     }
 
-    if (cancellationRequest.status !== "pending") {
+    const appointment = cancellationRequest;
+
+    // Check if already processed by looking for admin feedback
+    if (appointment.admin_notes?.includes("Admin feedback:")) {
       return NextResponse.json({ success: false, error: "Request has already been processed" }, { status: 400 })
     }
 
     const newStatus = action === "approve" ? "approved" : "rejected"
 
-    // Update cancellation request status
+    // Update appointment with admin feedback
+    const adminNotesUpdate = `${appointment.admin_notes || ""}\nAdmin feedback: ${action === "approve" ? "Approved" : "Rejected"}${adminFeedback ? ` - ${adminFeedback}` : ""}`
+    
     const { error: updateError } = await supabaseAdmin
-      .from("tbl_cancellation_requests")
+      .from("tbl_comprehensive_appointments")
       .update({
-        status: newStatus,
-        admin_feedback: adminFeedback || null,
+        status: action === "approve" ? "cancelled" : appointment.status,
+        admin_notes: adminNotesUpdate,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -40,47 +46,41 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ success: false, error: "Failed to update request" }, { status: 500 })
     }
 
-    // If approved, cancel the appointment
-    if (action === "approve") {
-      const { error: cancelError } = await supabaseAdmin
+    // If rejected, restore the appointment to its previous status
+    if (action === "reject") {
+      // Try to restore to confirmed or previous status
+      await supabaseAdmin
         .from("tbl_comprehensive_appointments")
         .update({
-          status: "cancelled",
-          admin_notes: `Cancelled via approved cancellation request. Admin feedback: ${adminFeedback || "None"}`,
+          status: "confirmed",
           updated_at: new Date().toISOString(),
         })
-        .eq("id", cancellationRequest.appointment_id)
-
-      if (cancelError) {
-        console.error("Error cancelling appointment:", cancelError)
-        return NextResponse.json({ success: false, error: "Failed to cancel appointment" }, { status: 500 })
-      }
-
-      // Update related tasting if exists
-      await supabaseAdmin
-        .from("tbl_food_tastings")
-        .update({
-          status: "cancelled",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("appointment_id", cancellationRequest.appointment_id)
+        .eq("id", id)
     }
 
-    const { data: user } = await supabaseAdmin
-      .from("tbl_users")
-      .select("username, email, phone")
-      .eq("id", cancellationRequest.user_id)
-      .single()
+    // Update related tasting if exists
+    await supabaseAdmin
+      .from("tbl_food_tastings")
+      .update({
+        status: action === "approve" ? "cancelled" : "confirmed",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("appointment_id", id)
 
-    const { data: appointment } = await supabaseAdmin
-      .from("tbl_comprehensive_appointments")
-      .select("event_type, event_date, event_time, guests, venue")
-      .eq("id", cancellationRequest.appointment_id)
-      .single()
+    // Get user details if user_id exists
+    let user = null
+    if (appointment.user_id) {
+      const { data: userData } = await supabaseAdmin
+        .from("tbl_users")
+        .select("username, email, phone, first_name, last_name")
+        .eq("id", appointment.user_id)
+        .single()
+      user = userData
+    }
 
-    const customerName = user?.username || "Unknown"
-    const customerEmail = user?.email || ""
-    const customerPhone = user?.phone || ""
+    const customerName = user?.username || `${appointment.contact_first_name || ""} ${appointment.contact_last_name || ""}`.trim() || "Walk-In Customer"
+    const customerEmail = user?.email || appointment.contact_email || ""
+    const customerPhone = user?.phone || appointment.contact_phone || ""
 
     // Format event date and time
     const eventDate = appointment?.event_date
@@ -98,23 +98,26 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         ? `Your cancellation request for the ${appointment?.event_type || "event"} appointment on ${eventDate} at ${eventTime} has been approved.\n\nYour appointment has been cancelled.${adminFeedback ? `\n\nAdmin feedback: ${adminFeedback}` : ""}`
         : `Your cancellation request for the ${appointment?.event_type || "event"} appointment on ${eventDate} at ${eventTime} has been rejected.\n\nYour appointment is still scheduled.${adminFeedback ? `\n\nReason: ${adminFeedback}` : ""}`
 
-    await supabaseAdmin.from("tbl_notifications").insert({
-      user_id: cancellationRequest.user_id,
-      appointment_id: cancellationRequest.appointment_id,
-      title: action === "approve" ? "Cancellation Request Approved" : "Cancellation Request Rejected",
-      message: notificationMessage,
-      type: "cancellation_response",
-      is_read: false,
-    })
+    // Only send user notification if user_id exists
+    if (appointment.user_id) {
+      await supabaseAdmin.from("tbl_notifications").insert({
+        user_id: appointment.user_id,
+        appointment_id: appointment.id,
+        title: action === "approve" ? "Cancellation Request Approved" : "Cancellation Request Rejected",
+        message: notificationMessage,
+        type: "cancellation_response",
+        is_read: false,
+      })
+    }
 
     await createAdminNotification({
-      appointmentId: cancellationRequest.appointment_id,
+      appointmentId: appointment.id,
       title: action === "approve" ? "Cancellation Request Approved" : "Cancellation Request Rejected",
       message: `A cancellation request from ${customerName} has been ${action === "approve" ? "approved" : "rejected"}.
 
 Event Details:
 • Event Type: ${appointment?.event_type || "Not specified"}
-• Guest Count: ${appointment?.guests || "Not specified"} guests
+• Guest Count: ${appointment?.guest_count || "Not specified"} guests
 • Event Date: ${eventDate}
 • Event Time: ${eventTime}
 • Venue: ${appointment?.venue || "Not specified"}
@@ -132,7 +135,7 @@ Status: ${action === "approve" ? "Appointment has been cancelled" : "Appointment
         event_type: appointment?.event_type,
         event_date: appointment?.event_date,
         event_time: eventTime,
-        guests: appointment?.guests,
+        guests: appointment?.guest_count,
         customer_name: customerName,
         customer_email: customerEmail,
         customer_phone: customerPhone,
