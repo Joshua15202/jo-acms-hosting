@@ -589,6 +589,7 @@ export default function AddWalkInsPage() {
       const response = await fetch("/api/admin/walk-ins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(payload),
       })
 
@@ -1075,24 +1076,6 @@ export default function AddWalkInsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-              )}
-
-              {/* Corporate Event Fields */}
-              {eventType === "corporate" && (
-                <div>
-                  <Label htmlFor="eventName">Event Name *</Label>
-                  <Input
-                    id="eventName"
-                    value={eventSpecificData.eventName || ""}
-                    onChange={(e) =>
-                      setEventSpecificData({
-                        ...eventSpecificData,
-                        eventName: e.target.value,
-                      })
-                    }
-                    placeholder="Enter the name of the corporate event"
-                  />
                 </div>
               )}
 
