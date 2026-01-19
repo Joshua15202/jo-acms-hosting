@@ -46,7 +46,7 @@ function generateAdminWalkInTastingEmailHTML(
   totalPackageAmount: number,
   downPayment: number,
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://jo-acms.vercel.app"
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   const confirmUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=confirm`
 
   return `
@@ -136,11 +136,14 @@ function generateAdminWalkInTastingEmailHTML(
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies()
+    const allCookies = cookieStore.getAll()
     const adminAuthenticated = cookieStore.get("adminAuthenticated")?.value
 
-    console.log("[v0] Admin walk-ins - adminAuthenticated:", adminAuthenticated)
+    console.log("[v0] Admin walk-ins API - All cookies:", allCookies.map(c => ({ name: c.name, value: c.value.substring(0, 20) })))
+    console.log("[v0] Admin walk-ins API - adminAuthenticated cookie value:", adminAuthenticated)
 
     if (adminAuthenticated !== "true") {
+      console.error("[v0] Admin walk-ins API - Authorization failed. adminAuthenticated is not 'true'")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
