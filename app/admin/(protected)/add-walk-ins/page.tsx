@@ -555,48 +555,58 @@ export default function AddWalkInsPage() {
   }
 
   const handleSubmit = async (includeTasting = false) => {
+    console.log("[v0] handleSubmit called with includeTasting:", includeTasting)
     setIsSubmitting(true)
     setError("")
 
     try {
+      const payload = {
+        ...personalInfo,
+        ...dateTime,
+        eventType,
+        ...eventSpecificData,
+        ...eventDetails,
+        selectedMenus,
+        additionalRequests: walkInData.additionalRequests,
+        includeTasting,
+        pricingData: {
+          ...pricingData,
+          menuSelections: {
+            mainCourses: [
+              ...(selectedMenus.menu1 || []),
+              ...(selectedMenus.menu2 || []),
+              ...(selectedMenus.menu3 || []),
+            ],
+            pasta: selectedMenus.pasta || [],
+            dessert: selectedMenus.dessert || [],
+            beverage: selectedMenus.beverage || [],
+          },
+        },
+      }
+
+      console.log("[v0] Submitting walk-in appointment payload:", payload)
+
       const response = await fetch("/api/admin/walk-ins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...personalInfo,
-          ...dateTime,
-          eventType,
-          ...eventSpecificData,
-          ...eventDetails,
-          selectedMenus,
-          additionalRequests: walkInData.additionalRequests, // Use the new state for additionalRequests
-          includeTasting, // Pass the flag to the backend
-          // Include pricing details in submission
-          pricingData: {
-            ...pricingData,
-            // Convert menu selections to the format expected by the backend
-            menuSelections: {
-              mainCourses: [
-                ...(selectedMenus.menu1 || []),
-                ...(selectedMenus.menu2 || []),
-                ...(selectedMenus.menu3 || []),
-              ],
-              pasta: selectedMenus.pasta || [],
-              dessert: selectedMenus.dessert || [],
-              beverage: selectedMenus.beverage || [],
-            },
-          },
-        }),
+        body: JSON.stringify(payload),
       })
+
+      console.log("[v0] Response status:", response.status, response.ok)
 
       if (!response.ok) {
         const data = await response.json()
+        console.error("[v0] API error response:", data)
         throw new Error(data.error || "Failed to add walk-in appointment")
       }
 
+      const result = await response.json()
+      console.log("[v0] API success response:", result)
+
       router.push("/admin/appointments")
     } catch (err: any) {
-      setError(err.message)
+      console.error("[v0] Submit error:", err)
+      setError(err.message || "An error occurred while submitting the form")
       setIsSubmitting(false)
     }
   }
