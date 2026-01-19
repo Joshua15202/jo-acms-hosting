@@ -46,7 +46,7 @@ function generateAdminWalkInTastingEmailHTML(
   totalPackageAmount: number,
   downPayment: number,
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://jo-acms.vercel.app"
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://jo-acms.vercel.app/admin"
   const confirmUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=confirm`
 
   return `
