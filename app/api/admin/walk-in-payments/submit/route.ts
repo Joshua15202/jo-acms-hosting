@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 
+// Force dynamic rendering - prevent any caching
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export async function POST(req: NextRequest) {
   try {
     const { appointmentId, amount, paymentType, paymentMethod, reference, notes } = await req.json()
