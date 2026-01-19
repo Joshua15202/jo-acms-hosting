@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       .from("tbl_comprehensive_appointments")
       .select("*")
       .eq("booking_source", "admin")
-      .in("status", ["TASTING_CONFIRMED", "PENDING_TASTING_CONFIRMATION", "pending"]) // Include all tasting and payment-ready statuses
+      .in("status", ["TASTING_CONFIRMED", "PENDING_TASTING_CONFIRMATION", "TASTING_COMPLETED", "pending"]) // Include all tasting and payment-ready statuses
       .in("payment_status", ["unpaid", "partially_paid"]) // Include partially paid for remaining balance
       .order("created_at", { ascending: false })
 
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
           filteredCount: appointments?.length || 0,
           filterCriteria: {
             booking_source: "admin",
-            status: ["TASTING_CONFIRMED", "PENDING_TASTING_CONFIRMATION", "pending"],
+            status: ["TASTING_CONFIRMED", "PENDING_TASTING_CONFIRMATION", "TASTING_COMPLETED", "pending"],
             payment_status: ["unpaid", "partially_paid"],
           },
         },
