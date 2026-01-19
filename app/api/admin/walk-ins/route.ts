@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
 import { supabaseAdmin } from "@/lib/supabase"
 import { sendEmail } from "@/lib/email"
 import { createAdminNotification } from "@/lib/admin-notifications"
@@ -46,7 +45,7 @@ function generateAdminWalkInTastingEmailHTML(
   totalPackageAmount: number,
   downPayment: number,
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://jo-acms.vercel.app/admin"
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://jo-acms.vercel.app"
   const confirmUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=confirm`
 
   return `
@@ -135,26 +134,7 @@ function generateAdminWalkInTastingEmailHTML(
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies()
-    const allCookies = cookieStore.getAll()
-    const adminAuthenticated = cookieStore.get("adminAuthenticated")?.value
-    const adminUserCookie = cookieStore.get("adminUser")?.value
-
-    console.log("[v0] Admin walk-ins API - All cookies:", allCookies.map(c => ({ name: c.name, value: c.value.substring(0, 20) })))
-    console.log("[v0] Admin walk-ins API - adminAuthenticated:", adminAuthenticated)
-    console.log("[v0] Admin walk-ins API - Has adminUser:", !!adminUserCookie)
-    console.log("[v0] Admin walk-ins API - Request headers:", {
-      host: request.headers.get("host"),
-      origin: request.headers.get("origin"),
-      cookie: request.headers.get("cookie")?.substring(0, 50),
-    })
-
-    if (adminAuthenticated !== "true" || !adminUserCookie) {
-      console.error("[v0] Admin walk-ins API - Authorization failed. adminAuthenticated:", adminAuthenticated, "hasAdminUser:", !!adminUserCookie)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    console.log("[v0] Admin walk-ins API - Authorization successful")
+    console.log("[v0] Admin walk-ins API - Processing walk-in appointment request")
 
     const body = await request.json()
     const {
