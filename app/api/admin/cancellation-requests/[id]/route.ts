@@ -2,6 +2,10 @@ import { type NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 import { createAdminNotification } from "@/lib/admin-notifications"
 
+// Force dynamic rendering - prevent any caching
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params
