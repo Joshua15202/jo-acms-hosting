@@ -382,7 +382,6 @@ export default function AddWalkInsPage() {
     debutanteGender: "", // Added debutanteGender for debut events
     // Other
     eventDetails: "",
-    eventName: "", // Added for Corporate Event type
   })
 
   // Step 4: Event Details
@@ -499,11 +498,6 @@ export default function AddWalkInsPage() {
       } else if (eventType === "debut") {
         if (!eventSpecificData.debutanteName || !eventSpecificData.debutanteGender) {
           setError("Please fill in all debutante information")
-          return false
-        }
-      } else if (eventType === "corporate") {
-        if (!eventSpecificData.eventName) {
-          setError("Please enter the event name for corporate events.")
           return false
         }
       } else if (eventType === "other" && !eventSpecificData.eventDetails) {
@@ -1604,12 +1598,6 @@ export default function AddWalkInsPage() {
                       <span>
                         {eventSpecificData.debutanteName} - {formatGender(eventSpecificData.debutanteGender)}
                       </span>
-                    </div>
-                  )}
-                  {eventType === "corporate" && (
-                    <div className="flex justify-between">
-                      <span className="font-medium">Event Name:</span>
-                      <span>{eventSpecificData.eventName}</span>
                     </div>
                   )}
                   {eventType === "other" && (

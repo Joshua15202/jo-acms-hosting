@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       .from("tbl_comprehensive_appointments")
       .select("*")
       .eq("booking_source", "admin")
-      .in("status", ["TASTING_CONFIRMED", "PENDING_TASTING_CONFIRMATION", "TASTING_COMPLETED", "pending"]) // Include all tasting and payment-ready statuses
+      .in("status", ["TASTING_CONFIRMED", "PENDING_TASTING_CONFIRMATION", "TASTING_COMPLETED", "pending", "confirmed"]) // Include all tasting and payment-ready statuses
       .in("payment_status", ["unpaid", "partially_paid"]) // Include partially paid for remaining balance
       .order("created_at", { ascending: false })
 

@@ -571,10 +571,17 @@ export default function PaymentManagement() {
 
   const handleMakeWalkInPayment = (appointment: any) => {
     setSelectedWalkInAppointment(appointment)
+    
+    // Set initial payment type based on current payment status
+    const initialPaymentType = appointment.payment_status === "partially_paid" ? "remaining_balance" : "down_payment"
+    const initialAmount = appointment.payment_status === "partially_paid" 
+      ? appointment.remaining_balance 
+      : appointment.down_payment_amount || 0
+    
     setWalkInPaymentData({
       appointmentId: appointment.id,
-      amount: appointment.down_payment_amount || 0,
-      paymentType: "down_payment",
+      amount: initialAmount,
+      paymentType: initialPaymentType,
       paymentMethod: "cash",
       reference: "",
       notes: "",
@@ -582,7 +589,7 @@ export default function PaymentManagement() {
     setWalkInPaymentDialogOpen(true)
   }
 
-  const handleWalkInPaymentTypeChange = (type: "down_payment" | "full_payment" | "cash") => {
+  const handleWalkInPaymentTypeChange = (type: "down_payment" | "full_payment" | "remaining_balance" | "cash") => {
     if (!selectedWalkInAppointment) return
 
     let amount = 0
@@ -590,6 +597,8 @@ export default function PaymentManagement() {
       amount = selectedWalkInAppointment.down_payment_amount
     } else if (type === "full_payment") {
       amount = selectedWalkInAppointment.total_package_amount
+    } else if (type === "remaining_balance") {
+      amount = selectedWalkInAppointment.remaining_balance
     } else if (type === "cash") {
       // For cash, amount is typically custom, so we can set it to 0 or the down payment as a default
       // and let the user input the exact amount if needed, or keep it open.
@@ -1046,7 +1055,9 @@ export default function PaymentManagement() {
                               onClick={() => handleMakeWalkInPayment(appointment)}
                             >
                               <CreditCard className="h-4 w-4 mr-2" />
-                              Make Payment
+                              {appointment.payment_status === "partially_paid"
+                                ? "Pay Remaining Balance"
+                                : "Make Payment"}
                             </Button>
                           </div>
                         </div>
@@ -1434,30 +1445,52 @@ export default function PaymentManagement() {
               <Label className="text-base font-semibold">Payment Type</Label>
               <RadioGroup
                 value={walkInPaymentData.paymentType}
-                onValueChange={(value: "down_payment" | "full_payment") => handleWalkInPaymentTypeChange(value)}
+                onValueChange={(value: "down_payment" | "full_payment" | "remaining_balance") => handleWalkInPaymentTypeChange(value)}
               >
-                <div className="flex items-center justify-between space-x-2 border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="down_payment" id="down" />
-                    <Label htmlFor="down" className="cursor-pointer font-medium">
-                      Down Payment (50%)
-                    </Label>
+                {/* Show Down Payment option only if not partially paid */}
+                {selectedWalkInAppointment?.payment_status !== "partially_paid" && (
+                  <div className="flex items-center justify-between space-x-2 border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="down_payment" id="down" />
+                      <Label htmlFor="down" className="cursor-pointer font-medium">
+                        Down Payment (50%)
+                      </Label>
+                    </div>
+                    <span className="text-lg font-bold text-green-600">
+                      {formatCurrency(selectedWalkInAppointment?.down_payment_amount || 0)}
+                    </span>
                   </div>
-                  <span className="text-lg font-bold text-green-600">
-                    {formatCurrency(selectedWalkInAppointment?.down_payment_amount || 0)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between space-x-2 border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="full_payment" id="full" />
-                    <Label htmlFor="full" className="cursor-pointer font-medium">
-                      Full Payment (100%)
-                    </Label>
+                )}
+                
+                {/* Show Remaining Balance option only if partially paid */}
+                {selectedWalkInAppointment?.payment_status === "partially_paid" && (
+                  <div className="flex items-center justify-between space-x-2 border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="remaining_balance" id="remaining" />
+                      <Label htmlFor="remaining" className="cursor-pointer font-medium">
+                        Pay Remaining Balance
+                      </Label>
+                    </div>
+                    <span className="text-lg font-bold text-orange-600">
+                      {formatCurrency(selectedWalkInAppointment?.remaining_balance || 0)}
+                    </span>
                   </div>
-                  <span className="text-lg font-bold text-rose-600">
-                    {formatCurrency(selectedWalkInAppointment?.total_package_amount || 0)}
-                  </span>
-                </div>
+                )}
+                
+                {/* Show Full Payment option only if not partially paid */}
+                {selectedWalkInAppointment?.payment_status !== "partially_paid" && (
+                  <div className="flex items-center justify-between space-x-2 border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="full_payment" id="full" />
+                      <Label htmlFor="full" className="cursor-pointer font-medium">
+                        Full Payment (100%)
+                      </Label>
+                    </div>
+                    <span className="text-lg font-bold text-rose-600">
+                      {formatCurrency(selectedWalkInAppointment?.total_package_amount || 0)}
+                    </span>
+                  </div>
+                )}
               </RadioGroup>
             </div>
 

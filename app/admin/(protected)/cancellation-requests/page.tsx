@@ -53,11 +53,21 @@ export default function CancellationRequestsPage() {
 
   useEffect(() => {
     fetchRequests()
+    
+    // Auto-refresh every 30 seconds to check for new requests
+    const interval = setInterval(() => {
+      fetchRequests()
+    }, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const fetchRequests = async () => {
     try {
-      const response = await fetch("/api/admin/cancellation-requests", {
+      // Add timestamp to force cache busting in production
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/admin/cancellation-requests?t=${timestamp}`, {
+        cache: "no-store",
         credentials: "include",
       })
       const data = await response.json()

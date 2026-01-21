@@ -12,54 +12,69 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json()
     const { action, adminFeedback } = body // action: "approve" or "reject"
 
-    // Get the cancelled appointment
+    console.log("[v0] Processing cancellation request:", { id, action, adminFeedback })
+
+    // Get the cancellation request from tbl_cancellation_requests
     const { data: cancellationRequest, error: fetchError } = await supabaseAdmin
-      .from("tbl_comprehensive_appointments")
+      .from("tbl_cancellation_requests")
       .select("*")
       .eq("id", id)
-      .eq("status", "cancelled")
       .single()
 
     if (fetchError || !cancellationRequest) {
+      console.error("[v0] Cancellation request not found:", fetchError)
       return NextResponse.json({ success: false, error: "Cancellation request not found" }, { status: 404 })
     }
 
-    const appointment = cancellationRequest;
-
-    // Check if already processed by looking for admin feedback
-    if (appointment.admin_notes?.includes("Admin feedback:")) {
+    // Check if already processed
+    if (cancellationRequest.status !== "pending") {
       return NextResponse.json({ success: false, error: "Request has already been processed" }, { status: 400 })
+    }
+
+    const appointmentId = cancellationRequest.appointment_id
+    console.log("[v0] Found cancellation request for appointment:", appointmentId)
+
+    // Get the appointment details
+    const { data: appointment, error: appointmentError } = await supabaseAdmin
+      .from("tbl_comprehensive_appointments")
+      .select("*")
+      .eq("id", appointmentId)
+      .single()
+
+    if (appointmentError || !appointment) {
+      console.error("[v0] Appointment not found:", appointmentError)
+      return NextResponse.json({ success: false, error: "Appointment not found" }, { status: 404 })
     }
 
     const newStatus = action === "approve" ? "approved" : "rejected"
 
-    // Update appointment with admin feedback
-    const adminNotesUpdate = `${appointment.admin_notes || ""}\nAdmin feedback: ${action === "approve" ? "Approved" : "Rejected"}${adminFeedback ? ` - ${adminFeedback}` : ""}`
-    
-    const { error: updateError } = await supabaseAdmin
-      .from("tbl_comprehensive_appointments")
+    // Update the cancellation request status
+    const { error: updateCancellationError } = await supabaseAdmin
+      .from("tbl_cancellation_requests")
       .update({
-        status: action === "approve" ? "cancelled" : appointment.status,
-        admin_notes: adminNotesUpdate,
+        status: newStatus,
+        admin_feedback: adminFeedback || null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
 
-    if (updateError) {
-      console.error("Error updating cancellation request:", updateError)
-      return NextResponse.json({ success: false, error: "Failed to update request" }, { status: 500 })
+    if (updateCancellationError) {
+      console.error("[v0] Error updating cancellation request:", updateCancellationError)
+      return NextResponse.json({ success: false, error: "Failed to update cancellation request" }, { status: 500 })
     }
 
-    // If rejected, restore the appointment to its previous status
-    if (action === "reject") {
-      // Try to restore to confirmed or previous status
-      await supabaseAdmin
-        .from("tbl_comprehensive_appointments")
-        .update({
-          status: "confirmed",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
+    // Update the appointment status
+    const { error: updateAppointmentError } = await supabaseAdmin
+      .from("tbl_comprehensive_appointments")
+      .update({
+        status: action === "approve" ? "cancelled" : appointment.status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", appointmentId)
+
+    if (updateAppointmentError) {
+      console.error("Error updating cancellation request:", updateAppointmentError)
+      return NextResponse.json({ success: false, error: "Failed to update request" }, { status: 500 })
     }
 
     // Update related tasting if exists
@@ -69,7 +84,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         status: action === "approve" ? "cancelled" : "confirmed",
         updated_at: new Date().toISOString(),
       })
-      .eq("appointment_id", id)
+      .eq("appointment_id", appointmentId)
 
     // Get user details if user_id exists
     let user = null

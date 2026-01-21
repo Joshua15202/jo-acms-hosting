@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
 
     if (paymentType === "full_payment") {
       newPaymentStatus = "fully_paid"
+    } else if (paymentType === "remaining_balance") {
+      newPaymentStatus = "fully_paid" // Remaining balance payment completes the payment
     } else if (paymentType === "down_payment") {
       newPaymentStatus = "partially_paid"
     } else if (paymentType === "cash") {
