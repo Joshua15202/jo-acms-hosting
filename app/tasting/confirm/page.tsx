@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Calendar, Clock, AlertCircle, Loader2 } from "lucide-react"
 
-export default function TastingConfirmPage() {
+function TastingConfirmContent() {
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<"loading" | "success" | "error" | "already_confirmed">("loading")
   const [message, setMessage] = useState("")
@@ -217,5 +217,30 @@ export default function TastingConfirmPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function TastingConfirmPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle className="text-2xl font-bold text-gray-900">Food Tasting Confirmation</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-6">
+              <Loader2 className="h-16 w-16 text-rose-600 mx-auto mb-4 animate-spin" />
+              <div>
+                <h3 className="text-lg font-semibold mb-2 text-gray-600">Processing your confirmation...</h3>
+                <p className="text-gray-600 text-sm">Please wait while we confirm your tasting appointment.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
+      <TastingConfirmContent />
+    </Suspense>
   )
 }
