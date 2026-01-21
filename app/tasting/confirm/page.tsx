@@ -1,13 +1,12 @@
-'use client'
+"use client"
 
-import { Suspense } from "react"
 import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Calendar, Clock, AlertCircle, Loader2 } from "lucide-react"
 
-function ConfirmPage() {
+export default function TastingConfirmPage() {
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<"loading" | "success" | "error" | "already_confirmed">("loading")
   const [message, setMessage] = useState("")
@@ -27,6 +26,7 @@ function ConfirmPage() {
         return
       }
 
+      // If status is already provided in URL, use it
       if (urlStatus === "confirmed") {
         setStatus("success")
         setMessage("Your tasting appointment has been confirmed successfully!")
@@ -41,6 +41,7 @@ function ConfirmPage() {
         return
       }
 
+      // Otherwise, try to confirm via API
       try {
         console.log("📞 Calling confirmation API...")
         const response = await fetch(
@@ -62,6 +63,7 @@ function ConfirmPage() {
             setMessage(data.error || "Failed to confirm tasting appointment.")
           }
         } else {
+          // Handle redirect case
           if (response.redirected) {
             const redirectUrl = new URL(response.url)
             const redirectStatus = redirectUrl.searchParams.get("status")
@@ -215,13 +217,5 @@ function ConfirmPage() {
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-export default function ConfirmPageWrapper() {
-  return (
-    <Suspense fallback={<div className="text-center p-10 text-gray-600">Loading confirmation page...</div>}>
-      <ConfirmPage />
-    </Suspense>
   )
 }

@@ -88,17 +88,10 @@ export async function GET(request: Request) {
           }
         }
 
-        // If no action specified, redirect to success page
-        if (!action) {
-          return NextResponse.redirect(new URL("/tasting-confirmed?already=true", request.url))
-        }
-
-        return NextResponse.json({
-          success: true,
-          alreadyConfirmed: true,
-          message: "This tasting appointment has been confirmed successfully.",
-          appointment: tasting,
-        })
+        // Always redirect to confirmation page with already confirmed status
+        return NextResponse.redirect(
+          new URL(`/tasting/confirm?token=${tastingToken}&status=already_confirmed`, request.url),
+        )
       }
 
       console.log("🔄 Confirming tasting...")
@@ -156,17 +149,11 @@ export async function GET(request: Request) {
 
       console.log("✅ Tasting confirmation completed")
 
-      // If this is a direct API call (with action), return JSON
-      if (action) {
-        return NextResponse.json({
-          success: true,
-          message: "Your tasting appointment has been confirmed successfully!",
-          appointment: { ...tasting, status: "confirmed", confirmed_at: now },
-        })
-      }
-
-      // Otherwise redirect to success page
-      return NextResponse.redirect(new URL("/tasting-confirmed", request.url))
+      // Always redirect to the confirmation page with success status
+      // This ensures users see a proper UI instead of JSON
+      return NextResponse.redirect(
+        new URL(`/tasting/confirm?token=${tastingToken}&status=confirmed`, request.url),
+      )
     } else if (action === "reschedule") {
       console.log("📅 Reschedule requested")
       return NextResponse.redirect(new URL(`/tasting-reschedule?token=${tastingToken}`, request.url))

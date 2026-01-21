@@ -640,7 +640,7 @@ export function generateAdminWalkInTastingEmailHTML(
           <div style="text-align: center;">
             <h3 style="color: #e11d48; margin: 0 0 10px 0; font-size: 18px;">Contact Us</h3>
             <p style="color: #6b7280; margin: 0; font-size: 14px; line-height: 1.6;">
-              📍 Sullera St. Pandayan, Bulacan<br>
+              ���� Sullera St. Pandayan, Bulacan<br>
               📞 Phone: (044) 308 3396<br>
               📱 Mobile: 0917-8543221<br>
               ✉️ Email: ${process.env.SMTP_FROM}
