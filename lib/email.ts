@@ -111,7 +111,7 @@ export function generateVerificationEmailHTML(firstName: string, verificationCod
           <!-- Instructions -->
           <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <p style="color: #92400e; margin: 0; font-size: 14px;">
-              <strong>Important:</strong> This code will expire in 30 minutes for security reasons.
+              <strong>Important:</strong> This code will expire in 3 minutes for security reasons.
             </p>
           </div>
           

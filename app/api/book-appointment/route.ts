@@ -432,8 +432,8 @@ Created: ${new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: 
 
     // Send tasting confirmation email to the user's registered email
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://jo-acms.vercel.app"
-      const confirmUrl = `${baseUrl}/tasting/confirm?token=${tastingToken}`
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+      const confirmUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=confirm`
       const skipUrl = `${baseUrl}/api/tasting/skip?token=${tastingToken}`
 
       const emailContent = `

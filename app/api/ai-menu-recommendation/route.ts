@@ -649,7 +649,7 @@ Your "reasoning" field MUST include these SPECIFIC elements:
 Remember: ALWAYS maintain the menu composition (1 from Menu 1, 1 from Menu 2, 1 from Menu 3, plus pasta/dessert/beverage). User preferences guide your choices WITHIN each required category. Maximum variety for generation #${generationCount}.`
 
     const response = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: google("gemini-2.5-flash-lite"),
       prompt: prompt,
       temperature: 0.8,
       maxTokens: 4000, // Increased from 2000 to prevent truncation

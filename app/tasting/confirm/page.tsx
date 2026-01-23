@@ -15,10 +15,9 @@ function TastingConfirmContent() {
   useEffect(() => {
     const processConfirmation = async () => {
       const token = searchParams.get("token")
-      const email = searchParams.get("email")
       const urlStatus = searchParams.get("status")
 
-      console.log("🔍 Processing confirmation:", { token, email, urlStatus })
+      console.log("[v0] Processing confirmation:", { token, urlStatus })
 
       if (!token) {
         setStatus("error")
@@ -26,8 +25,9 @@ function TastingConfirmContent() {
         return
       }
 
-      // If status is already provided in URL, use it
+      // If status is already provided in URL (from redirect), use it directly
       if (urlStatus === "confirmed") {
+        console.log("[v0] Status confirmed from URL parameter")
         setStatus("success")
         setMessage("Your tasting appointment has been confirmed successfully!")
         await fetchTastingDetails(token)
@@ -35,69 +35,54 @@ function TastingConfirmContent() {
       }
 
       if (urlStatus === "already_confirmed") {
+        console.log("[v0] Status already_confirmed from URL parameter")
         setStatus("already_confirmed")
         setMessage("This tasting appointment has already been confirmed.")
         await fetchTastingDetails(token)
         return
       }
 
-      // Otherwise, try to confirm via API
-      try {
-        console.log("📞 Calling confirmation API...")
-        const response = await fetch(
-          `/api/tasting/confirm?token=${token}&action=confirm${email ? `&email=${encodeURIComponent(email)}` : ""}`,
-        )
-
-        if (response.ok) {
-          const data = await response.json()
-          if (data.success) {
-            setStatus("success")
-            setMessage("Your tasting appointment has been confirmed successfully!")
-            setAppointmentDetails(data.appointment)
-          } else if (data.alreadyConfirmed) {
-            setStatus("already_confirmed")
-            setMessage("This tasting appointment has already been confirmed.")
-            setAppointmentDetails(data.appointment)
-          } else {
-            setStatus("error")
-            setMessage(data.error || "Failed to confirm tasting appointment.")
-          }
-        } else {
-          // Handle redirect case
-          if (response.redirected) {
-            const redirectUrl = new URL(response.url)
-            const redirectStatus = redirectUrl.searchParams.get("status")
-
-            if (redirectStatus === "confirmed") {
-              setStatus("success")
-              setMessage("Your tasting appointment has been confirmed successfully!")
-            } else if (redirectStatus === "already_confirmed") {
-              setStatus("already_confirmed")
-              setMessage("This tasting appointment has already been confirmed.")
-            }
-
-            await fetchTastingDetails(token)
-          } else {
-            setStatus("error")
-            setMessage("Failed to confirm tasting appointment.")
-          }
-        }
-      } catch (error) {
-        console.error("❌ Error confirming tasting:", error)
-        setStatus("error")
-        setMessage("An error occurred while confirming your appointment. Please try again or contact us directly.")
-      }
+      // If no status in URL, this is likely a direct page load from an old email
+      // Redirect to the API endpoint which will process and redirect back with status
+      console.log("[v0] No status in URL, redirecting to API for confirmation")
+      setStatus("loading")
+      setMessage("Redirecting to confirmation...")
+      window.location.href = `/api/tasting/confirm?token=${token}&action=confirm`
+      return // Stop execution since we're redirecting
     }
 
     const fetchTastingDetails = async (token: string) => {
       try {
+        console.log("[v0] Fetching tasting details for token:", token)
         const response = await fetch(`/api/tasting/details?token=${token}`)
         if (response.ok) {
           const data = await response.json()
+          console.log("[v0] Tasting details received:", data)
           setAppointmentDetails(data.tasting)
+          
+          // If we don't have a status yet, set it based on the tasting status
+          if (status === "loading" && data.tasting) {
+            if (data.tasting.status === "confirmed") {
+              setStatus("success")
+              setMessage("Your tasting appointment has been confirmed successfully!")
+            } else {
+              setStatus("error")
+              setMessage("This tasting appointment is not yet confirmed.")
+            }
+          }
+        } else {
+          console.error("[v0] Failed to fetch tasting details, status:", response.status)
+          if (status === "loading") {
+            setStatus("error")
+            setMessage("Unable to load appointment details. Please contact us for assistance.")
+          }
         }
       } catch (error) {
-        console.error("Error fetching tasting details:", error)
+        console.error("[v0] Error fetching tasting details:", error)
+        if (status === "loading") {
+          setStatus("error")
+          setMessage("Unable to load appointment details. Please contact us for assistance.")
+        }
       }
     }
 

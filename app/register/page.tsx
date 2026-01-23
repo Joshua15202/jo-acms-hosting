@@ -23,6 +23,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+
 // Service area data
 const SERVICE_AREAS = {
   "Metro Manila": {
@@ -373,8 +374,8 @@ export default function RegisterPage() {
   const [error, setError] = useState("")
   const [verificationStep, setVerificationStep] = useState(false)
   const [verificationCode, setVerificationCode] = useState("")
-  const [timeLeft, setTimeLeft] = useState(300)
-  const [resendTimeLeft, setResendTimeLeft] = useState(60)
+  const [timeLeft, setTimeLeft] = useState(180) // 3 minutes in seconds
+  const [resendTimeLeft, setResendTimeLeft] = useState(180) // 3 minutes in seconds
   const [canResend, setCanResend] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState("")
   const [showTerms, setShowTerms] = useState(false)
@@ -428,7 +429,7 @@ export default function RegisterPage() {
         setRegisteredEmail(email)
         setVerificationStep(true)
         setCanResend(false)
-        setResendTimeLeft(60)
+        setResendTimeLeft(180) // 3 minutes in seconds
 
         const expiresAt = new Date(result.expiresAt)
         const now = new Date()
@@ -487,6 +488,20 @@ export default function RegisterPage() {
     const formData = new FormData(e.currentTarget)
     const password = formData.get("password") as string
     const confirmPassword = formData.get("confirmPassword") as string
+
+    // Password strength validation
+    const hasNumber = /\d/.test(password)
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+
+    if (!hasNumber) {
+      setError("Password must contain at least one number")
+      return
+    }
+
+    if (!hasSpecialChar) {
+      setError("Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)")
+      return
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match")
@@ -557,7 +572,7 @@ export default function RegisterPage() {
         setRegisteredEmail(result.email || email)
         setVerificationStep(true)
         setCanResend(false)
-        setResendTimeLeft(60)
+        setResendTimeLeft(180) // 3 minutes in seconds
 
         const expirationTimer = setInterval(() => {
           setTimeLeft((prev) => {
@@ -636,7 +651,7 @@ export default function RegisterPage() {
     setIsLoading(true)
     setError("")
     setCanResend(false)
-    setResendTimeLeft(60)
+    setResendTimeLeft(180) // 3 minutes in seconds
 
     try {
       const response = await fetch("/api/auth/resend-code", {
@@ -652,7 +667,7 @@ export default function RegisterPage() {
       const result = await response.json()
 
       if (result.success) {
-        setTimeLeft(300)
+        setTimeLeft(180) // 3 minutes in seconds
 
         const expirationTimer = setInterval(() => {
           setTimeLeft((prev) => {
@@ -695,13 +710,25 @@ export default function RegisterPage() {
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`
   }
 
+  const maskEmail = (email: string) => {
+    const [localPart, domain] = email.split("@")
+    if (localPart.length <= 2) {
+      return email // If email is too short, don't mask
+    }
+    const firstTwo = localPart.substring(0, 2)
+    const maskedLocal = firstTwo + "*".repeat(10)
+    return `${maskedLocal}@${domain}`
+  }
+
   if (verificationStep) {
     return (
       <div className="container flex h-screen w-screen flex-col items-center justify-center">
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
           <div className="flex flex-col space-y-2 text-center">
             <h1 className="text-2xl font-semibold tracking-tight">Verify your email</h1>
-            <p className="text-sm text-gray-500">We&apos;ve sent a 6-digit verification code to {registeredEmail}</p>
+            <p className="text-sm text-gray-500">
+              We&apos;ve sent a 6-digit verification code to {maskEmail(registeredEmail)}
+            </p>
           </div>
 
           <Alert>
@@ -890,6 +917,11 @@ export default function RegisterPage() {
                   <div className="grid gap-2">
                     <Label htmlFor="password">Password</Label>
                     <Input id="password" name="password" type="password" required />
+                    <p className="text-xs text-gray-500">
+                      Password must contain at least one number and one special character (!@#$%^&*(),.?\":
+                      {"{"}
+                      {"}"}|&lt;&gt;)
+                    </p>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="confirmPassword">Confirm Password</Label>

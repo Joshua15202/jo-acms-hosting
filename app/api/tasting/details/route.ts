@@ -29,10 +29,10 @@ export async function GET(request: Request) {
           guest_count,
           event_date,
           event_time,
-          venue,
-          budget_range,
+          venue_address,
           special_requests,
-          contact_name,
+          contact_first_name,
+          contact_last_name,
           contact_email,
           contact_phone,
           status
