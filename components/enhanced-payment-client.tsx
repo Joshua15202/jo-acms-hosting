@@ -2146,7 +2146,7 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                       )}
                       {paymentData.paymentMethod === "bank_transfer" && (
                         <p>
-                          <strong>Bank Account Number:</strong> 987-654-3210 (Dummy)
+                          <strong>Bank Account Number:</strong> 987-654-3210
                         </p>
                       )}
                     </div>
