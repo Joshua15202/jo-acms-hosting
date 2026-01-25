@@ -20,9 +20,8 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
 
 // Service area data
 const SERVICE_AREAS = {
@@ -381,6 +380,8 @@ export default function RegisterPage() {
   const [showTerms, setShowTerms] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // Address state
   const [selectedProvince, setSelectedProvince] = useState("")
@@ -491,7 +492,7 @@ export default function RegisterPage() {
 
     // Password strength validation
     const hasNumber = /\d/.test(password)
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    const hasSpecialChar = /[!@#$%^&*()_\-+={}[\]:;"'<>,.?/\\|`~]/.test(password)
 
     if (!hasNumber) {
       setError("Password must contain at least one number")
@@ -499,7 +500,7 @@ export default function RegisterPage() {
     }
 
     if (!hasSpecialChar) {
-      setError("Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)")
+      setError("Password must contain at least one special character (e.g., !@#$%^&*_-+=)")
       return
     }
 
@@ -916,16 +917,44 @@ export default function RegisterPage() {
                   <h3 className="text-sm font-semibold">Security</h3>
                   <div className="grid gap-2">
                     <Label htmlFor="password">Password</Label>
-                    <Input id="password" name="password" type="password" required />
+                    <div className="relative">
+                      <Input 
+                        id="password" 
+                        name="password" 
+                        type={showPassword ? "text" : "password"} 
+                        required 
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                     <p className="text-xs text-gray-500">
-                      Password must contain at least one number and one special character (!@#$%^&*(),.?\":
-                      {"{"}
-                      {"}"}|&lt;&gt;)
+                      Password must contain at least one number and one special character (e.g., !@#$%^&*_-+=)
                     </p>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input id="confirmPassword" name="confirmPassword" type="password" required />
+                    <div className="relative">
+                      <Input 
+                        id="confirmPassword" 
+                        name="confirmPassword" 
+                        type={showConfirmPassword ? "text" : "password"} 
+                        required 
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
