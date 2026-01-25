@@ -1582,7 +1582,7 @@ export default function PaymentManagement() {
                     <strong>Account Name:</strong> Jonel Ray Pacheco
                   </p>
                   <p className="text-sm">
-                    <strong>Bank Account Number:</strong> 987-654-3210 (Dummy)
+                    <strong>Bank Account Number:</strong> 987-654-3210 
                   </p>
                 </div>
               </div>
