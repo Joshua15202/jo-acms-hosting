@@ -1770,29 +1770,6 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
             </div>
           ) : paymentHistory.length > 0 ? (
             <div className="grid gap-6">
-              {/* Show debug info at the top if enabled */}
-              {showDebug && (
-                <Card className="bg-green-50 border-green-200">
-                  <CardContent className="p-4">
-                    <h4 className="font-medium text-green-900 mb-2">Payment History Debug</h4>
-                    <div className="text-sm text-green-700 space-y-1">
-                      <p>
-                        <strong>Verified transactions loaded:</strong> {paymentHistory.length}
-                      </p>
-                      <p>
-                        <strong>Transaction IDs:</strong> {paymentHistory.map((t) => t.id.slice(0, 8)).join(", ")}
-                      </p>
-                      <p>
-                        <strong>Payment types:</strong> {paymentHistory.map((t) => t.payment_type).join(", ")}
-                      </p>
-                      <p>
-                        <strong>Amounts:</strong> {paymentHistory.map((t) => formatCurrency(t.amount)).join(", ")}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
               {paymentHistory.map((transaction) => (
                 <Card key={transaction.id} className="overflow-hidden">
                   <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 border-b">
