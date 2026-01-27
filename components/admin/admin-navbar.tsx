@@ -1,6 +1,6 @@
 "use client"
 
-import { LogOut, Bell } from 'lucide-react'
+import { LogOut, Bell, Menu } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -15,9 +15,10 @@ import { AdminNotificationsDropdown } from "@/components/admin/admin-notificatio
 
 type AdminNavbarProps = {
   user?: { username: string; role: string } | null
+  onMenuClick?: () => void
 }
 
-export default function AdminNavbar({ user }: AdminNavbarProps) {
+export default function AdminNavbar({ user, onMenuClick }: AdminNavbarProps) {
   const router = useRouter()
 
   const handleLogout = async () => {
@@ -43,12 +44,20 @@ export default function AdminNavbar({ user }: AdminNavbarProps) {
   }
 
   return (
-    <header className="h-16 border-b bg-white px-6 flex items-center justify-between">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">Jo-ACMS Admin Dashboard</h1>
+    <header className="h-16 border-b bg-white px-4 md:px-6 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        {/* Mobile menu button */}
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden p-2 rounded-md hover:bg-gray-100"
+          aria-label="Open menu"
+        >
+          <Menu className="h-6 w-6 text-gray-700" />
+        </button>
+        <h1 className="text-lg md:text-xl font-semibold text-gray-900">Jo-ACMS Admin Dashboard</h1>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2 md:space-x-4">
         {user && <AdminNotificationsDropdown adminUsername={user.username} />}
         
         {user && (
@@ -58,7 +67,7 @@ export default function AdminNavbar({ user }: AdminNavbarProps) {
                 <div className="h-8 w-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-medium">
                   {user.username.charAt(0).toUpperCase()}
                 </div>
-                <div className="text-left">
+                <div className="text-left hidden sm:block">
                   <p className="text-sm font-medium">{user.username}</p>
                   <p className="text-xs text-gray-500 capitalize">{user.role}</p>
                 </div>

@@ -255,6 +255,13 @@ export default function AdminDashboard() {
   const handleDownloadPDF = async () => {
     setIsDownloading(true)
     try {
+      console.log("[v0] Download PDF - Current state:", { 
+        downloadFormat, 
+        viewPeriod, 
+        selectedMonth, 
+        selectedYear 
+      })
+      
       // Pass the selected month, year, and view period to the API
       const params = new URLSearchParams({
         format: downloadFormat,
@@ -262,6 +269,8 @@ export default function AdminDashboard() {
         month: selectedMonth.toString(),
         year: selectedYear.toString(),
       })
+      
+      console.log("[v0] Download PDF - Fetching:", `/api/admin/download-sales-report?${params}`)
       
       const response = await fetch(`/api/admin/download-sales-report?${params}`)
 
@@ -888,23 +897,31 @@ export default function AdminDashboard() {
                 {/* Pie Chart for Event Types */}
                 <div className="bg-white p-6 rounded-lg shadow border">
                   <h2 className="text-xl font-bold mb-4">Event Type Distribution</h2>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={eventTypeData}
-                        cx={150}
-                        cy={150}
-                        labelLine={false}
-                        label={({ name, percentage }) => `${name} (${percentage.toFixed(1)}%)`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                      >
-                        {eventTypeData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
+                  {eventTypeData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={eventTypeData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percentage }) => `${name} (${percentage.toFixed(1)}%)`}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="count"
+                        >
+                          {eventTypeData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[300px] flex items-center justify-center text-gray-500">
+                      No event type data available
+                    </div>
+                  )}
                 </div>
 
                 {/* Peak Months Section */}

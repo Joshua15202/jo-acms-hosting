@@ -41,7 +41,7 @@ async function getInventoryMatches(
 ): Promise<InventoryAnalysis | null> {
   try {
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://jo-acms.vercel.app"}/api/admin/equipment-inventory-check`,
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/admin/equipment-inventory-check`,
       {
         method: "POST",
         headers: {
@@ -105,7 +105,7 @@ Return ONLY a valid JSON array with this exact structure:
 Be specific with quantities and provide clear reasoning.`
 
     const { text } = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: google("gemini-2.5-flash-lite"),
       prompt,
       temperature: 0.3,
     })
@@ -254,10 +254,10 @@ export async function GET(request: NextRequest) {
     }
 
     const mainCourses = parseMainCourses(appointment.main_courses)
-    const equipmentPredictions = await predictEquipmentNeeds(
+    // Use rule-based predictions instead of AI to avoid rate limits
+    const equipmentPredictions = generateFallbackPredictions(
       appointment.event_type || "Event",
       appointment.guest_count,
-      mainCourses,
     )
 
     const equipmentWithMatches = await Promise.all(

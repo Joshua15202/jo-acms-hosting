@@ -209,11 +209,10 @@ export async function GET() {
 
         const mainCourses = parseMainCourses(appointment.main_courses)
 
-        // Get AI predictions for equipment needs
-        const equipmentPredictions = await predictEquipmentNeeds(
+        // Use rule-based predictions (AI only used when clicking individual equipment items)
+        const equipmentPredictions = generateFallbackPredictions(
           appointment.event_type || "Event",
           appointment.guest_count,
-          mainCourses,
         )
 
         return {

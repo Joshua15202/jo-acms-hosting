@@ -246,7 +246,7 @@ export default function EquipmentNeedsForecast() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Equipment Needs Forecast</h2>
-          <p className="text-sm text-gray-600">AI-powered equipment predictions</p>
+          <p className="text-sm text-gray-600">Automated equipment predictions based on event details</p>
         </div>
         <Button onClick={fetchEquipmentForecast} variant="outline" size="sm">
           <RefreshCw className="h-3 w-3 mr-1" />
@@ -382,8 +382,8 @@ export default function EquipmentNeedsForecast() {
                   <div>
                     <h4 className="font-medium text-xs text-gray-700 mb-2 flex items-center gap-1.5">
                       <Wrench className="h-3 w-3 text-blue-600" />
-                      AI-Predicted Equipment Needs:
-                      <span className="text-xs text-blue-600 font-normal">(Click for inventory check)</span>
+                      Predicted Equipment Needs:
+                      <span className="text-xs text-blue-600 font-normal">(Click for AI inventory check)</span>
                     </h4>
                     <div className="space-y-1.5">
                       {event.equipment_predictions.map((prediction, index) => (
