@@ -1730,37 +1730,47 @@ export default function MyAppointmentsClient() {
           </DialogHeader>
           {(selectedAppointment?.payment_status === "deposit_paid" ||
             selectedAppointment?.payment_status === "fully_paid") && (
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="cancelReason">
-                  Reason for Cancellation <span className="text-red-500">*</span>
-                </Label>
-                <Textarea
-                  id="cancelReason"
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="Please provide a detailed reason for cancelling your appointment"
-                  rows={4}
-                  required
-                />
+            <>
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-900 dark:text-blue-200">
+                  <strong>For urgent emergency:</strong> Call{" "}
+                  <a href="tel:09178543221" className="font-semibold underline hover:text-blue-700">
+                    09178543221
+                  </a>
+                </p>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="cancelAttachment">Attachment (Optional)</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="cancelAttachment"
-                    type="file"
-                    onChange={handleAttachmentChange}
-                    accept="image/*,.pdf"
-                    disabled={uploadingAttachment}
-                    className="cursor-pointer"
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="cancelReason">
+                    Reason for Cancellation <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    id="cancelReason"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="Please provide a detailed reason for cancelling your appointment"
+                    rows={4}
+                    required
                   />
-                  {uploadingAttachment && <span className="text-sm text-muted-foreground">Uploading...</span>}
                 </div>
-                {cancelAttachment && <p className="text-sm text-muted-foreground">Selected: {cancelAttachment.name}</p>}
-                <p className="text-xs text-muted-foreground">Upload supporting documents if applicable (max 5MB)</p>
+                <div className="grid gap-2">
+                  <Label htmlFor="cancelAttachment">Attachment (Optional)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="cancelAttachment"
+                      type="file"
+                      onChange={handleAttachmentChange}
+                      accept="image/*,.pdf"
+                      disabled={uploadingAttachment}
+                      className="cursor-pointer"
+                    />
+                    {uploadingAttachment && <span className="text-sm text-muted-foreground">Uploading...</span>}
+                  </div>
+                  {cancelAttachment && <p className="text-sm text-muted-foreground">Selected: {cancelAttachment.name}</p>}
+                  <p className="text-xs text-muted-foreground">Upload supporting documents if applicable (max 5MB)</p>
+                </div>
               </div>
-            </div>
+            </>
           )}
           <DialogFooter>
             <Button

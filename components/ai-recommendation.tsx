@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Textarea } from "@/components/ui/textarea"
 import { useRouter } from "next/navigation"
+import { getTransportationFeeInfo } from "@/lib/transportation-fee"
 
 interface PersonalInfo {
   firstName: string
@@ -46,10 +47,17 @@ interface SchedulingInfo {
   timeSlot: string
 }
 
+interface LocationInfo {
+  province: string
+  city: string
+  guestCount: number
+}
+
 interface AIRecommendationProps {
   personalInfo: PersonalInfo
   eventInfo: EventInfo
   schedulingInfo: SchedulingInfo
+  locationInfo?: LocationInfo
   backdropStyle?: string
   onChangeEventType?: () => void
 }
@@ -415,6 +423,7 @@ export default function AIRecommendation({
   personalInfo,
   eventInfo,
   schedulingInfo,
+  locationInfo,
   backdropStyle,
   onChangeEventType,
 }: AIRecommendationProps) {
@@ -2603,6 +2612,36 @@ export default function AIRecommendation({
                         </div>
                       </div>
                     )}
+
+                  {/* Transportation Fee Information */}
+                  {locationInfo && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <h4 className="text-lg font-semibold text-amber-900 dark:text-amber-200 mb-3">
+                        Transportation Fee Information:
+                      </h4>
+                      <div className="text-sm text-amber-800 dark:text-amber-300">
+                        {(() => {
+                          const transportInfo = getTransportationFeeInfo(
+                            locationInfo.province,
+                            locationInfo.city,
+                            locationInfo.guestCount,
+                          )
+                          return transportInfo.isFree ? (
+                            <p className="font-medium text-green-700 dark:text-green-400 flex items-center gap-2">
+                              <span className="text-xl">✓</span> {transportInfo.message}
+                            </p>
+                          ) : (
+                            <p>
+                              <span className="text-base">ℹ</span> {transportInfo.message}
+                              <span className="block mt-2 text-xs italic font-medium">
+                                (Not included in total package amount)
+                              </span>
+                            </p>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                  )}
 
                   {pkg.isBirthdayEvent && pkg.backdropStyle && (
                     <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-4">

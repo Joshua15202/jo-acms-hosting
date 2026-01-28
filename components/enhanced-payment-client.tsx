@@ -2091,13 +2091,13 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                       Payment Details for {paymentData.paymentMethod === "gcash" ? "GCash" : "Bank Transfer"}
                     </h5>
                     <div className="text-sm text-gray-600">
-                      <p>
-                        <strong>Account Name:</strong> Jonel Ray Pacheco
-                      </p>
                       {paymentData.paymentMethod === "gcash" && (
                         <>
                           <p>
-                            <strong>GCash Number:</strong> 0921-218-3558
+                            <strong>Account Name:</strong> Jonel Ray Pacheco
+                          </p>
+                          <p>
+                            <strong>GCash Number:</strong> 09178543221
                           </p>
                           <Button
                             variant="outline"
@@ -2110,21 +2110,46 @@ Generated on: ${format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
                           {showQrCode && (
                             <div className="mt-4 flex flex-col items-center">
                               <img
-                                src="/qrcodeko.jpg"
+                                src="/sirjoeqrcodegcash.jpg"
                                 alt="GCash QR Code"
                                 className="w-48 h-48 border rounded-lg p-2"
                               />
                               <p className="text-xs text-gray-500 mt-2">
-                                (This is a placeholder QR code. In a real app, a dynamic QR code would be generated.)
+                                Scan this QR code to pay via GCash
                               </p>
                             </div>
                           )}
                         </>
                       )}
                       {paymentData.paymentMethod === "bank_transfer" && (
-                        <p>
-                          <strong>Bank Account Number:</strong> 987-654-3210
-                        </p>
+                        <>
+                          <p>
+                            <strong>Account Name:</strong> Leo E. Pacheco
+                          </p>
+                          <p>
+                            <strong>Bank Account Number:</strong> 00328018958
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowQrCode(!showQrCode)}
+                            className="mt-2"
+                          >
+                            {showQrCode ? "Hide QR Code" : "Generate QR Code"}
+                          </Button>
+                          {showQrCode && (
+                            <div className="mt-4 flex flex-col items-center">
+                              <img
+                                src="/sirjoebankqrcode.jpg"
+                                alt="Bank Transfer QR Code"
+                                className="w-48 h-48 border rounded-lg p-2"
+                              />
+                              <p className="text-xs text-gray-500 mt-2">
+                                Scan this QR code to pay via InstaPay/Bank Transfer
+                              </p>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

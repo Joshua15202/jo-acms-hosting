@@ -22,9 +22,17 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { addressData } from "@/lib/philippines-address-data"
 
-// Service area data
-const SERVICE_AREAS = {
+// Service area data (using comprehensive Philippines address data)
+const SERVICE_AREAS = addressData as Record<string, Record<string, string[]>>
+
+// Alternative: You can directly use addressData without type casting
+// const SERVICE_AREAS = addressData
+
+// Old hardcoded data removed, now using comprehensive philippines-address-data
+/*
+const OLD_SERVICE_AREAS = {
   "Metro Manila": {
     "Quezon City": [
       "Alicia",
@@ -363,6 +371,7 @@ const SERVICE_AREAS = {
     ],
   },
 }
+*/
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -918,11 +927,11 @@ export default function RegisterPage() {
                   <div className="grid gap-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
-                      <Input 
-                        id="password" 
-                        name="password" 
-                        type={showPassword ? "text" : "password"} 
-                        required 
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        required
                         className="pr-10"
                       />
                       <button
@@ -940,11 +949,11 @@ export default function RegisterPage() {
                   <div className="grid gap-2">
                     <Label htmlFor="confirmPassword">Confirm Password</Label>
                     <div className="relative">
-                      <Input 
-                        id="confirmPassword" 
-                        name="confirmPassword" 
-                        type={showConfirmPassword ? "text" : "password"} 
-                        required 
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
                         className="pr-10"
                       />
                       <button

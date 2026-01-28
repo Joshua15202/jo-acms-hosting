@@ -113,16 +113,17 @@ export default function PaymentManagement() {
 
   const [walkInPaymentDialogOpen, setWalkInPaymentDialogOpen] = useState(false)
   const [selectedWalkInAppointment, setSelectedWalkInAppointment] = useState<any | null>(null)
+  const [submittingWalkInPayment, setSubmittingWalkInPayment] = useState(false)
+  const [showQrCode, setShowQrCode] = useState(false)
+  const [showQRCode, setShowQRCode] = useState(true)
   const [walkInPaymentData, setWalkInPaymentData] = useState({
     appointmentId: "",
     amount: 0,
-    paymentType: "down_payment" as "down_payment" | "full_payment" | "cash",
+    paymentType: "down_payment" as "down_payment" | "full_payment" | "remaining_balance" | "cash",
     paymentMethod: "cash",
     reference: "",
     notes: "",
   })
-  const [submittingWalkInPayment, setSubmittingWalkInPayment] = useState(false)
-  const [showQRCode, setShowQRCode] = useState(true)
   // </CHANGE>
 
   useEffect(() => {
@@ -1547,7 +1548,7 @@ export default function PaymentManagement() {
                     <strong>Account Name:</strong> Jonel Ray Pacheco
                   </p>
                   <p className="text-sm">
-                    <strong>GCash Number:</strong> 0921-218-3558
+                    <strong>GCash Number:</strong> 09178543221
                   </p>
                 </div>
                 <Button
@@ -1575,16 +1576,36 @@ export default function PaymentManagement() {
             )}
 
             {walkInPaymentData.paymentMethod === "bank_transfer" && (
-              <div className="border rounded-lg p-4 bg-green-50 border-green-200 space-y-2">
+              <div className="border rounded-lg p-4 bg-green-50 border-green-200 space-y-3">
                 <h4 className="font-semibold text-green-900">Payment Details for Bank Transfer</h4>
                 <div className="space-y-1">
                   <p className="text-sm">
-                    <strong>Account Name:</strong> Jonel Ray Pacheco
+                    <strong>Account Name:</strong> Leo E. Pacheco
                   </p>
                   <p className="text-sm">
-                    <strong>Bank Account Number:</strong> 987-654-3210 
+                    <strong>Bank Account Number:</strong> 00328018958
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowQrCode(!showQrCode)}
+                  className="w-full"
+                >
+                  {showQrCode ? "Hide QR Code" : "Generate QR Code"}
+                </Button>
+                {showQrCode && (
+                  <div className="flex flex-col items-center mt-2">
+                    <img
+                      src="/sirjoebankqrcode.jpg"
+                      alt="Bank Transfer QR Code"
+                      className="w-48 h-48 border rounded-lg p-2"
+                    />
+                    <p className="text-xs text-green-700 italic mt-2">
+                      Scan this QR code to pay via InstaPay/Bank Transfer
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

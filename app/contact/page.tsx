@@ -69,15 +69,15 @@ export default function ContactPage() {
   const googleMapsUrl = "https://maps.app.goo.gl/bkvHdD7mZi26wDLY7"
 
   const serviceAreas = [
-    "Fairview",
-    "Valenzuela",
-    "Quezon City",
-    "Malolos",
-    "Novaliches",
-    "Malabon",
-    "Meycauayan",
-    "Pandi",
-    "Marilao",
+    "Bulacan",
+    "Metro Manila",
+    "Pampanga",
+    "Zambales",
+    "Rizal",
+    "Cavite",
+    "Laguna",
+    "Batangas",
+    "Quezon",
   ]
 
   return (
@@ -124,7 +124,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Phone</h3>
-                  <p className="text-gray-600">0917 854 3221</p>
+                  <p className="text-gray-600">09178543221</p>
                 </div>
               </div>
 
@@ -134,7 +134,7 @@ export default function ContactPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Email</h3>
-                  <p className="text-gray-600">hello@jopacheco.com</p>
+                  <p className="text-gray-600">Jonelray_pacheco@yahoo.com</p>
                 </div>
               </div>
 
@@ -322,7 +322,7 @@ export default function ContactPage() {
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                       <p className="text-red-800 font-medium">✗ Failed to send message</p>
                       <p className="text-red-600 text-sm mt-1">
-                        Please try again or contact us directly at hello@jopacheco.com
+                        Please try again or contact us directly at Jonelray_pacheco@yahoo.com
                       </p>
                     </div>
                   )}

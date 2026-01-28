@@ -135,7 +135,14 @@ export default function AdminDashboard() {
     fetchCustomersCount()
     fetchUpcomingEventsCount()
     fetchMonthlyRevenue()
+    fetchDetailedAnalytics()
   }, [])
+
+  // Refetch data when year, month, or view period changes
+  useEffect(() => {
+    fetchMonthlyRevenue()
+    fetchDetailedAnalytics()
+  }, [selectedYear, selectedMonth, viewPeriod])
 
   useEffect(() => {
     if (!customerSearchTerm) {
@@ -232,14 +239,17 @@ export default function AdminDashboard() {
     try {
       const timestamp = new Date().getTime()
       const randomParam = Math.random().toString(36).substring(7)
-      const response = await fetch(`/api/admin/revenue-analytics?_=${timestamp}&r=${randomParam}`, {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
+      const response = await fetch(
+        `/api/admin/revenue-analytics?period=${viewPeriod}&month=${selectedMonth}&year=${selectedYear}&_=${timestamp}&r=${randomParam}`,
+        {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
         },
-      })
+      )
       const data = await response.json()
 
       if (data.success) {

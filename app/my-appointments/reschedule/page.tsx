@@ -348,7 +348,7 @@ export default function RescheduleAppointmentPage() {
       <Alert className="mb-6 border-orange-200 bg-orange-50">
         <AlertCircle className="h-4 w-4 text-orange-600" />
         <AlertDescription className="text-orange-800">
-          <strong>Penalty Notice:</strong> Reschedule requests made within 24 hours of your original event date are
+          <strong>Penalty Notice:</strong> Reschedule requests made beyond 24 hours of your original event date are
           subject to a penalty of 10% of the total package amount (₱{penaltyAmount.toLocaleString()}).
         </AlertDescription>
       </Alert>

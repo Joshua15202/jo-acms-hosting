@@ -36,37 +36,80 @@ function generateTastingToken(): string {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9)
 }
 
-// Helper function to calculate proposed tasting date (3 days before event)
+// Helper function to calculate proposed tasting date (1 week before event, always on weekend)
 function calculateTastingDate(eventDate: string): { date: string; time: string } {
   const event = new Date(eventDate)
   const now = new Date()
 
-  // Calculate 3 days before the event
-  const threeDaysBeforeEvent = new Date(event)
-  threeDaysBeforeEvent.setDate(event.getDate() - 3)
+  // Calculate 1 week (7 days) before the event
+  const oneWeekBeforeEvent = new Date(event)
+  oneWeekBeforeEvent.setDate(event.getDate() - 7)
 
-  // If 3 days before event is in the past or too soon, use 3 days from now
-  const threeDaysFromNow = new Date()
-  threeDaysFromNow.setDate(now.getDate() + 3)
+  // Find the nearest weekend (prefer Sunday, then Saturday) around 1 week before
+  // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
+  const dayOfWeek = oneWeekBeforeEvent.getDay()
+  let tastingDate = new Date(oneWeekBeforeEvent)
 
-  // Use whichever is later (but ensure it's before the event)
-  let proposedDate = threeDaysBeforeEvent > threeDaysFromNow ? threeDaysBeforeEvent : threeDaysFromNow
+  // Adjust to the nearest weekend
+  if (dayOfWeek === 0) {
+    // Already Sunday - perfect!
+    tastingDate = oneWeekBeforeEvent
+  } else if (dayOfWeek === 6) {
+    // Already Saturday - also good, but prefer Sunday which is tomorrow
+    tastingDate.setDate(oneWeekBeforeEvent.getDate() + 1)
+  } else if (dayOfWeek === 1) {
+    // Monday -> go back 1 day to Sunday
+    tastingDate.setDate(oneWeekBeforeEvent.getDate() - 1)
+  } else if (dayOfWeek === 2) {
+    // Tuesday -> go back 2 days to Sunday
+    tastingDate.setDate(oneWeekBeforeEvent.getDate() - 2)
+  } else if (dayOfWeek === 3) {
+    // Wednesday -> go back 3 days to Sunday
+    tastingDate.setDate(oneWeekBeforeEvent.getDate() - 3)
+  } else if (dayOfWeek === 4) {
+    // Thursday -> go forward 2 days to Saturday  
+    tastingDate.setDate(oneWeekBeforeEvent.getDate() + 2)
+  } else if (dayOfWeek === 5) {
+    // Friday -> go forward 1 day to Saturday
+    tastingDate.setDate(oneWeekBeforeEvent.getDate() + 1)
+  }
 
-  // Ensure the tasting date is before the event date
-  if (proposedDate >= event) {
-    // If the calculated date is on or after the event, set it to 1 day before the event
-    proposedDate = new Date(event)
-    proposedDate.setDate(event.getDate() - 1)
+  console.log("[v0] Tasting date calculation:", {
+    eventDate,
+    oneWeekBefore: oneWeekBeforeEvent.toISOString().split("T")[0],
+    dayOfWeek,
+    calculatedTastingDate: tastingDate.toISOString().split("T")[0],
+  })
 
-    // If that's still in the past, use tomorrow
-    if (proposedDate <= now) {
-      proposedDate = new Date(now)
-      proposedDate.setDate(now.getDate() + 1)
+  // If the calculated date is in the past, use the next upcoming weekend
+  if (tastingDate <= now) {
+    const nextWeekend = new Date(now)
+    const currentDayOfWeek = now.getDay()
+
+    // Calculate days until the next Saturday or Sunday
+    let daysUntilWeekend = 0
+    if (currentDayOfWeek === 0) {
+      // Already Sunday -> next weekend is next Saturday (6 days)
+      daysUntilWeekend = 6
+    } else if (currentDayOfWeek === 6) {
+      // Already Saturday -> tomorrow is Sunday
+      daysUntilWeekend = 1
+    } else {
+      // Monday-Friday -> calculate days until next Saturday
+      daysUntilWeekend = 6 - currentDayOfWeek
+    }
+
+    nextWeekend.setDate(now.getDate() + daysUntilWeekend)
+    console.log("[v0] Tasting date was in past, using next weekend:", nextWeekend.toISOString().split("T")[0])
+    
+    return {
+      date: nextWeekend.toISOString().split("T")[0],
+      time: "10:00 AM",
     }
   }
 
   return {
-    date: proposedDate.toISOString().split("T")[0],
+    date: tastingDate.toISOString().split("T")[0],
     time: "10:00 AM", // Default tasting time
   }
 }
@@ -432,7 +475,7 @@ Created: ${new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: 
 
     // Send tasting confirmation email to the user's registered email
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://jo-acms.vercel.app"
       const confirmUrl = `${baseUrl}/api/tasting/confirm?token=${tastingToken}&action=confirm`
       const skipUrl = `${baseUrl}/api/tasting/skip?token=${tastingToken}`
 

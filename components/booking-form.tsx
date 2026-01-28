@@ -14,6 +14,8 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { calculatePackagePricing, formatCurrency, type MenuSelections } from "@/lib/pricing-calculator"
 import { useAuth } from "@/components/user-auth-provider"
 import AIRecommendation from "@/components/ai-recommendation"
+import { addressData } from "@/lib/philippines-address-data"
+import { getTransportationFeeInfo } from "@/lib/transportation-fee"
 
 type FormStep = 1 | 2 | 3 | 4
 type BudgetTier = "economy" | "standard" | "premium" | "luxury"
@@ -87,331 +89,6 @@ const timeSlotOptions = [
   { value: "early_dinner", label: "Early Dinner (3PM - 7PM)" },
   { value: "dinner", label: "Dinner (6PM - 10PM)" },
 ]
-
-// Address data structure
-const addressData = {
-  "Metro Manila": {
-    "Quezon City": [
-      "Alicia",
-      "Amihan",
-      "Apolonio Samson",
-      "Baesa",
-      "Bagbaguin",
-      "Bagong Lipunan ng Crame",
-      "Bagong Pag-asa",
-      "Bagong Silangan",
-      "Bagumbayan",
-      "Bagumbuhay",
-      "Bahay Toro",
-      "Balingasa",
-      "Botocan",
-      "Bungad",
-      "Camp Aguinaldo",
-      "Capri",
-      "Central",
-      "Claro",
-      "Commonwealth",
-      "Culiat",
-      "Damar",
-      "Damayan",
-      "Damayang Lagi",
-      "Del Monte",
-      "Dioquino Zobel",
-      "Dona Imelda",
-      "Dona Josefa",
-      "Don Manuel",
-      "Duyan-Duyan",
-      "E. Rodriguez",
-      "East Kamias",
-      "Escopa I",
-      "Escopa II",
-      "Escopa III",
-      "Escopa IV",
-      "Fairview",
-      "Greater Lagro",
-      "Gulod",
-      "Holy Spirit",
-      "Horseshoe",
-      "Immaculate Concepcion",
-      "Kaligayahan",
-      "Kalusugan",
-      "Kamuning",
-      "Katipunan",
-      "Kaunlaran",
-      "Kristong Hari",
-      "Krus na Ligas",
-      "Laging Handa",
-      "Libis",
-      "Lourdes",
-      "Loyola Heights",
-      "Maharlika",
-      "Malaya",
-      "Mangga",
-      "Manresa",
-      "Mariana",
-      "Mariblo",
-      "Marilag",
-      "Masagana",
-      "Masambong",
-      "Matalahib",
-      "Matandang Balara",
-      "Milagrosa",
-      "N.S. Amoranto",
-      "Nagkaisang Nayon",
-      "New Era",
-      "North Fairview",
-      "Novaliches Proper",
-      "Nueve de Febrero",
-      "Obrero",
-      "Old Capitol Site",
-      "Paang Bundok",
-      "Pag-ibig sa Nayon",
-      "Paligsahan",
-      "Paltok",
-      "Pansol",
-      "Paraiso",
-      "Pasong Putik Proper",
-      "Pasong Tamo",
-      "Payatas",
-      "Phil-Am",
-      "Pinagkaisahan",
-      "Pinyahan",
-      "Project 6",
-      "Quirino 2-A",
-      "Quirino 2-B",
-      "Quirino 2-C",
-      "Quirino 3-A",
-      "Ramon Magsaysay",
-      "Roxas",
-      "Sacred Heart",
-      "Saint Ignatius",
-      "Saint Peter",
-      "Salvacion",
-      "San Agustin",
-      "San Antonio",
-      "San Bartolome",
-      "San Isidro",
-      "San Isidro Labrador",
-      "San Jose",
-      "San Martin de Porres",
-      "San Roque",
-      "San Vicente",
-      "Sangandaan",
-      "Santa Cruz",
-      "Santa Lucia",
-      "Santa Monica",
-      "Santa Teresita",
-      "Santo Cristo",
-      "Santo Domingo",
-      "Santo Nino",
-      "Santol",
-      "Sauyo",
-      "Sienna",
-      "Silangan",
-      "Sikatuna Village",
-      "Socorro",
-      "South Triangle",
-      "Tagumpay",
-      "Talampas",
-      "Talayan",
-      "Talipapa",
-      "Tandang Sora",
-      "Tatalon",
-      "Teachers Village East",
-      "Teachers Village West",
-      "Ugong Norte",
-      "Unang Sigaw",
-      "UP Campus",
-      "UP Village",
-      "Valencia",
-      "Vasra",
-      "Veterans Village",
-      "West Triangle",
-      "White Plains",
-    ],
-    Valenzuela: [
-      "Arkong Bato",
-      "Bagbaguin",
-      "Balangkas",
-      "Bignay",
-      "Bisig",
-      "Canumay East",
-      "Canumay West",
-      "Coloong",
-      "Dalandanan",
-      "Gen. T. de Leon",
-      "Hen. T. de Leon",
-      "Isla",
-      "Karuhatan",
-      "Lawang Bato",
-      "Lingunan",
-      "Mabolo",
-      "Malanday",
-      "Malinta",
-      "Mapulang Lupa",
-      "Marulas",
-      "Maysan",
-      "Palasan",
-      "Parada",
-      "Pariancillo Villa",
-      "Pasolo",
-      "Polo",
-      "Punturin",
-      "Rincon",
-      "Tagalag",
-      "Ugong",
-      "Viente Reales",
-      "Wawang Pulo",
-    ],
-    Malabon: [
-      "Acacia",
-      "Baritan",
-      "Bayan-bayanan",
-      "Catmon",
-      "Concepcion",
-      "Dampalit",
-      "Flores",
-      "Hulong Duhat",
-      "Ibaba",
-      "Longos",
-      "Maysilo",
-      "Muzon",
-      "Niugan",
-      "Panghulo",
-      "Potrero",
-      "San Agustin",
-      "Santolan",
-      "Tanong",
-      "Tinajeros",
-      "Tonsuya",
-      "Tugatog",
-    ],
-  },
-  Bulacan: {
-    Malolos: [
-      "Anilao",
-      "Atlag",
-      "Babatnin",
-      "Bagna",
-      "Bagong Bayan",
-      "Balayong",
-      "Balite",
-      "Bangkal",
-      "Barihan",
-      "Bulihan",
-      "Bungahan",
-      "Caingin",
-      "Calero",
-      "Caliligawan",
-      "Canalate",
-      "Caniogan",
-      "Capihan",
-      "Catmon",
-      "Cofradia",
-      "Dakila",
-      "Guinhawa",
-      "Ligas",
-      "Liyang",
-      "Longos",
-      "Look 1st",
-      "Look 2nd",
-      "Lugam",
-      "Mabolo",
-      "Mambog",
-      "Masile",
-      "Matimbo",
-      "Mojon",
-      "Namayan",
-      "Niugan",
-      "Pamarawan",
-      "Panasahan",
-      "Pinagbakahan",
-      "San Agustin",
-      "San Gabriel",
-      "San Juan",
-      "San Pablo",
-      "San Vicente",
-      "Santiago",
-      "Santisima Trinidad",
-      "Santo Cristo",
-      "Santo Niño",
-      "Santo Rosario",
-      "Sariling Bayan",
-      "Subukan",
-      "Sumapang Bata",
-      "Sumapang Matanda",
-      "Taal",
-      "Tikay",
-    ],
-    Meycauayan: [
-      "Bagbaguin",
-      "Bahay Pare",
-      "Bancal",
-      "Banga",
-      "Bayugo",
-      "Caingin",
-      "Calvario",
-      "Camalig",
-      "Hulo",
-      "Iba",
-      "Langka",
-      "Lawa",
-      "Libtong",
-      "Liputan",
-      "Malhacan",
-      "Pajo",
-      "Pandayan",
-      "Pantoc",
-      "Perez",
-      "Saluysoy",
-      "St. Francis",
-      "Tugatog",
-      "Ubihan",
-      "Zamora",
-    ],
-    Pandi: [
-      "Bagbaguin",
-      "Bagong Barrio",
-      "Baka-bakahan",
-      "Baliuag",
-      "Bunsuran I",
-      "Bunsuran II",
-      "Bunsuran III",
-      "Cacarong Bata",
-      "Cacarong Matanda",
-      "Cupang",
-      "Malibo",
-      "Manatal",
-      "Mapulang Lupa",
-      "Masagana",
-      "Masangsang",
-      "Pinagkuartelan",
-      "Poblacion",
-      "Real de Cacarong",
-      "San Roque",
-      "Siling Bata",
-      "Siling Matanda",
-    ],
-    Marilao: [
-      "Abangan Norte",
-      "Abangan Sur",
-      "Ibayo",
-      "Lambakin",
-      "Lias",
-      "Loma de Gato",
-      "Nagbalon",
-      "Patubig",
-      "Poblacion I",
-      "Poblacion II",
-      "Prenza I",
-      "Prenza II",
-      "Santa Rosa I",
-      "Santa Rosa II",
-      "Saog",
-      "Tabing Ilog",
-    ],
-  },
-}
 
 function BookingFormContent({
   personalInfo,
@@ -1012,13 +689,27 @@ function BookingFormContent({
   )
 
   const validateStep2 = useCallback(() => {
-    const totalMainCourses =
-      formData.menu1Selections.length + formData.menu2Selections.length + formData.menu3Selections.length
-
-    if (totalMainCourses === 0) {
+    // Check that each menu has at least one selection
+    if (formData.menu1Selections.length === 0) {
       toast({
         title: "Validation Error",
-        description: "At least one main course selection is required from Menu 1, 2, or 3.",
+        description: "At least one selection is required from Menu 1 (Beef/Pork).",
+        variant: "destructive",
+      })
+      return false
+    }
+    if (formData.menu2Selections.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "At least one selection is required from Menu 2 (Chicken).",
+        variant: "destructive",
+      })
+      return false
+    }
+    if (formData.menu3Selections.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "At least one selection is required from Menu 3 (Seafood/Vegetables).",
         variant: "destructive",
       })
       return false
@@ -1319,6 +1010,13 @@ function BookingFormContent({
                 <SelectContent>
                   <SelectItem value="Metro Manila">Metro Manila</SelectItem>
                   <SelectItem value="Bulacan">Bulacan</SelectItem>
+                  <SelectItem value="Pampanga">Pampanga</SelectItem>
+                  <SelectItem value="Zambales">Zambales</SelectItem>
+                  <SelectItem value="Rizal">Rizal</SelectItem>
+                  <SelectItem value="Cavite">Cavite</SelectItem>
+                  <SelectItem value="Laguna">Laguna</SelectItem>
+                  <SelectItem value="Batangas">Batangas</SelectItem>
+                  <SelectItem value="Quezon">Quezon</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -2246,6 +1944,35 @@ function BookingFormContent({
                             </span>
                           </div>
                         )}
+                        {/* Transportation Fee Information */}
+                        {formData.venueProvince && (
+                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 mt-4">
+                            <div className="font-medium text-amber-900 dark:text-amber-200 mb-1">
+                              Transportation Fee Information:
+                            </div>
+                            <div className="text-sm text-amber-800 dark:text-amber-300">
+                              {(() => {
+                                const transportInfo = getTransportationFeeInfo(
+                                  formData.venueProvince,
+                                  formData.venueCity,
+                                  Number.parseInt(formData.guestCount) || 0,
+                                )
+                                return transportInfo.isFree ? (
+                                  <p className="font-medium text-green-700 dark:text-green-400">
+                                    ✓ {transportInfo.message}
+                                  </p>
+                                ) : (
+                                  <p>
+                                    ℹ {transportInfo.message}
+                                    <span className="block mt-1 text-xs italic">
+                                      
+                                    </span>
+                                  </p>
+                                )
+                              })()}
+                            </div>
+                          </div>
+                        )}
                       </>
                     )}
                     <hr />
@@ -2289,14 +2016,19 @@ function BookingFormContent({
   }
 
   const renderStep4 = () => (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">AI Recommendations</h3>
-      <AIRecommendation
-        personalInfo={personalInfo}
-        eventInfo={eventInfo}
-        schedulingInfo={schedulingInfo}
-        backdropStyle={backdropStyle}
-        onChangeEventType={onChangeEventType}
+  <div className="space-y-4">
+  <h3 className="text-lg font-medium">AI Recommendations</h3>
+  <AIRecommendation
+  personalInfo={personalInfo}
+  eventInfo={eventInfo}
+  schedulingInfo={schedulingInfo}
+  locationInfo={{
+    province: formData.venueProvince,
+    city: formData.venueCity,
+    guestCount: Number.parseInt(formData.guestCount) || 0,
+  }}
+  backdropStyle={backdropStyle}
+  onChangeEventType={onChangeEventType}
       />
     </div>
   )
