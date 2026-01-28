@@ -1879,6 +1879,35 @@ function BookingFormContent({
                           <span className="font-medium">Menu Selections Total:</span>
                           <span className="font-semibold text-rose-600">{formatCurrency(pricingData.subtotal)}</span>
                         </div>
+                        {/* Transportation Fee Information for Wedding */}
+                        {formData.venueProvince && (
+                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 mt-4">
+                            <div className="font-medium text-amber-900 dark:text-amber-200 mb-1">
+                              Transportation Fee Information:
+                            </div>
+                            <div className="text-sm text-amber-800 dark:text-amber-300">
+                              {(() => {
+                                const transportInfo = getTransportationFeeInfo(
+                                  formData.venueProvince,
+                                  formData.venueCity,
+                                  Number.parseInt(formData.guestCount) || 0,
+                                )
+                                return transportInfo.isFree ? (
+                                  <p className="font-medium text-green-700 dark:text-green-400">
+                                    ✓ {transportInfo.message}
+                                  </p>
+                                ) : (
+                                  <p>
+                                    ℹ {transportInfo.message}
+                                    <span className="block mt-1 text-xs italic">
+                                      
+                                    </span>
+                                  </p>
+                                )
+                              })()}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : pricingData.isDebutPackage ? (
                       <div className="space-y-4">
@@ -1907,6 +1936,35 @@ function BookingFormContent({
                           <span className="font-medium">Menu Selections Total:</span>
                           <span className="font-semibold text-rose-600">{formatCurrency(pricingData.subtotal)}</span>
                         </div>
+                        {/* Transportation Fee Information for Debut */}
+                        {formData.venueProvince && (
+                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 mt-4">
+                            <div className="font-medium text-amber-900 dark:text-amber-200 mb-1">
+                              Transportation Fee Information:
+                            </div>
+                            <div className="text-sm text-amber-800 dark:text-amber-300">
+                              {(() => {
+                                const transportInfo = getTransportationFeeInfo(
+                                  formData.venueProvince,
+                                  formData.venueCity,
+                                  Number.parseInt(formData.guestCount) || 0,
+                                )
+                                return transportInfo.isFree ? (
+                                  <p className="font-medium text-green-700 dark:text-green-400">
+                                    ✓ {transportInfo.message}
+                                  </p>
+                                ) : (
+                                  <p>
+                                    ℹ {transportInfo.message}
+                                    <span className="block mt-1 text-xs italic">
+                                      
+                                    </span>
+                                  </p>
+                                )
+                              })()}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <>
