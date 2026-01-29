@@ -1875,13 +1875,9 @@ function BookingFormContent({
                             </li>
                           </ul>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">Menu Selections Total:</span>
-                          <span className="font-semibold text-rose-600">{formatCurrency(pricingData.subtotal)}</span>
-                        </div>
                         {/* Transportation Fee Information for Wedding */}
                         {formData.venueProvince && (
-                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 mt-4">
+                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
                             <div className="font-medium text-amber-900 dark:text-amber-200 mb-1">
                               Transportation Fee Information:
                             </div>
@@ -1908,6 +1904,10 @@ function BookingFormContent({
                             </div>
                           </div>
                         )}
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Menu Selections Total:</span>
+                          <span className="font-semibold text-rose-600">{formatCurrency(pricingData.subtotal)}</span>
+                        </div>
                       </div>
                     ) : pricingData.isDebutPackage ? (
                       <div className="space-y-4">
@@ -1932,13 +1932,9 @@ function BookingFormContent({
                             <li className="font-bold">Free Fresh 18 Red Roses & 18 Candles</li>
                           </ul>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">Menu Selections Total:</span>
-                          <span className="font-semibold text-rose-600">{formatCurrency(pricingData.subtotal)}</span>
-                        </div>
                         {/* Transportation Fee Information for Debut */}
                         {formData.venueProvince && (
-                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 mt-4">
+                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
                             <div className="font-medium text-amber-900 dark:text-amber-200 mb-1">
                               Transportation Fee Information:
                             </div>
@@ -1965,6 +1961,10 @@ function BookingFormContent({
                             </div>
                           </div>
                         )}
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Menu Selections Total:</span>
+                          <span className="font-semibold text-rose-600">{formatCurrency(pricingData.subtotal)}</span>
+                        </div>
                       </div>
                     ) : (
                       <>
@@ -1994,17 +1994,9 @@ function BookingFormContent({
                             </ul>
                           </div>
                         )}
-                        {formData.eventType === "birthday" && backdropStyle && (
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium">Backdrop Styling:</span>
-                            <span className="font-semibold text-rose-600">
-                              {formatCurrency(getBackdropPrice(backdropStyle))}
-                            </span>
-                          </div>
-                        )}
-                        {/* Transportation Fee Information */}
+                        {/* Transportation Fee Information for Birthday */}
                         {formData.venueProvince && (
-                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800 mt-4">
+                          <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
                             <div className="font-medium text-amber-900 dark:text-amber-200 mb-1">
                               Transportation Fee Information:
                             </div>
@@ -2029,6 +2021,14 @@ function BookingFormContent({
                                 )
                               })()}
                             </div>
+                          </div>
+                        )}
+                        {formData.eventType === "birthday" && backdropStyle && (
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Backdrop Styling:</span>
+                            <span className="font-semibold text-rose-600">
+                              {formatCurrency(getBackdropPrice(backdropStyle))}
+                            </span>
                           </div>
                         )}
                       </>

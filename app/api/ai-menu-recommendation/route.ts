@@ -11,11 +11,14 @@ const ALL_VENUES_DATA = `${METRO_MANILA_VENUES}\n\n${BULACAN_VENUES}`
 
 export async function POST(request: Request) {
   try {
-    const { eventType, guestCount, aiPreferences, availableMenuItems, generationCount } = await request.json()
+    const { eventType, guestCount, aiPreferences, availableMenuItems, generationCount, province, city } =
+      await request.json()
 
     if (!eventType || !guestCount || !availableMenuItems) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
+
+    console.log("[v0] AI Recommendation request - Province:", province, "City:", city)
 
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
 
@@ -479,29 +482,51 @@ export async function POST(request: Request) {
     }
 
     const userLocation = parseUserLocation(aiPreferences || "")
-    console.log("Parsed user location:", userLocation)
+    console.log("[v0] Parsed user location from preferences:", userLocation)
+    console.log("[v0] Province from form:", province)
+    console.log("[v0] City from form:", city)
+
+    // Use province/city from form data if available, otherwise fall back to parsed preferences
+    const effectiveProvince = province || userLocation.city // If province is empty, try to infer from city mention
+    const effectiveCity = city || userLocation.city
 
     let venueSelectionGuidance = ""
-    if (userLocation.barangay) {
+    
+    // New logic: If province and/or city specified from form
+    if (effectiveProvince && effectiveCity) {
+      venueSelectionGuidance = `
+   - User's event location: PROVINCE "${effectiveProvince}", CITY/MUNICIPALITY "${effectiveCity}"
+   - CRITICAL: Generate a REALISTIC venue address in ${effectiveCity}, ${effectiveProvince}
+   - Format: [Venue Name], [Street Address], [City/Municipality], ${effectiveProvince}, [Postal Code]
+   - Use realistic venue names appropriate for ${effectiveProvince} (e.g., local hotels, resorts, function halls, gardens)
+   - Generate a plausible street address (use common street names, building numbers)
+   - City MUST be: ${effectiveCity}
+   - Province MUST be: ${effectiveProvince}
+   - Postal code should be appropriate for ${effectiveCity}, ${effectiveProvince}
+   - RANDOMIZE venue names to provide variety across generations
+   - In reasoning: "Selected a venue in ${effectiveCity}, ${effectiveProvince} to match your event location"
+   - IMPORTANT: Do NOT use venues from the database if they're not in the specified province/city. Generate realistic venue names instead.
+   `
+    } else if (effectiveCity) {
+      venueSelectionGuidance = `
+   - User mentioned CITY/MUNICIPALITY: "${effectiveCity}"
+   - Generate a REALISTIC venue in ${effectiveCity}
+   - RANDOMIZE: Create varied venue names each time
+   - Format: [Venue Name], [Street Address], ${effectiveCity}, [Province], [Postal Code]
+   - In reasoning: "Selected [VENUE NAME] in ${effectiveCity} based on your location"
+   `
+    } else if (userLocation.barangay) {
       venueSelectionGuidance = `
    - User mentioned SPECIFIC BARANGAY: "${userLocation.barangay}"
    - FIRST: Search for venues IN THIS EXACT BARANGAY from the database
-   - If barangay EXISTS in database: Select that venue and mention "Selected [VENUE] in [BARANGAY] because you live in [BARANGAY]"
+   - If barangay EXISTS in database: Select that venue and mention "Selected [VENUE] in [BARANGAY] because you mentioned [BARANGAY]"
    - If barangay NOT in database: Find closest venue in the same city "${userLocation.city || "nearby area"}"
-   - IMPORTANT: In your reasoning, EXPLAIN this: "I couldn't find a venue in ${userLocation.barangay}, so I selected [VENUE NAME] in [ACTUAL BARANGAY] which is close to your location in ${userLocation.city || "your area"}."
-   `
-    } else if (userLocation.city) {
-      venueSelectionGuidance = `
-   - User mentioned CITY/MUNICIPALITY ONLY: "${userLocation.city}"
-   - NO specific barangay mentioned
-   - RANDOMIZE: Select ANY venue from this city randomly
-   - DO NOT always pick the same venue - ensure variety across generations
-   - In reasoning: "Selected [VENUE NAME] in [BARANGAY], ${userLocation.city} based on your location"
+   - IMPORTANT: In your reasoning, EXPLAIN this: "I couldn't find a venue in ${userLocation.barangay}, so I selected [VENUE NAME] in [ACTUAL BARANGAY] which is close to your mentioned location."
    `
     } else {
       venueSelectionGuidance = `
-   - User did NOT mention specific location
-   - Select popular/accessible venue from our service area
+   - User did NOT specify location in form
+   - Select popular/accessible venue from our service area (Metro Manila or Bulacan)
    - Randomize selection to provide variety
    - In reasoning: "Selected [VENUE NAME] as a convenient location in our service area"
    `
@@ -545,10 +570,33 @@ YOUR TASKS:
 5. **Pool/Resort Requirements**: If user mentions wanting a pool/swimming, ONLY suggest venues with "Resort" or "Pool" in the name
 
 SERVICE AREA FOR VENUE SUGGESTIONS:
-Jo Pacheco serves: Quezon City, Valenzuela, Malabon (Metro Manila Province), and Malolos, Meycauayan, Pandi, Marilao (Bulacan Province), and nearby areas.
+Jo Pacheco serves: Metro Manila, Bulacan, Pampanga, Zambales, Rizal, Cavite, Laguna, Batangas, and Quezon provinces.
 
-AVAILABLE VENUES DATABASE (Select venues ONLY from this list):
+${
+  effectiveProvince === "Metro Manila" || effectiveProvince === "Bulacan"
+    ? `AVAILABLE VENUES DATABASE (for ${effectiveProvince} only):
 ${ALL_VENUES_DATA}
+
+INSTRUCTION: Since the user specified ${effectiveProvince}, select a venue from the database above that matches their city/barangay.`
+    : `VENUE GENERATION REQUIRED:
+The user specified "${effectiveProvince}" province, which is NOT Metro Manila or Bulacan.
+We do NOT have a venue database for ${effectiveProvince}.
+
+CRITICAL INSTRUCTION: 
+- You MUST GENERATE a realistic venue name and address for ${effectiveProvince}
+- DO NOT use venues from Metro Manila or Bulacan
+- DO NOT default to the venue database
+- CREATE a plausible venue name appropriate for ${effectiveProvince} (e.g., hotels, resorts, function halls, gardens)
+- FORMAT: [Venue Name], [Street Address with number], ${effectiveCity || "[City]"}, ${effectiveProvince}, [Postal Code]
+- Use realistic Filipino venue naming conventions
+- Example venues for reference (do NOT copy exactly):
+  * Pampanga: "Villa Christina Events Place, 123 McArthur Highway, Angeles City, Pampanga, 2009"
+  * Batangas: "Pontefino Hotel & Residences, 456 P. Burgos Street, Batangas City, Batangas, 4200"
+  * Cavite: "Tagaytay Wingate Manor, 789 Aguinaldo Highway, Tagaytay City, Cavite, 4120"
+  * Laguna: "Nurture Wellness Village, 234 Calamba-Los Baños Road, Calamba City, Laguna, 4027"
+
+RANDOMIZE venue names to provide variety!`
+}
 
 PARSED USER RESTRICTIONS (Avoid these if user explicitly said "no" or "allergic"):
 ${userPrefs.restrictions.length > 0 ? userPrefs.restrictions.join(", ") : "None"}
@@ -590,13 +638,13 @@ Respond with a JSON object containing:
   "dessert": ["exactly 1 dessert item"],
   "beverage": ["exactly 1 beverage item"],
   "venueRecommendation": {
-    "venueName": "Exact venue name from database",
-    "barangay": "Exact barangay from database",
-    "streetAddress": "Exact street address from database",
-    "city": "City name (Quezon City, Valenzuela, Malabon, Malolos, Meycauayan, Pandi, or Marilao)",
-    "province": "Province name (Metro Manila or Bulacan)",
-    "postalCode": "Exact postal/zip code from database",
-    "reasoning": "Why this venue suits the user's location and needs"
+    "venueName": "Venue name (use database if available in that province/city, otherwise generate realistic name)",
+    "barangay": "Barangay name (can be randomized within the city)",
+    "streetAddress": "Street address with building number and street name",
+    "city": "City/Municipality name - MUST match user's specified city",
+    "province": "Province name - MUST be one of: Metro Manila, Bulacan, Pampanga, Zambales, Rizal, Cavite, Laguna, Batangas, Quezon",
+    "postalCode": "Postal/zip code appropriate for the city and province",
+    "reasoning": "Why this venue suits the user's location and event needs"
   },
   "eventTheme": "Suggested theme based on preferences",
   "colorMotif": "Suggested color palette",
@@ -605,15 +653,37 @@ Respond with a JSON object containing:
 }
 
 CRITICAL VENUE SELECTION RULES:
-1. Parse the user's location from their AI Preferences (city, barangay, neighborhood, landmarks)
-2. If user mentions wanting a POOL or swimming: ONLY suggest venues with "Resort", "Pool", or "Private Resort" in the name
+1. **PROVINCE & CITY MATCHING**: User specified Province: "${effectiveProvince || "Not specified"}", City: "${effectiveCity || "Not specified"}"
+   - The venue MUST be in the specified province and city
+   - Generate realistic venue names appropriate for the location
+   
+2. **VENUE FORMAT**: Generate venue addresses in this format:
+   - Format: [Venue Name], [Street Address], [City/Municipality], [Province], [Postal Code]
+   - Example: "Grand Ballroom Event Center, 123 Main Street, Angeles City, Pampanga, 2009"
+   
 3. **VENUE SELECTION LOGIC:**
    ${venueSelectionGuidance}
-4. Select a venue from the AVAILABLE VENUES DATABASE that matches the logic above
-5. Extract the EXACT barangay, street address, city, and postal code from the database entry
-6. Format in database: "Venue Name — Barangay Name — Street Address, City — Postal Code"
-7. ALWAYS provide complete address components (venue name, barangay, street, city, province, postal code)
-8. Match city names correctly: Malolos/Meycauayan/Pandi/Marilao are in Bulacan Province, Quezon City/Valenzuela/Malabon are in Metro Manila
+   
+4. **VENUE NAMING**: Use realistic venue types appropriate for the Philippines:
+   - Function halls: "[Name] Function Hall", "[Name] Events Place", "[Name] Convention Center"
+   - Hotels: "[Name] Hotel & Events", "[Name] Grand Ballroom", "[Hotel Name] Function Room"
+   - Resorts: "[Name] Resort & Events", "[Name] Garden Resort", "[Name] Private Resort"
+   - Gardens: "[Name] Garden", "[Name] Events Garden", "[Name] Botanical Garden"
+   - If user wants POOL/swimming: Use "Resort", "Pool", or "Private Resort" in the name
+   
+5. **PROVINCE COVERAGE**: We serve these provinces:
+   - Metro Manila (cities: Manila, Quezon City, Makati, Pasig, Taguig, etc.)
+   - Bulacan (cities: Malolos, Meycauayan, San Jose del Monte, etc.)
+   - Pampanga (cities: Angeles, San Fernando, Mabalacat, etc.)
+   - Zambales (cities: Olongapo, Subic, Iba, etc.)
+   - Rizal (cities: Antipolo, Cainta, Taytay, Binangonan, etc.)
+   - Cavite (cities: Bacoor, Imus, Dasmariñas, Tagaytay, etc.)
+   - Laguna (cities: Calamba, Santa Rosa, Biñan, San Pablo, etc.)
+   - Batangas (cities: Batangas City, Lipa, Tanauan, Lemery, etc.)
+   - Quezon (cities: Lucena, Tayabas, Sariaya, Candelaria, etc.)
+   
+6. ALWAYS provide complete address components (venue name, street address, city, province, postal code)
+7. RANDOMIZE venue names to provide variety across multiple generations
 
 CRITICAL REASONING REQUIREMENT:
 Your "reasoning" field MUST include these SPECIFIC elements:
@@ -628,20 +698,25 @@ Your "reasoning" field MUST include these SPECIFIC elements:
    - Quote or paraphrase what the user actually said in "${aiPreferences || "preferences"}"
 
 3. **VENUE SELECTION** - Explain the venue choice with EXACT location:
-   ${
-     userLocation.barangay
-       ? `
-   - If venue IS in ${userLocation.barangay}: Say "I chose [EXACT VENUE NAME] in ${userLocation.barangay}, ${userLocation.city || ""} because you live in ${userLocation.barangay}"
-   - If venue NOT in ${userLocation.barangay}: Say "I couldn't find a venue in ${userLocation.barangay}, so I selected [EXACT VENUE NAME] in [ACTUAL BARANGAY] which is close to your location in ${userLocation.city || "your area"}"
-   `
-       : userLocation.city
-         ? `
-   - Say "I selected [EXACT VENUE NAME] in [BARANGAY], ${userLocation.city} based on your location"
-   `
-         : `
-   - Say "I selected [EXACT VENUE NAME] as a convenient location in our service area"
-   `
-   }
+  ${
+    effectiveProvince && effectiveProvince !== "Metro Manila" && effectiveProvince !== "Bulacan"
+      ? `
+  - For ${effectiveProvince}: Say "I selected [VENUE NAME] in ${effectiveCity || effectiveProvince}, a suitable venue for your ${eventType} event in ${effectiveProvince}"
+  - DO NOT mention that this is a generated venue - present it naturally as if it's a real venue recommendation
+  `
+      : userLocation.barangay
+        ? `
+  - If venue IS in ${userLocation.barangay}: Say "I chose [EXACT VENUE NAME] in ${userLocation.barangay}, ${userLocation.city || ""} because you mentioned ${userLocation.barangay}"
+  - If venue NOT in ${userLocation.barangay}: Say "I couldn't find a venue in ${userLocation.barangay}, so I selected [EXACT VENUE NAME] in [ACTUAL BARANGAY] which is close to your location in ${userLocation.city || "your area"}"
+  `
+        : effectiveCity
+          ? `
+  - Say "I selected [EXACT VENUE NAME] in ${effectiveCity} based on your location"
+  `
+          : `
+  - Say "I selected [EXACT VENUE NAME] as a convenient location in our service area"
+  `
+  }
 
 4. **THEME & COLORS** - Reference user's aesthetic preferences:
    - Example: "The Elegant Seaside theme with Navy Blue and Silver reflects your preference for elegant style"

@@ -1427,10 +1427,8 @@ export default function AIRecommendation({
         eventType: eventInfo.eventType,
         guestCount: formData.guestCount,
         aiPreferences: formData.aiPreferences, // Combined preferences
-        // venue: `${formData.venueName ? formData.venueName + ", " : ""}${formData.venueStreetAddress}, ${formData.venueBarangay}, ${formData.venueCity}, ${formData.venueProvince}${formData.venueZipCode ? ", " + formData.venueZipCode : ""}`,
-        // venueCity: formData.venueCity,
-        // theme: formData.theme,
-        // colorMotif: formData.colorMotif,
+        province: locationInfo?.province || "",
+        city: locationInfo?.city || "",
         availableMenuItems: allMenuItems,
         generationCount: generationCount,
       }
@@ -2578,6 +2576,22 @@ export default function AIRecommendation({
                     </div>
                   )}
 
+                  {pkg.isWeddingEvent && pkg.weddingPackageInclusions && pkg.weddingPackageInclusions.length > 0 && (
+                    <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg p-4">
+                      <h4 className="text-lg font-semibold text-rose-900 dark:text-rose-100 mb-3">
+                        Wedding Package Includes:
+                      </h4>
+                      <div className="grid gap-2">
+                        {pkg.weddingPackageInclusions.map((inclusion: string, inclusionIndex: number) => (
+                          <div key={inclusionIndex} className="flex items-start space-x-3">
+                            <div className="w-2 h-2 bg-rose-500 rounded-full mt-2 flex-shrink-0" />
+                            <span className="text-rose-800 dark:text-rose-200">{inclusion}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {pkg.isDebutEvent && pkg.debutPackageInclusions && pkg.debutPackageInclusions.length > 0 && (
                     <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
                       <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">
@@ -2613,7 +2627,7 @@ export default function AIRecommendation({
                       </div>
                     )}
 
-                  {/* Transportation Fee Information */}
+                  {/* Transportation Fee Information - Legacy fallback */}
                   {locationInfo && (
                     <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
                       <h4 className="text-lg font-semibold text-amber-900 dark:text-amber-200 mb-3">

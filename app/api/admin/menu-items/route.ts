@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     // After creating new item, trigger price update for existing appointments
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/admin/recalculate-appointments`, {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://jo-acms.vercel.app"}/api/admin/recalculate-appointments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: "New menu item added", itemName: name }),
@@ -279,7 +279,7 @@ export async function PUT(request: NextRequest) {
 
       try {
         const recalcResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/admin/recalculate-appointments`,
+          `${process.env.NEXT_PUBLIC_APP_URL || "http://jo-acms.vercel.app"}/api/admin/recalculate-appointments`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -350,7 +350,7 @@ export async function DELETE(request: NextRequest) {
     if (itemToDelete) {
       try {
         await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/admin/recalculate-appointments`,
+          `${process.env.NEXT_PUBLIC_APP_URL || "http://jo-acms.vercel.app"}/api/admin/recalculate-appointments`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

@@ -9,7 +9,7 @@ export default function EmailPreviewPage() {
     eventDate: "2026-03-15",
     proposedTastingDate: "2026-02-20",
     proposedTastingTime: "2:00 PM",
-    confirmationUrl: "https://localhost:3000/api/tasting/confirm?token=example123&action=confirm",
+    confirmationUrl: "https://jo-acms.vercel.app/api/tasting/confirm?token=example123&action=confirm",
     totalPackageAmount: 125000,
     downPayment: 62500,
   }
