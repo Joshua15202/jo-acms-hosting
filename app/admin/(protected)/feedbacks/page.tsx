@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { MessageSquare, Star, Calendar, User, Send, CheckCircle } from "lucide-react"
+import { MessageSquare, Star, Calendar, User, Send, CheckCircle, Eye, EyeOff } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -25,10 +25,12 @@ interface Testimonial {
   admin_reply: string | null
   admin_reply_at: string | null
   replied_by: string | null
+  featured_on_homepage: boolean
+  media_urls: string[] | null
   tbl_comprehensive_appointments: {
-    event_name: string
+    event_type: string
     contact_email: string
-    contact_name: string
+    contact_full_name: string
   }
 }
 
@@ -110,6 +112,41 @@ export default function AdminFeedbacksPage() {
     }
   }
 
+  const handleToggleFeatured = async (testimonialId: string, currentStatus: boolean) => {
+    console.log("[v0] Toggle featured called:", { testimonialId, currentStatus, newStatus: !currentStatus })
+    try {
+      const response = await fetch(`/api/admin/feedbacks/${testimonialId}/feature`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ featured: !currentStatus }),
+      })
+
+      console.log("[v0] Feature toggle response status:", response.status)
+      const responseData = await response.json()
+      console.log("[v0] Feature toggle response data:", responseData)
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: !currentStatus
+            ? "Feedback will now be displayed on homepage"
+            : "Feedback removed from homepage display",
+        })
+        fetchTestimonials()
+      } else {
+        console.error("[v0] Feature toggle failed:", responseData)
+        throw new Error(responseData.error || "Failed to update featured status")
+      }
+    } catch (error) {
+      console.error("[v0] Feature toggle error:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update featured status",
+        variant: "destructive",
+      })
+    }
+  }
+
   const renderStars = (rating: number) => {
     return (
       <div className="flex gap-1">
@@ -127,6 +164,7 @@ export default function AdminFeedbacksPage() {
     total: testimonials.length,
     replied: testimonials.filter((t) => t.admin_reply).length,
     pending: testimonials.filter((t) => !t.admin_reply).length,
+    featured: testimonials.filter((t) => t.featured_on_homepage).length,
     avgRating:
       testimonials.length > 0
         ? (testimonials.reduce((sum, t) => sum + t.rating, 0) / testimonials.length).toFixed(1)
@@ -152,7 +190,7 @@ export default function AdminFeedbacksPage() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Feedbacks</CardTitle>
@@ -180,6 +218,16 @@ export default function AdminFeedbacksPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-500">{stats.replied}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Featured on Homepage</CardTitle>
+            <Eye className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-500">{stats.featured}</div>
           </CardContent>
         </Card>
 
@@ -216,7 +264,7 @@ export default function AdminFeedbacksPage() {
                         <div className="flex items-center gap-2">
                           <User className="h-4 w-4 text-muted-foreground" />
                           <span className="font-semibold">
-                            {testimonial.tbl_comprehensive_appointments.contact_name}
+                            {testimonial.tbl_comprehensive_appointments.contact_full_name}
                           </span>
                         </div>
                         <Badge variant="outline" className="text-xs">
@@ -249,13 +297,34 @@ export default function AdminFeedbacksPage() {
                   {/* Event Info */}
                   <div className="bg-muted/50 rounded-lg p-3">
                     <p className="text-sm text-muted-foreground">Event:</p>
-                    <p className="font-medium">{testimonial.tbl_comprehensive_appointments.event_name}</p>
+                    <p className="font-medium">{testimonial.tbl_comprehensive_appointments.event_type}</p>
                   </div>
 
                   {/* Customer Feedback */}
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-2">Customer Feedback:</p>
                     <p className="text-sm leading-relaxed">{testimonial.message}</p>
+
+                    {/* Media Gallery */}
+                    {testimonial.media_urls && testimonial.media_urls.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        {testimonial.media_urls.map((url, idx) => (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 hover:opacity-90 transition-opacity"
+                          >
+                            {url.includes(".mp4") || url.includes(".mov") || url.includes(".webm") ? (
+                              <video src={url} className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={url || "/placeholder.svg"} alt="Feedback media" className="w-full h-full object-cover" />
+                            )}
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Admin Reply */}
@@ -271,8 +340,8 @@ export default function AdminFeedbacksPage() {
                     </div>
                   )}
 
-                  {/* Reply Button */}
-                  <div className="pt-2">
+                  {/* Action Buttons */}
+                  <div className="pt-2 flex gap-2">
                     <Button
                       onClick={() => handleReplyClick(testimonial)}
                       variant={testimonial.admin_reply ? "outline" : "default"}
@@ -281,6 +350,24 @@ export default function AdminFeedbacksPage() {
                     >
                       <Send className="h-4 w-4" />
                       {testimonial.admin_reply ? "Edit Reply" : "Reply to Customer"}
+                    </Button>
+                    <Button
+                      onClick={() => handleToggleFeatured(testimonial.id, testimonial.featured_on_homepage)}
+                      variant={testimonial.featured_on_homepage ? "default" : "outline"}
+                      size="sm"
+                      className={`gap-2 ${testimonial.featured_on_homepage ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+                    >
+                      {testimonial.featured_on_homepage ? (
+                        <>
+                          <Eye className="h-4 w-4" />
+                          Featured on Homepage
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="h-4 w-4" />
+                          Feature on Homepage
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>

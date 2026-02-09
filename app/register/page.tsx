@@ -23,6 +23,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { addressData } from "@/lib/philippines-address-data"
+import { User } from "@/types/user" // Import User type if not already present
 
 // Service area data (using comprehensive Philippines address data)
 const SERVICE_AREAS = addressData as Record<string, Record<string, string[]>>
@@ -376,8 +377,21 @@ const OLD_SERVICE_AREAS = {
 export default function RegisterPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const verifyEmail = searchParams.get("verify")
-  const { setUser } = useAuth()
+  const { refreshAuth } = useAuth()
+  const [user, setUser] = useState<User | null>(null) // Declare setUser variable
+
+  // Generate random CAPTCHA with distorted text
+  const generateCaptcha = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
+    let captchaText = ""
+    for (let i = 0; i < 6; i++) {
+      captchaText += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    setCaptchaQuestion(captchaText)
+    setCaptchaAnswer(0) // Not used for text captcha
+    setCaptchaInput("")
+  }
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [verificationStep, setVerificationStep] = useState(false)
@@ -391,19 +405,32 @@ export default function RegisterPage() {
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [verifyEmail, setVerifyEmail] = useState("") // Declare verifyEmail variable
 
   // Address state
   const [selectedProvince, setSelectedProvince] = useState("")
   const [selectedCity, setSelectedCity] = useState("")
   const [selectedBarangay, setSelectedBarangay] = useState("")
+  
+  // CAPTCHA states
+  const [captchaQuestion, setCaptchaQuestion] = useState("")
+  const [captchaAnswer, setCaptchaAnswer] = useState(0)
+  const [captchaInput, setCaptchaInput] = useState("")
   const [availableCities, setAvailableCities] = useState<string[]>([])
   const [availableBarangays, setAvailableBarangays] = useState<string[]>([])
 
   useEffect(() => {
-    if (verifyEmail) {
-      checkPendingRegistration(verifyEmail)
+    const email = searchParams.get("email")
+    if (email) {
+      setVerifyEmail(email)
+      checkPendingRegistration(email)
     }
-  }, [verifyEmail])
+  }, [searchParams])
+
+  // Generate CAPTCHA on mount
+  useEffect(() => {
+    generateCaptcha()
+  }, [])
 
   useEffect(() => {
     if (selectedProvince) {
@@ -494,6 +521,13 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError("")
+
+    // CAPTCHA validation (case-insensitive)
+    if (captchaInput.toLowerCase() !== captchaQuestion.toLowerCase()) {
+      setError("Incorrect CAPTCHA text. Please try again.")
+      generateCaptcha() // Generate new CAPTCHA
+      return
+    }
 
     const formData = new FormData(e.currentTarget)
     const password = formData.get("password") as string
@@ -967,7 +1001,67 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
-                {error && <p className="text-sm text-red-500">{error}</p>}
+                {/* CAPTCHA Verification */}
+                <div className="grid gap-2">
+                  <Label htmlFor="captcha">Security Verification</Label>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <div className="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 p-6 rounded-lg border-2 border-gray-300 dark:border-gray-700 relative overflow-hidden">
+                        {/* Distorted CAPTCHA text */}
+                        <div className="flex justify-center items-center gap-1 mb-3 select-none">
+                          {captchaQuestion.split("").map((char, index) => (
+                            <span
+                              key={index}
+                              className="text-3xl font-bold text-gray-700 dark:text-gray-300"
+                              style={{
+                                transform: `rotate(${Math.random() * 30 - 15}deg) scale(${0.9 + Math.random() * 0.3})`,
+                                display: "inline-block",
+                                textShadow: "2px 2px 4px rgba(0,0,0,0.3)",
+                                fontFamily: Math.random() > 0.5 ? "monospace" : "serif",
+                              }}
+                            >
+                              {char}
+                            </span>
+                          ))}
+                        </div>
+                        {/* Noise lines for distortion */}
+                        <div className="absolute inset-0 pointer-events-none">
+                          {[...Array(5)].map((_, i) => (
+                            <div
+                              key={i}
+                              className="absolute bg-gray-400 dark:bg-gray-600 opacity-30"
+                              style={{
+                                height: "2px",
+                                width: "100%",
+                                top: `${20 + i * 15}%`,
+                                transform: `rotate(${Math.random() * 4 - 2}deg)`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <Input
+                          id="captcha"
+                          type="text"
+                          placeholder="Type the characters above"
+                          value={captchaInput}
+                          onChange={(e) => setCaptchaInput(e.target.value)}
+                          required
+                          className="relative z-10"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={generateCaptcha}
+                      className="shrink-0 h-10 w-10 p-0 bg-transparent"
+                      title="Generate new CAPTCHA"
+                    >
+                      <span className="text-xl">↻</span>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">Type the characters shown above to verify you're human</p>
+                </div>
               </div>
             </CardContent>
             <CardFooter>

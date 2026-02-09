@@ -1512,7 +1512,7 @@ export default function PaymentManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">💵 Cash</SelectItem>
-                  <SelectItem value=" GCash">📱 GCash</SelectItem>
+                  <SelectItem value="gcash">📱 GCash</SelectItem>
                   <SelectItem value="bank_transfer">🏦 Bank Transfer</SelectItem>
                 </SelectContent>
               </Select>
@@ -1540,7 +1540,7 @@ export default function PaymentManagement() {
               </div>
             )}
 
-            {walkInPaymentData.paymentMethod === " GCash" && (
+            {walkInPaymentData.paymentMethod === "gcash" && (
               <div className="border rounded-lg p-4 bg-blue-50 border-blue-200 space-y-3">
                 <h4 className="font-semibold text-blue-900">Payment Details for GCash</h4>
                 <div className="space-y-1">
@@ -1556,19 +1556,19 @@ export default function PaymentManagement() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowQRCode(!showQRCode)}
-                  className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                  className="w-full"
                 >
-                  {showQRCode ? "Hide" : "Show"} QR Code
+                  {showQRCode ? "Hide QR Code" : "Generate QR Code"}
                 </Button>
                 {showQRCode && (
-                  <div className="text-center space-y-2">
+                  <div className="flex flex-col items-center mt-2">
                     <img
-                      src="/qrcodeko.jpg"
+                      src="/sirjoeqrcodegcash.jpg"
                       alt="GCash QR Code"
-                      className="mx-auto w-48 h-48 border-2 border-blue-300 rounded-lg"
+                      className="w-48 h-48 border rounded-lg p-2"
                     />
-                    <p className="text-xs text-blue-700 italic">
-                      (This is a placeholder QR code. In a real app, a dynamic QR code would be generated.)
+                    <p className="text-xs text-blue-700 italic mt-2">
+                      Scan this QR code to pay via GCash
                     </p>
                   </div>
                 )}
@@ -1609,8 +1609,8 @@ export default function PaymentManagement() {
               </div>
             )}
 
-            {/* Reference/Transaction ID */}
-            {walkInPaymentData.paymentType !== "cash" && (
+            {/* Reference/Transaction ID - Only show for non-cash payment methods */}
+            {walkInPaymentData.paymentMethod !== "cash" && (
               <div className="space-y-2">
                 <Label htmlFor="reference" className="text-base font-semibold">
                   Reference/Transaction ID <span className="text-red-500">*</span>

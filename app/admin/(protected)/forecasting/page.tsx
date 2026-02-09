@@ -562,7 +562,6 @@ export default function ForecastingPage() {
                       <TableRow>
                         <TableHead>Month</TableHead>
                         <TableHead>Expected Bookings</TableHead>
-                        <TableHead>Confidence</TableHead>
                         <TableHead>Peak Level</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -573,11 +572,6 @@ export default function ForecastingPage() {
                           <TableCell>
                             <Badge variant="outline" className="bg-blue-100 text-blue-800">
                               {forecast.expectedBookings}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={getConfidenceColor(forecast.confidence)}>
-                              {forecast.confidence}%
                             </Badge>
                           </TableCell>
                           <TableCell>

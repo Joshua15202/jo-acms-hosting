@@ -8,14 +8,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   try {
     const { id: appointmentId } = await params
     const body = await request.json()
-    const { new_date, new_time } = body
+    const { new_date, new_time, reason, attachment_url } = body
 
     console.log("=== RESCHEDULE REQUEST START ===")
     console.log("Appointment ID:", appointmentId)
     console.log("New date:", new_date)
     console.log("New time:", new_time)
+    console.log("Reason:", reason)
+    console.log("Attachment:", attachment_url)
 
-    if (!new_date || !new_time) {
+    if (!new_date || !new_time || !reason) {
       console.log("Missing required fields")
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
@@ -101,7 +103,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json(
         {
           success: false,
-          error: `You can only reschedule within the year ${originalDate.getFullYear()}.`,
+          error: "Missing required fields: new_date, new_time, and reason",
         },
         { status: 400 },
       )
@@ -170,25 +172,39 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         `${appointment.admin_notes || ""}\n\n[${new Date().toISOString()}] Reschedule penalty: ₱${penaltyAmount.toLocaleString()} (10%). Original: ${appointment.event_date} ${appointment.event_time}. New: ${new_date} ${new_time}.`.trim()
     }
 
-    console.log("Updating appointment...")
-    const { error: updateError } = await supabaseAdmin
-      .from("tbl_comprehensive_appointments")
-      .update(updateData)
-      .eq("id", appointmentId)
+    // Instead of directly updating, create a reschedule request
+    console.log("Creating reschedule request...")
+    
+    const { error: requestError } = await supabaseAdmin
+      .from("tbl_reschedule_requests")
+      .insert({
+        appointment_id: appointmentId,
+        user_id: session.user_id,
+        current_event_date: appointment.event_date,
+        current_event_time: appointment.event_time,
+        new_event_date: new_date,
+        new_event_time: new_time,
+        reason,
+        attachment_url,
+        penalty_applied: penaltyApplied,
+        penalty_amount: penaltyAmount,
+        new_total_amount: updatedTotalAmount,
+        status: "pending",
+      })
 
-    if (updateError) {
-      console.error("ERROR: Failed to update appointment:", updateError)
+    if (requestError) {
+      console.error("ERROR: Failed to create reschedule request:", requestError)
       return NextResponse.json(
         {
           success: false,
-          error: "Failed to reschedule appointment",
-          details: updateError.message,
+          error: "Failed to create reschedule request",
+          details: requestError.message,
         },
         { status: 500 },
       )
     }
 
-    console.log("✓ Appointment updated successfully")
+    console.log("✓ Reschedule request created successfully")
 
     try {
       const { data: user } = await supabaseAdmin
@@ -198,13 +214,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         .single()
 
       const notificationMessage = penaltyApplied
-        ? `Your appointment has been rescheduled to ${new_date} at ${new_time}. A 10% penalty of ₱${penaltyAmount.toLocaleString()} has been applied.`
-        : `Your appointment has been successfully rescheduled to ${new_date} at ${new_time}.`
+        ? `Your reschedule request for ${new_date} at ${new_time} has been submitted. A 10% penalty of ₱${penaltyAmount.toLocaleString()} will apply if approved. Awaiting admin approval.`
+        : `Your reschedule request for ${new_date} at ${new_time} has been submitted and is awaiting admin approval.`
 
       await supabaseAdmin.from("tbl_notifications").insert({
         user_id: session.user_id,
         appointment_id: appointmentId,
-        title: "Appointment Rescheduled",
+        title: "Reschedule Request Submitted",
         type: "reschedule",
         message: notificationMessage,
         is_read: false,
@@ -213,14 +229,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
       const eventDetails = `Event: ${appointment.event_type} for ${appointment.guest_count} guests`
       const customerInfo = `Customer: ${user?.full_name || "Unknown"} (${user?.email || "No email"}, ${user?.phone || "No phone"})`
-      const dateChange = `Original: ${appointment.event_date} at ${appointment.event_time} → New: ${new_date} at ${new_time}`
+      const dateChange = `Original: ${appointment.event_date} at ${appointment.event_time} → Requested: ${new_date} at ${new_time}`
       const penaltyText = penaltyApplied 
-        ? `\nPenalty Applied: ₱${penaltyAmount.toLocaleString()} (10%) | New Total: ₱${updatedTotalAmount.toLocaleString()}` 
+        ? `\nPenalty Will Apply: ₱${penaltyAmount.toLocaleString()} (10%) | New Total: ₱${updatedTotalAmount.toLocaleString()}` 
         : ""
       
       await createAdminNotification({
-        type: "appointment_reschedule",
-        title: "Appointment Rescheduled by User",
+        type: "reschedule_request",
+        title: "New Reschedule Request",
         message: `${eventDetails}\n${customerInfo}\n${dateChange}${penaltyText}`,
         metadata: {
           appointmentId,
@@ -246,30 +262,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       // Don't fail the reschedule if notification fails
     }
 
-    // Update related tasting if exists
-    const { data: tasting } = await supabaseAdmin
-      .from("tbl_food_tastings")
-      .select("id")
-      .eq("appointment_id", appointmentId)
-      .single()
-
-    if (tasting) {
-      console.log("Updating related tasting status...")
-      await supabaseAdmin
-        .from("tbl_food_tastings")
-        .update({
-          status: "rescheduled",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", tasting.id)
-      console.log("✓ Tasting updated")
-    }
-
-    console.log("=== RESCHEDULE SUCCESS ===")
+    console.log("=== RESCHEDULE REQUEST SUBMITTED ===")
 
     return NextResponse.json({
       success: true,
-      message: "Appointment rescheduled successfully",
+      message: "Reschedule request submitted successfully. Awaiting admin approval.",
       penalty_applied: penaltyApplied,
       penalty_amount: penaltyAmount,
       new_total: updatedTotalAmount,

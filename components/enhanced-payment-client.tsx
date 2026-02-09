@@ -795,7 +795,7 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
           console.warn("Logo failed to load, continuing without it")
           resolve(null)
         }
-        logo.src = "/images/New Logo.png" // Updated logo source
+        logo.src = "/New Logo.png"
         // Timeout after 2 seconds
         setTimeout(() => resolve(null), 2000)
       })
@@ -804,8 +804,8 @@ export default function EnhancedPaymentClient({ user }: EnhancedPaymentClientPro
 
       // Draw logo if loaded
       if (logo.complete && logo.naturalWidth > 0) {
-        const logoWidth = 80
-        const logoHeight = 80
+        const logoWidth = 100
+        const logoHeight = 100
         ctx.drawImage(logo, 30, currentY, logoWidth, logoHeight)
         currentY += logoHeight + 20
       } else {

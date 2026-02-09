@@ -6,7 +6,22 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, Users, MapPin, Utensils, Edit, X, CreditCard, RefreshCw, Pencil, Star } from "lucide-react"
+import {
+  Calendar,
+  Clock,
+  Users,
+  MapPin,
+  Utensils,
+  Edit,
+  X,
+  CreditCard,
+  RefreshCw,
+  Pencil,
+  Star,
+  ImageIcon,
+  Upload,
+  Video,
+} from "lucide-react"
 import { format } from "date-fns"
 import { useAuth } from "@/components/user-auth-provider"
 import { addressData } from "@/lib/philippines-address-data"
@@ -89,6 +104,8 @@ export default function MyAppointmentsClient() {
   const [hoverRating, setHoverRating] = useState(0)
   const [feedback, setFeedback] = useState("")
   const [submittingRating, setSubmittingRating] = useState(false)
+  const [feedbackMedia, setFeedbackMedia] = useState<File[]>([])
+  const [uploadingMedia, setUploadingMedia] = useState(false)
 
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
@@ -885,6 +902,7 @@ export default function MyAppointmentsClient() {
     setRating(0)
     setHoverRating(0)
     setFeedback("")
+    setFeedbackMedia([])
   }
 
   const handleSubmitRating = async () => {
@@ -901,7 +919,28 @@ export default function MyAppointmentsClient() {
     }
 
     setSubmittingRating(true)
+    setUploadingMedia(true)
     try {
+      // Upload media files if any
+      const mediaUrls: string[] = []
+      if (feedbackMedia.length > 0) {
+        for (const file of feedbackMedia) {
+          const formData = new FormData()
+          formData.append("file", file)
+
+          const uploadResponse = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          })
+
+          if (uploadResponse.ok) {
+            const { url } = await uploadResponse.json()
+            mediaUrls.push(url)
+          }
+        }
+      }
+      setUploadingMedia(false)
+
       const response = await fetch("/api/testimonials", {
         method: "POST",
         headers: {
@@ -914,6 +953,7 @@ export default function MyAppointmentsClient() {
           rating,
           message: feedback,
           eventType: ratingAppointment.event_type,
+          mediaUrls,
         }),
       })
 
@@ -924,6 +964,7 @@ export default function MyAppointmentsClient() {
         setRatingDialogOpen(false)
         setRating(0)
         setFeedback("")
+        setFeedbackMedia([])
         setRatingAppointment(null)
       } else {
         alert(data.error || "Failed to submit rating. Please try again.")
@@ -933,6 +974,7 @@ export default function MyAppointmentsClient() {
       alert("Failed to submit rating. Please try again.")
     } finally {
       setSubmittingRating(false)
+      setUploadingMedia(false)
     }
   }
 
@@ -2050,6 +2092,63 @@ export default function MyAppointmentsClient() {
               />
             </div>
 
+            {/* Media Upload */}
+            <div className="space-y-2">
+              <Label>Add Photos or Videos (Optional)</Label>
+              <div className="border-2 border-dashed rounded-lg p-4">
+                <input
+                  type="file"
+                  id="feedback-media"
+                  accept="image/*,video/*"
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || [])
+                    if (feedbackMedia.length + files.length > 5) {
+                      alert("Maximum 5 files allowed")
+                      return
+                    }
+                    setFeedbackMedia([...feedbackMedia, ...files])
+                  }}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="feedback-media"
+                  className="flex flex-col items-center gap-2 cursor-pointer text-gray-600 hover:text-gray-900"
+                >
+                  <Upload className="h-8 w-8" />
+                  <span className="text-sm">Click to upload photos or videos</span>
+                  <span className="text-xs text-gray-500">Maximum 5 files</span>
+                </label>
+
+                {/* Preview uploaded files */}
+                {feedbackMedia.length > 0 && (
+                  <div className="mt-4 grid grid-cols-3 gap-2">
+                    {feedbackMedia.map((file, index) => (
+                      <div key={index} className="relative group">
+                        <div className="aspect-square rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                          {file.type.startsWith("image/") ? (
+                            <ImageIcon className="h-8 w-8 text-gray-400" />
+                          ) : (
+                            <Video className="h-8 w-8 text-gray-400" />
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFeedbackMedia(feedbackMedia.filter((_, i) => i !== index))
+                          }}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                        <p className="text-xs text-gray-600 mt-1 truncate">{file.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Event Info */}
             {ratingAppointment && (
               <div className="bg-gray-50 p-3 rounded-lg text-sm">
@@ -2074,7 +2173,7 @@ export default function MyAppointmentsClient() {
               disabled={submittingRating || rating === 0 || !feedback.trim()}
               className="bg-yellow-500 hover:bg-yellow-600 text-white"
             >
-              {submittingRating ? "Submitting..." : "Submit Rating"}
+              {uploadingMedia ? "Uploading media..." : submittingRating ? "Submitting..." : "Submit Rating"}
             </Button>
           </DialogFooter>
         </DialogContent>

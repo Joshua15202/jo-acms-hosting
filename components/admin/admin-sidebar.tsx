@@ -17,6 +17,7 @@ import {
   UserPlus,
   Database,
   X,
+  CalendarClock,
 } from "lucide-react"
 
 const sidebarItems = [
@@ -39,6 +40,11 @@ const sidebarItems = [
     title: "Cancellation Requests",
     href: "/admin/cancellation-requests",
     icon: XCircle,
+  },
+  {
+    title: "Reschedule Requests",
+    href: "/admin/reschedule-requests",
+    icon: CalendarClock,
   },
   {
     title: "Calendar Control",

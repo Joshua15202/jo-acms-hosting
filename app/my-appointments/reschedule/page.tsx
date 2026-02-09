@@ -5,7 +5,9 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Calendar, Clock, ArrowLeft, CheckCircle } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { AlertCircle, Calendar, Clock, ArrowLeft, CheckCircle, Upload, X } from "lucide-react"
 import SmartCalendar from "@/components/smart-calendar"
 import { useAuth } from "@/components/user-auth-provider"
 import { format, differenceInHours } from "date-fns"
@@ -40,6 +42,9 @@ export default function RescheduleAppointmentPage() {
     amount: number
     newTotal: number
   } | null>(null)
+  const [rescheduleReason, setRescheduleReason] = useState("")
+  const [rescheduleAttachment, setRescheduleAttachment] = useState<File | null>(null)
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
 
   useEffect(() => {
     if (!authLoading) {
@@ -168,6 +173,11 @@ export default function RescheduleAppointmentPage() {
       return
     }
 
+    if (!rescheduleReason.trim()) {
+      setError("Please provide a reason for rescheduling")
+      return
+    }
+
     // Validate year restriction on client side
     const originalYear = new Date(appointment.event_date).getFullYear()
     const selectedYear = new Date(selectedDate).getFullYear()
@@ -181,6 +191,25 @@ export default function RescheduleAppointmentPage() {
     setError(null)
 
     try {
+      // Upload attachment if provided
+      let attachmentUrl = null
+      if (rescheduleAttachment) {
+        setUploadingAttachment(true)
+        const formData = new FormData()
+        formData.append("file", rescheduleAttachment)
+
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        })
+
+        if (uploadResponse.ok) {
+          const { url } = await uploadResponse.json()
+          attachmentUrl = url
+        }
+        setUploadingAttachment(false)
+      }
+
       console.log("Sending PATCH request to:", `/api/scheduling/appointments/${appointment.id}/reschedule`)
 
       const response = await fetch(`/api/scheduling/appointments/${appointment.id}/reschedule`, {
@@ -192,6 +221,8 @@ export default function RescheduleAppointmentPage() {
         body: JSON.stringify({
           new_date: selectedDate,
           new_time: selectedTimeSlot,
+          reason: rescheduleReason,
+          attachment_url: attachmentUrl,
         }),
       })
 
@@ -260,8 +291,11 @@ export default function RescheduleAppointmentPage() {
           <div className="rounded-full bg-green-100 p-6 mb-6">
             <CheckCircle className="h-16 w-16 text-green-600" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Reschedule Confirmed!</h1>
-          <p className="text-gray-600 mb-4">Your appointment has been successfully rescheduled.</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Reschedule Request Submitted!</h1>
+          <p className="text-gray-600 mb-4">
+            Your reschedule request has been submitted and is pending admin approval. You will be notified once the
+            admin reviews your request.
+          </p>
 
           {selectedDate && selectedTimeSlot && (
             <Card className="max-w-md w-full mb-6">
@@ -434,6 +468,68 @@ export default function RescheduleAppointmentPage() {
               </div>
             )}
 
+            {/* Reason for Rescheduling */}
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="reschedule-reason">Reason for Rescheduling *</Label>
+              <Textarea
+                id="reschedule-reason"
+                placeholder="Please explain why you need to reschedule this appointment..."
+                value={rescheduleReason}
+                onChange={(e) => setRescheduleReason(e.target.value)}
+                rows={4}
+                className="resize-none"
+              />
+            </div>
+
+            {/* Attachment Upload */}
+            <div className="space-y-2 mb-4">
+              <Label htmlFor="reschedule-attachment">Attachment (Optional)</Label>
+              <div className="border-2 border-dashed rounded-lg p-4">
+                {rescheduleAttachment ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Upload className="h-5 w-5 text-gray-400" />
+                      <span className="text-sm text-gray-700">{rescheduleAttachment.name}</span>
+                      <span className="text-xs text-gray-500">
+                        ({(rescheduleAttachment.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRescheduleAttachment(null)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <label htmlFor="reschedule-attachment" className="cursor-pointer flex flex-col items-center gap-2">
+                    <Upload className="h-8 w-8 text-gray-400" />
+                    <span className="text-sm text-gray-600">Click to upload a file</span>
+                    <span className="text-xs text-gray-500">PDF, PNG, JPG (max 5MB)</span>
+                    <input
+                      type="file"
+                      id="reschedule-attachment"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            alert("File size must be less than 5MB")
+                            return
+                          }
+                          setRescheduleAttachment(file)
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
             <div className="flex gap-3">
               <Button
                 onClick={handleReschedule}
@@ -446,7 +542,7 @@ export default function RescheduleAppointmentPage() {
                 }
                 className="flex-1 bg-rose-600 hover:bg-rose-700"
               >
-                {rescheduleLoading ? "Rescheduling..." : "Confirm Reschedule"}
+                {uploadingAttachment ? "Uploading..." : rescheduleLoading ? "Submitting..." : "Submit Reschedule Request"}
               </Button>
               <Button onClick={() => router.push("/my-appointments")} variant="outline" className="flex-1">
                 Cancel

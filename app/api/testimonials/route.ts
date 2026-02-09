@@ -8,7 +8,7 @@ const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, proces
 
 export async function GET(request: NextRequest) {
   try {
-    // Fetch testimonials with user details and appointment event type
+    // Fetch only featured testimonials for homepage display
     const { data: testimonials, error } = await supabaseAdmin
       .from("tbl_testimonials")
       .select(`
@@ -20,12 +20,15 @@ export async function GET(request: NextRequest) {
         admin_reply,
         admin_reply_at,
         replied_by,
+        featured_on_homepage,
+        media_urls,
         appointment:tbl_comprehensive_appointments (
           event_type
         )
       `)
+      .eq("featured_on_homepage", true)
       .order("created_at", { ascending: false })
-      .limit(20)
+      .limit(50)
 
     if (error) {
       console.error("Error fetching testimonials:", error)
@@ -77,9 +80,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, appointmentId, rating, message } = body
+    const { userId, appointmentId, rating, message, mediaUrls = [] } = body
 
-    console.log("[v0] Testimonial submission - userId:", userId, "appointmentId:", appointmentId)
+    console.log("[v0] Testimonial submission - userId:", userId, "appointmentId:", appointmentId, "mediaUrls:", mediaUrls)
 
     if (!userId || !appointmentId || !rating || !message) {
       console.log(
@@ -184,6 +187,7 @@ export async function POST(request: NextRequest) {
       appointment_id: appointmentId,
       rating,
       message,
+      media_urls: mediaUrls,
     })
 
     if (insertError) {

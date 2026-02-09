@@ -1,6 +1,6 @@
 "use client"
 
-import { Star, MessageSquarePlus, Loader2 } from "lucide-react"
+import { Star, MessageSquarePlus, Loader2, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createBrowserClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
+const supabase = createBrowserClient()
+
 interface Testimonial {
   id: string
   name: string
@@ -28,6 +30,7 @@ interface Testimonial {
   created_at: string
   admin_reply?: string
   admin_reply_at?: string
+  media_urls?: string[] | null
 }
 
 interface EligibleAppointment {
@@ -43,6 +46,9 @@ export default function TestimonialsSection() {
   const [eligibleAppointments, setEligibleAppointments] = useState<EligibleAppointment[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxImages, setLightboxImages] = useState<string[]>([])
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   // Form state
   const [selectedAppointment, setSelectedAppointment] = useState("")
@@ -51,10 +57,26 @@ export default function TestimonialsSection() {
 
   const { toast } = useToast()
 
-  // Create browser client for client-side auth operations
-  const supabase = createBrowserClient()
+  const openLightbox = (images: string[], index: number) => {
+    setLightboxImages(images)
+    setCurrentImageIndex(index)
+    setLightboxOpen(true)
+  }
 
-  // Fetch initial data and setup realtime subscription
+  const closeLightbox = () => {
+    setLightboxOpen(false)
+    setLightboxImages([])
+    setCurrentImageIndex(0)
+  }
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % lightboxImages.length)
+  }
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + lightboxImages.length) % lightboxImages.length)
+  }
+
   useEffect(() => {
     fetchTestimonials()
     checkUser()
@@ -98,6 +120,8 @@ export default function TestimonialsSection() {
         return
       }
       const data = await response.json()
+      console.log("[v0] Testimonials fetched:", data.data)
+      console.log("[v0] First testimonial media_urls:", data.data?.[0]?.media_urls)
       if (data.success) {
         setTestimonials(data.data)
       } else {
@@ -280,10 +304,10 @@ export default function TestimonialsSection() {
           )}
         </div>
 
-        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 md:grid-cols-2 lg:grid-cols-3">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 py-12 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {loading ? (
             // Loading skeletons
-            Array(3)
+            Array(8)
               .fill(0)
               .map((_, i) => (
                 <div
@@ -313,6 +337,35 @@ export default function TestimonialsSection() {
                       ))}
                   </div>
                   <p className="text-gray-500 italic">"{testimonial.message}"</p>
+
+                  {/* Media gallery */}
+                  {testimonial.media_urls && testimonial.media_urls.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                      {testimonial.media_urls.slice(0, 4).map((url, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => openLightbox(testimonial.media_urls || [], idx)}
+                          className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
+                        >
+                          {url.includes(".mp4") || url.includes(".mov") ? (
+                            <video src={url} className="w-full h-full object-cover pointer-events-none" />
+                          ) : (
+                            <img
+                              src={url || "/placeholder.svg"}
+                              alt="Feedback media"
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                          {idx === 3 && testimonial.media_urls.length > 4 && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-semibold">
+                              +{testimonial.media_urls.length - 4}
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center space-x-4 pt-4 border-t">
@@ -347,6 +400,72 @@ export default function TestimonialsSection() {
           )}
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          onClick={closeLightbox}
+        >
+          <button
+            type="button"
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+          >
+            <X className="h-8 w-8" />
+          </button>
+
+          {lightboxImages.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  prevImage()
+                }}
+                className="absolute left-4 text-white hover:text-gray-300 transition-colors"
+              >
+                <ChevronLeft className="h-12 w-12" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  nextImage()
+                }}
+                className="absolute right-4 text-white hover:text-gray-300 transition-colors"
+              >
+                <ChevronRight className="h-12 w-12" />
+              </button>
+            </>
+          )}
+
+          <div className="max-w-6xl max-h-[90vh] w-full h-full flex items-center justify-center p-4">
+            {lightboxImages[currentImageIndex]?.includes(".mp4") ||
+            lightboxImages[currentImageIndex]?.includes(".mov") ? (
+              <video
+                src={lightboxImages[currentImageIndex]}
+                controls
+                className="max-w-full max-h-full rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <img
+                src={lightboxImages[currentImageIndex] || "/placeholder.svg"}
+                alt="Feedback media"
+                className="max-w-full max-h-full rounded-lg object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
+          </div>
+
+          {lightboxImages.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white text-sm">
+              {currentImageIndex + 1} / {lightboxImages.length}
+            </div>
+          )}
+        </div>
+      )}
     </section>
   )
 }
